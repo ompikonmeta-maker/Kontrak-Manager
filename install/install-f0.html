@@ -1,0 +1,183 @@
+<title>Instalasi SKM F0</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: satu kolom panduan; langkah bernomor karena urutannya memang wajib; kartu file dengan tombol Salin. */
+:root{--bg:#edf2f5;--surface:#fff;--surface2:#f3f7f9;--line:#d9e3e9;--fg:#0c1a24;--muted:#4d606d;--accent:#07857b;--on-accent:#fff;--accent-bg:rgba(7,133,123,.10);--violet:#5559e8;--ok:#14905a;
+  --font:"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif;--mono:"JetBrains Mono",Consolas,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#060b14;--surface:#0d1522;--surface2:#121d2e;--line:#1b293d;--fg:#e4edf6;--muted:#93a6bb;--accent:#37e2cb;--on-accent:#022320;--accent-bg:rgba(55,226,203,.12);--violet:#9ca2ff;--ok:#4fd897;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#060b14;--surface:#0d1522;--surface2:#121d2e;--line:#1b293d;--fg:#e4edf6;--muted:#93a6bb;--accent:#37e2cb;--on-accent:#022320;--accent-bg:rgba(55,226,203,.12);--violet:#9ca2ff;--ok:#4fd897;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font);line-height:1.55}
+.wrap{max-width:860px;margin:0 auto;padding-block:36px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:22px}
+.eyebrow{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--accent)}
+h1{font-size:clamp(26px,4vw,36px);margin:4px 0 6px;font-weight:800;letter-spacing:-.03em;line-height:1.1;text-wrap:balance}
+h2{font-size:17px;margin:0;font-weight:800;letter-spacing:-.01em}
+p{margin:0;max-width:68ch}
+.muted{color:var(--muted)}
+.mono{font-family:var(--mono);font-size:.9em}
+kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:0 6px;background:var(--surface2)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:20px}
+.checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+.checks div{display:flex;gap:10px;align-items:flex-start;font-size:13.5px}
+.checks i{width:8px;height:8px;border-radius:50%;background:var(--accent);margin-top:7px;flex:none}
+ol.steps{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:14px;counter-reset:s}
+ol.steps li{display:grid;grid-template-columns:34px minmax(0,1fr);gap:12px;counter-increment:s}
+ol.steps li::before{content:counter(s);width:30px;height:30px;border-radius:50%;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;font-weight:800;font-size:13px}
+ol.steps b.t{display:block;margin-bottom:2px}
+.file{display:flex;flex-direction:column;gap:10px}
+.fh{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.fh .sp{flex:1}
+.btn{font:inherit;font-weight:700;font-size:13px;border:0;border-radius:999px;padding:8px 16px;background:var(--accent);color:var(--on-accent);cursor:pointer}
+.btn:active{transform:scale(.97)}
+pre{font-variant-ligatures:none;margin:0;max-height:260px;overflow:auto;background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:14px;font:12px/1.55 var(--mono);color:var(--muted)}
+.ok{color:var(--ok);font-size:12.5px;font-weight:700}
+@media (max-width:620px){.checks{grid-template-columns:minmax(0,1fr)}}
+</style>
+<div class="wrap">
+ <div><div class="eyebrow">Status Kontrak Manager · Fase F0</div><h1>Pasang web app uji</h1>
+  <p class="muted">F0 hanya memastikan aplikasi bisa dibuka dari jaringan kantor sebelum fitur dibangun. Butuh sekitar 10 menit. Setelah lulus, file ini diganti dengan aplikasi lengkap di F1 dengan cara yang sama.</p></div>
+ <div class="card"><h2>Yang dicek halaman uji</h2><div class="checks">
+  <div><i></i><span>Halaman Google Apps Script terbuka dari jaringan kantor</span></div>
+  <div><i></i><span>Browser bisa memanggil server (google.script.run)</span></div>
+  <div><i></i><span>Font Google termuat, atau aplikasi perlu memakai font sistem</span></div>
+  <div><i></i><span>Server bisa memanggil Web App lain, syarat script penerima di F4</span></div></div></div>
+ <div class="card"><h2>Langkah</h2><ol class="steps"><li><div><b class="t">Buka project baru</b><span class="muted">Login dengan <b>akun Gmail khusus FF</b>, buka <b>script.google.com</b> → <b>New project</b>. Ganti nama project (kiri atas) menjadi <b>Status Kontrak Manager</b>.</span></div></li><li><div><b class="t">Tampilkan file manifest</b><span class="muted">Klik ikon roda gigi <b>Project Settings</b> → centang <b>Show "appsscript.json" manifest file in editor</b>.</span></div></li><li><div><b class="t">Tempel 2 file</b><span class="muted">Kembali ke <b>Editor</b> (ikon &lt;&gt;). Buka <span class="mono">appsscript.json</span>, hapus semua isinya, tempel dari tombol <b>Salin</b> di bawah. Lakukan hal yang sama untuk <span class="mono">Code.gs</span>. Tekan <kbd>Ctrl</kbd> + <kbd>S</kbd>.</span></div></li><li><div><b class="t">Deploy sebagai Web app</b><span class="muted"><b>Deploy › New deployment</b> → ikon roda gigi → <b>Web app</b>. Description: <span class="mono">F0</span> · Execute as: <b>Me</b> · Who has access: <b>Anyone with Google account</b> → <b>Deploy</b>.</span></div></li><li><div><b class="t">Izinkan akses</b><span class="muted">Klik <b>Authorize access</b> → pilih akun FF → <b>Advanced</b> → <b>Go to Status Kontrak Manager (unsafe)</b> → <b>Allow</b>. Peringatan ini normal untuk script buatan sendiri.</span></div></li><li><div><b class="t">Uji dari PC kantor</b><span class="muted">Salin <b>Web app URL</b> (berakhiran <span class="mono">/exec</span>). Buka di Chrome atau Edge di PC kantor, memakai jaringan kantor. Tunggu semua baris selesai, klik <b>Salin hasil</b>, lalu tempel di chat.</span></div></li></ol></div>
+ 
+ <div class="card file"><div class="fh"><h2 class="mono" style="font-family:var(--mono)">appsscript.json</h2><span class="muted" style="font-size:13px">Pengaturan project: zona Asia/Jakarta, izin, dan mode Web app.</span><span class="sp"></span><span class="ok" id="ok0" hidden>Tersalin</span><button class="btn" data-i="0">Salin appsscript.json</button></div>
+ <pre id="f0">{
+  "timeZone": "Asia/Jakarta",
+  "runtimeVersion": "V8",
+  "exceptionLogging": "STACKDRIVER",
+  "oauthScopes": [
+    "https://www.googleapis.com/auth/script.external_request",
+    "https://www.googleapis.com/auth/userinfo.email"
+  ],
+  "webapp": {
+    "executeAs": "USER_DEPLOYING",
+    "access": "ANYONE"
+  }
+}
+</pre></div>
+ <div class="card file"><div class="fh"><h2 class="mono" style="font-family:var(--mono)">Code.gs</h2><span class="muted" style="font-size:13px">Kode server + halaman uji.</span><span class="sp"></span><span class="ok" id="ok1" hidden>Tersalin</span><button class="btn" data-i="1">Salin Code.gs</button></div>
+ <pre id="f1">/**
+ * Status Kontrak Manager — F0: uji web app dari jaringan kantor.
+ * Halaman ini hanya mengecek 4 hal, lalu menampilkan hasil yang bisa disalin.
+ * Di F1 file ini diganti dengan aplikasi lengkap.
+ */
+
+function doGet() {
+  return HtmlService.createHtmlOutput(PAGE_HTML)
+    .setTitle('SKM · Uji F0')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+/** Dipanggil dari browser lewat google.script.run. */
+function ping() {
+  return {
+    ok: true,
+    waktuServer: Utilities.formatDate(new Date(), 'Asia/Jakarta', 'dd MMM yyyy HH:mm:ss'),
+    zona: Session.getScriptTimeZone(),
+    akunEksekusi: Session.getEffectiveUser().getEmail()
+  };
+}
+
+/** Cek apakah server bisa memanggil Web App lain (dipakai untuk script penerima di F4). */
+function cekFetch() {
+  try {
+    var r = UrlFetchApp.fetch('https://script.google.com/home', { muteHttpExceptions: true, followRedirects: false });
+    return { ok: r.getResponseCode() &lt; 500, status: r.getResponseCode() };
+  } catch (err) {
+    return { ok: false, status: String(err) };
+  }
+}
+
+var PAGE_HTML = `
+&lt;link rel="preconnect" href="https://fonts.googleapis.com"&gt;
+&lt;link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&amp;display=swap"&gt;
+&lt;style&gt;
+  :root{--bg:#edf2f5;--surface:#fff;--line:#d9e3e9;--fg:#0c1a24;--muted:#4d606d;--accent:#07857b;--ok:#14905a;--warn:#9c6205;--crit:#cc3b3b;color-scheme:light}
+  @media (prefers-color-scheme:dark){:root{--bg:#060b14;--surface:#0d1522;--line:#1b293d;--fg:#e4edf6;--muted:#93a6bb;--accent:#37e2cb;--ok:#4fd897;--warn:#f4c552;--crit:#ff7c78;color-scheme:dark}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 "Plus Jakarta Sans","Segoe UI",system-ui,sans-serif;padding:32px 16px}
+  .wrap{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+  h1{margin:0;font-size:24px;font-weight:800;letter-spacing:-.02em}
+  .muted{color:var(--muted)}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:6px 18px}
+  .row{display:flex;gap:12px;align-items:flex-start;padding:14px 0;border-bottom:1px solid var(--line)}
+  .row:last-child{border-bottom:0}
+  .ic{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-weight:800;flex:none;background:var(--line);color:var(--muted)}
+  .ic.ok{background:var(--ok);color:var(--bg)} .ic.warn{background:var(--warn);color:var(--bg)} .ic.crit{background:var(--crit);color:var(--bg)}
+  .row b{display:block} .row small{color:var(--muted);font-size:12.5px;overflow-wrap:anywhere}
+  button{font:inherit;font-weight:700;border:0;border-radius:999px;padding:10px 18px;background:var(--accent);color:var(--bg);cursor:pointer}
+  pre{font-variant-ligatures:none;white-space:pre-wrap;font:12px/1.5 Consolas,monospace;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;margin:0}
+&lt;/style&gt;
+&lt;div class="wrap"&gt;
+  &lt;div&gt;&lt;div class="muted" style="font-size:12px;font-weight:700;letter-spacing:.1em"&gt;STATUS KONTRAK MANAGER · F0&lt;/div&gt;&lt;h1&gt;Uji koneksi dari jaringan ini&lt;/h1&gt;
+  &lt;div class="muted"&gt;Tunggu semua baris selesai, lalu klik &lt;b&gt;Salin hasil&lt;/b&gt; dan tempel di chat.&lt;/div&gt;&lt;/div&gt;
+  &lt;div class="card" id="list"&gt;&lt;/div&gt;
+  &lt;div&gt;&lt;button id="copy"&gt;Salin hasil&lt;/button&gt; &lt;span class="muted" id="msg"&gt;&lt;/span&gt;&lt;/div&gt;
+  &lt;pre id="out" hidden&gt;&lt;/pre&gt;
+&lt;/div&gt;
+&lt;script&gt;
+  var hasil = {};
+  var ITEMS = [
+    ['halaman', 'Halaman terbuka dari jaringan ini'],
+    ['server',  'Server menjawab (google.script.run)'],
+    ['font',    'Font Google (Plus Jakarta Sans)'],
+    ['fetch',   'Server bisa memanggil Web App lain (untuk script penerima)'],
+    ['browser', 'Browser']
+  ];
+  var list = document.getElementById('list');
+  ITEMS.forEach(function (it) {
+    list.insertAdjacentHTML('beforeend', '&lt;div class="row" id="r-' + it[0] + '"&gt;&lt;span class="ic"&gt;…&lt;/span&gt;&lt;div&gt;&lt;b&gt;' + it[1] + '&lt;/b&gt;&lt;small&gt;memeriksa…&lt;/small&gt;&lt;/div&gt;&lt;/div&gt;');
+  });
+  function set(key, status, text) {
+    var row = document.getElementById('r-' + key), ic = row.querySelector('.ic');
+    ic.className = 'ic ' + status; ic.textContent = status === 'ok' ? '✓' : status === 'warn' ? '!' : '✕';
+    row.querySelector('small').textContent = text; hasil[key] = (status === 'ok' ? 'OK' : status.toUpperCase()) + ' — ' + text;
+  }
+  set('halaman', 'ok', 'Terbuka ' + new Date().toLocaleString('id-ID'));
+
+  var t0 = Date.now();
+  google.script.run
+    .withSuccessHandler(function (r) { set('server', 'ok', (Date.now() - t0) + ' ms · waktu server ' + r.waktuServer + ' (' + r.zona + ') · berjalan sebagai ' + r.akunEksekusi); })
+    .withFailureHandler(function (e) { set('server', 'crit', String(e &amp;&amp; e.message || e)); })
+    .ping();
+
+  google.script.run
+    .withSuccessHandler(function (r) { set('fetch', r.ok ? 'ok' : 'crit', 'Status ' + r.status); })
+    .withFailureHandler(function (e) { set('fetch', 'crit', String(e &amp;&amp; e.message || e)); })
+    .cekFetch();
+
+  var fontDone = false;
+  function cekFont() {
+    if (fontDone) return; fontDone = true;
+    var ok = document.fonts &amp;&amp; document.fonts.check('16px "Plus Jakarta Sans"');
+    set('font', ok ? 'ok' : 'warn', ok ? 'Termuat' : 'Diblokir atau lambat. Aplikasi akan memakai Segoe UI (tetap berfungsi).');
+  }
+  if (document.fonts) { document.fonts.load('16px "Plus Jakarta Sans"').then(cekFont, cekFont); }
+  setTimeout(cekFont, 5000);
+
+  var ua = navigator.userAgent, m = ua.match(/(Edg|Chrome|Firefox|Safari)\\/([\\d.]+)/);
+  set('browser', 'ok', (m ? m[1].replace('Edg', 'Edge') + ' ' + m[2] : ua) + ' · transisi tema ' + (document.startViewTransition ? 'didukung' : 'tidak didukung (tema tetap bisa diganti)'));
+
+  document.getElementById('copy').onclick = function () {
+    var txt = 'Hasil uji F0 SKM\\n' + ITEMS.map(function (it) { return '- ' + it[1] + ': ' + (hasil[it[0]] || 'belum selesai'); }).join('\\n');
+    var out = document.getElementById('out'); out.textContent = txt; out.hidden = false;
+    var done = function () { document.getElementById('msg').textContent = 'Tersalin. Tempel di chat.'; };
+    var fallback = function () { var r = document.createRange(); r.selectNodeContents(out); getSelection().removeAllRanges(); getSelection().addRange(r); document.getElementById('msg').textContent = 'Teks sudah dipilih, tekan Ctrl+C.'; };
+    try { navigator.clipboard.writeText(txt).then(done, fallback); } catch (e) { fallback(); }
+  };
+&lt;/script&gt;
+`;
+</pre></div>
+ <p class="muted" style="font-size:13px">Kalau ada langkah yang berbeda dari layar Anda, kirim screenshot-nya di chat.</p>
+</div>
+<script>
+document.querySelectorAll('[data-i]').forEach(function(b){b.addEventListener('click',function(){
+  var i=b.dataset.i,pre=document.getElementById('f'+i),ok=document.getElementById('ok'+i);
+  var sel=function(){var r=document.createRange();r.selectNodeContents(pre);getSelection().removeAllRanges();getSelection().addRange(r);ok.textContent='Teks dipilih, tekan Ctrl+C';ok.hidden=false;};
+  try{navigator.clipboard.writeText(pre.textContent).then(function(){ok.textContent='Tersalin';ok.hidden=false;setTimeout(function(){ok.hidden=true},2500);},sel);}catch(e){sel();}
+});});
+</script>

@@ -1,7 +1,15 @@
 # SPEC — Status Kontrak Manager
 
-Versi 1.3 · 15 Nov 2026 · Pemilik: omPik (Unit Fulfillment)
-Referensi konsep: BAA.flow (BAA Generator).
+Versi 1.4 · 15 Nov 2026 · Pemilik: omPik (Unit Fulfillment)
+Referensi konsep: BAA.flow (BAA Generator). Mockup UI yang disetujui: `mockup/mockup.html` (desain "Orbit").
+
+**Perubahan v1.4** (hasil review mockup bersama FF)
+- Koneksi ke sheet unit memakai **script penerima** yang dipasang pemilik sheet (§4.1, §8.0). Mode "langsung" pindah ke daftar Nanti.
+- **BAA** bisa menjadi dokumen tagih, setara BAST (§2, §5.1). Teks Nilai Push tetap sama, misalnya tetap "BAST DONE".
+- **Jenis customer** (DIRECT/INDIRECT) diturunkan dari Populasi (§5.7).
+- Kontrak tanpa BAST tidak pernah CLOSE (§5.4). Batas kendala menjadi Config, dan aging tidak pernah berhenti (§5.6).
+- Tema terang + gelap, detail kontrak sebagai panel geser, pencarian Ctrl+K (§10).
+- Instalasi cukup menyalin `Code.gs` + `appsscript.json` dari halaman instalasi bertombol Salin (§12).
 
 **Prinsip utama: sederhana dulu, tapi bisa dipakai selamanya.** v1 hanya berisi inti. Tambahan dibuat belakangan, mengikuti kondisi lapangan (daftar "Nanti" di §15). Supaya tidak perlu bongkar kode, semua isi yang mungkin berubah (tahap, kendala, nilai push, role, target) **diatur dari aplikasi, bukan ditulis di kode**.
 
@@ -35,7 +43,10 @@ Referensi konsep: BAA.flow (BAA Generator).
 |---|---|
 | Kontrak | KL, WO, SPK, PO, Nota Pesanan, Surat Pesanan, dll. Satu kontrak = satu periode kontrak. |
 | Order Internal | SO atau MI. Satu kontrak punya 1..N (dibagi per jenis layanan/pekerjaan). Dipakai untuk menentukan eviden dasar BAST. |
-| BAST | Dibuat sekali di depan untuk OTC + MTC. Normalnya 1 per kontrak. |
+| BAST | Dokumen tagih, berupa **BAST atau BAA**. Dibuat sekali di depan untuk OTC + MTC. Normalnya 1 per kontrak. |
+| Dokumen tagih | BAST atau BAA (`Ref_DokTagih`). Kontrak DIRECT umumnya selesai di BAA. Keduanya memakai tahapan dan teks Nilai Push yang sama. |
+| Jenis customer | DIRECT bila pelanggan = end customer, INDIRECT bila lewat channel (TREG/SDA/PRM). Mengikuti Populasi (§5.7). |
+| Script penerima | Apps Script kecil buatan SKM yang dipasang pemilik di tiap sheet target. SKM membaca dan menulis sheet lewat script ini (§8.0). |
 | BAST parsial | Kontrak dengan beberapa BAST, karena penagihan dilakukan berangsur ketika sebagian node belum online. Ini **mekanisme biasa**, bukan status khusus. |
 | Periode tagih | Untuk BAPL unit lain, **tidak memengaruhi BAST**. Karena periode ini, satu kontrak bisa muncul berulang di sheet unit. |
 | Kendala Umum / Kendala Detil | Nilai baku dan keterangan yang di-push ke sheet unit (§5.5). |
@@ -63,12 +74,13 @@ Referensi konsep: BAA.flow (BAA Generator).
  Browser (PC kantor) ──► Status Kontrak Manager (Apps Script Web App, akun Gmail khusus FF)
                            │  logika, login, dashboard, sinkron terjadwal
                            ├──► DB aplikasi (file internal, tidak dibuka/diedit manusia)
-                           └──► Sheet target unit A..E (hanya kolom milik FF yang ditulis)
+                           └──► (UrlFetch + kode rahasia) ──► Script penerima di sheet unit A..E
+                                                             └─ baca/tulis kolom milik FF, catat edit manual
 ```
 - Aplikasi berjalan di server Google. Tidak ada instalasi di Windows kantor dan tidak ada PC yang harus selalu menyala.
 - Deploy: **Execute as Me (akun FF)** · **Access: Anyone with Google account**, ditambah **login username + password milik aplikasi**. Staff tidak butuh akses ke file apa pun.
-- Akun FF diberi akses **Editor** di setiap sheet target. Pemilik sheet tidak perlu memasang apa-apa.
-- **Nol CDN dan nol request ke luar Google**, karena jaringan kantor memblokir CDN.
+- Setiap pemilik sheet target memasang **script penerima** sekali (disalin dari wizard SKM, deploy sebagai Web app: Execute as Me · Who has access: Anyone). Akun FF **tidak** perlu akses ke sheet itu. Setiap permintaan dilindungi kode rahasia per target.
+- **Nol CDN dan nol request ke luar Google**, karena jaringan kantor memblokir CDN. Font dari Google Fonts (domain Google) boleh dipakai dengan cadangan font sistem bila diblokir; dicek di F0.
 
 ### 4.2 Penyimpanan: aplikasi adalah master (keputusan D1, §16)
 Aplikasi tetap membutuhkan tempat menyimpan data. Yang jadi master adalah **aplikasinya**. File penyimpanan hanyalah "mesin" di belakangnya, sama seperti `app.db` di BAA.flow, dan tidak dibuka atau diedit manusia.
@@ -80,7 +92,7 @@ Aplikasi tetap membutuhkan tempat menyimpan data. Yang jadi master adalah **apli
 | Mesin DB | File Google Sheet tersembunyi milik akun FF | File SQLite |
 | Kecepatan | ±1–3 detik per aksi | Cepat |
 | Kapasitas nyaman | ±10.000 kontrak | Praktis tak terbatas |
-| Menulis ke GSheet unit | Langsung, karena akun FF sudah Editor | Butuh service account Google Cloud (diberi akses Editor di tiap sheet) atau script penerima di tiap sheet |
+| Menulis ke GSheet unit | Lewat script penerima (UrlFetch) | Lewat script penerima yang sama |
 | Biaya | Gratis | Gratis (listrik/PC) |
 
 Spec ini ditulis untuk **A**. Kalau nanti dipilih B, aturan bisnis (§5), model data (§7), dan sinkron (§8) tetap berlaku. Yang berubah hanya §12–§13.
@@ -117,6 +129,7 @@ Aturan:
 - Maju dan mundur ditentukan oleh `Urutan`. Mundur wajib disertai keterangan.
 - Setiap perpindahan tahap dicatat di `RiwayatTahap` (masuk, keluar, oleh siapa). Tanggal per tahap, misalnya kapan BAST Done atau kapan Takeout, diambil dari riwayat ini, sehingga tidak ada kolom tanggal yang di-hardcode.
 - Setiap tahap baru langsung ditawarkan untuk dibuatkan aturan Nilai Push-nya (§5.5).
+- Tahapan berlaku sama untuk BAST maupun BAA. Label tahap (mis. "BAST Done") tidak berubah walaupun dokumennya BAA.
 
 ### 5.2 Kendala (fleksibel, tidak mengubah tahap)
 `Ref_Kendala`: Kode, Label, WajibKeterangan, MemicuReopen, Aktif, Urutan.
@@ -140,7 +153,7 @@ Aturan:
 - Satu kontrak bisa punya beberapa BAST. Setiap BAST mencatat cakupan: SO/MI mana dan berapa lokasi.
 - `JumlahLokasi` di kontrak bersifat opsional.
 - **Status kontrak**:
-  - `CLOSE` bila semua BAST sudah close **dan** (JumlahLokasi kosong **atau** Σ cakupan ≥ JumlahLokasi).
+  - `CLOSE` bila kontrak punya **minimal 1 BAST**, semua BAST sudah close, **dan** (JumlahLokasi kosong **atau** Σ cakupan ≥ JumlahLokasi). Kontrak tanpa BAST selalu OPEN.
   - Bila semua BAST close tapi masih ada sisa lokasi, kontrak tetap **OPEN** dengan penanda **"Menunggu BAST lanjutan"**.
   - Selain itu, `OPEN`.
 - **Tahap kontrak** = tahap dengan `Urutan` terendah di antara BAST yang OPEN (yang menjadi bottleneck).
@@ -177,15 +190,22 @@ Isi awal (**sudah disetujui FF**). Teks, urutan, dan jumlah aturan tetap bisa di
 - **Kendala Detil** diisi dari keterangan kendala yang membuat aturan cocok. Kalau aturan yang cocok adalah aturan tahap/close, diisi keterangan BAST terbaru. Kalau ada kendala lain yang juga aktif, ditambah ` (+n)`.
 - Kalau tidak ada aturan yang cocok, sel tidak diubah dan muncul alarm `TANPA_ATURAN`. Halaman pengaturan juga memperingatkan bila ada tahap atau kendala aktif yang tidak tercakup aturan mana pun.
 - Mengubah aturan otomatis menghitung ulang semua kontrak. Sinkron berikutnya kemudian menyeragamkan semua sheet.
+- Teks yang sama dipakai untuk BAST maupun BAA (tetap "BAST DONE" dst.), karena kontrak DIRECT umumnya selesai di BAA.
 
 ### 5.6 Aging dan "Perlu Perhatian"
 - Bucket aging: Fresh ≤ 7 hari · Warm 8–14 · Stale 15–30 · Cold > 30. Batasnya diatur di Config.
+- **Aging tidak pernah berhenti.** Hari terus bertambah selama BAST belum pindah tahap atau kendala belum selesai. Batas hanya menentukan kapan item masuk Perlu Perhatian.
 - Daftar Perlu Perhatian:
   - BAST melewati batas aging tahapnya.
-  - Kendala aktif lebih dari 14 hari.
+  - Kendala aktif lebih lama dari `Config.KENDALA_BATAS_HARI` (default 14).
   - Kontrak tanpa PIC.
   - Data hasil import yang belum diverifikasi.
   - Target dengan error, atau sel yang diubah di luar aplikasi (§8.5).
+
+### 5.7 Jenis customer
+- `Ref_Populasi` punya kolom `JenisCustomer` (DIRECT/INDIRECT). Isi awal: DIRECT → DIRECT; TREG, SDA, PRM → INDIRECT.
+- Jenis customer kontrak = JenisCustomer dari populasinya. Nilainya turunan, tidak diisi manual. Populasi baru wajib dipetakan saat ditambahkan.
+- Dipakai untuk filter dan dashboard. Tidak memengaruhi tahapan maupun Nilai Push.
 
 ---
 
@@ -214,29 +234,45 @@ Aturan umum: baris 1 berisi header. ID dibuat server dan tidak pernah berubah. T
 
 | Tab | Kolom |
 |---|---|
-| `Kontrak` | KontrakID, NoKontrak, NoKontrakNorm, JenisDok, TahunProject, Populasi, NamaPelanggan, JudulKontrak, Segment, NilaiKontrak, JumlahLokasi, PIC, **turunan:** TahapKontrak, StatusKontrak, SisaLokasi, KendalaUmum, KendalaDetil, TglStatusBerubah · PerluVerifikasi, Arsip, SumberAwal, Created/UpdatedAt/By, Version |
+| `Kontrak` | KontrakID, NoKontrak, NoKontrakNorm, JenisDok, TahunProject, Populasi, NamaPelanggan, JudulKontrak, Segment, NilaiKontrak, JumlahLokasi, PIC, **turunan:** JenisCustomer, TahapKontrak, StatusKontrak, SisaLokasi, KendalaUmum, KendalaDetil, TglStatusBerubah · PerluVerifikasi, Arsip, SumberAwal, Created/UpdatedAt/By, Version |
 | `KontrakAlias` | AliasNorm, KontrakID, Sumber, CreatedAt/By |
 | `OrderInternal` | OrderID, KontrakID, JenisOrder (SO/MI), NoOrder, NoOrderNorm, JenisLayanan, JenisPekerjaan, JumlahLokasi, Keterangan, Created/UpdatedAt/By, Version |
-| `BAST` | BASTID (`K-000001-B1`), KontrakID, Urutan, KodeTahap, Siklus, CakupanOrder, CakupanLokasi, DaftarLokasi, NoDokBAST, TglTahapMulai, Keterangan, Status (OPEN/CLOSE), Created/UpdatedAt/By, Version |
+| `BAST` | BASTID (`K-000001-B1`), KontrakID, Urutan, DokTagih (BAST/BAA), KodeTahap, Siklus, CakupanOrder, CakupanLokasi, DaftarLokasi, NoDokBAST, TglTahapMulai, Keterangan, Status (OPEN/CLOSE), Created/UpdatedAt/By, Version |
 | `RiwayatTahap` | BASTID, Siklus, KodeTahap, Masuk, Keluar, Oleh, Keterangan |
 | `Kendala` | KendalaID, BASTID, KontrakID, Jenis, Keterangan, Status, Mulai, DibuatOleh, Selesai, DiselesaikanOleh |
 | `Log` | Timestamp, Username, Aksi, Entitas, EntitasID, Field, NilaiLama, NilaiBaru, Catatan *(hanya ditambah)* |
 | `Users` | Username, Nama, AliasPIC, Role, PasswordHash, Salt, Aktif, WajibGantiPassword, GagalLogin, TerkunciSampai, LoginTerakhir |
 | `Ref_Role` | Role, Izin (dipisah koma) |
 | `Ref_Tahap`, `Ref_Kendala`, `Ref_NilaiPush` | §5 |
-| `Ref_JenisDok`, `Ref_Populasi`, `Ref_Segment` | Kode, Label, Aktif |
-| `Target` | TargetID, Nama, SpreadsheetID, ModeTab (`FIXED`/`TERBARU`), TabNama atau pola, CaraTerbaru (`TANGGAL_DI_NAMA`/`POSISI_TERAKHIR`), TabTerakhirDipakai, AliasHeaderKunci, FormatTanggal, Aktif, TerakhirCek, TerakhirUpdate, StatusTerakhir, PesanTerakhir |
+| `Ref_JenisDok`, `Ref_Segment`, `Ref_DokTagih` | Kode, Label, Aktif |
+| `Ref_Populasi` | Kode, Label, JenisCustomer (DIRECT/INDIRECT), Aktif |
+| `Target` | TargetID, Nama, ModeKoneksi (`RECEIVER`; `LANGSUNG` disiapkan untuk nanti), WebAppUrl, VersiScript, SpreadsheetID (diisi dari info script), ModeTab (`FIXED`/`TERBARU`), TabNama atau pola, CaraTerbaru (`TANGGAL_DI_NAMA`/`POSISI_TERAKHIR`), TabTerakhirDipakai, AliasHeaderKunci, FormatTanggal, Aktif, TerakhirCek, TerakhirUpdate, StatusTerakhir, PesanTerakhir *(kode rahasia disimpan di Script Properties, tidak di DB)* |
 | `TargetKolom` | TargetID, Field, Arah (`TULIS`/`BACA`), AliasHeader |
 | `JejakSel` | TargetID, Tab, NoKontrakNorm, Field, NilaiDitulis, WaktuTulis *(nilai terakhir yang ditulis SKM, §8.5)* |
-| `RiwayatPush` | Waktu, Oleh (user/`trigger`), Jenis (`TULIS`/`DIUBAH_LUAR`), TargetID, Tab, Baris, NoKontrak, Field, NilaiLama, NilaiBaru *(hanya ditambah)* |
+| `RiwayatPush` | Waktu, Oleh (user/`trigger`), Jenis (`TULIS`/`DIUBAH_LUAR`), TargetID, Tab, Baris, NoKontrak, Field, NilaiLama, NilaiBaru, Pelaku, WaktuKejadian *(hanya ditambah; Pelaku dan WaktuKejadian dari pencatat edit script penerima)* |
 | `SyncLog` | Waktu, Oleh, Jenis (`CEK`/`UPDATE`), TargetID, Tab, BarisCocok, SelDitulis, Gagal, Alarm, Detail |
 | `Notifikasi` | NotifID, Untuk (username), Jenis (`DIUBAH_LUAR`/`SINKRON_ERROR`/`TAB_BERGANTI`/`ANTRIAN_BARU`/`PIC_DITUGASKAN`), Pesan, KontrakID, TargetID, Dibaca, Waktu |
 | `Antrian` | AntrianID, TargetID, Tab, Baris, NoKontrakAsli, NoKontrakNorm, Prefill, Status (`BARU`/`DIDAFTARKAN`/`DIALIASKAN`/`DIABAIKAN`), DiprosesOleh, DiprosesPada |
-| `Config` | key–value: APP_NAMA = "Status Kontrak Manager", SYNC_INTERVAL_MENIT = 15, TAHAP_REOPEN = DRAFTING, AGING_BATAS = 7,14,30, KONFIRMASI_TAB_BARU = TRUE, BACKUP_SIMPAN = 8, SKEMA_VERSI |
+| `Config` | key–value: APP_NAMA = "Status Kontrak Manager", SYNC_INTERVAL_MENIT = 15, TAHAP_REOPEN = DRAFTING, AGING_BATAS = 7,14,30, KENDALA_BATAS_HARI = 14, KONFIRMASI_TAB_BARU = TRUE, BACKUP_SIMPAN = 8, SKEMA_VERSI |
 
 ---
 
 ## 8. Sinkron ke sheet unit
+
+### 8.0 Script penerima (keputusan D6)
+- SKM tidak membuka sheet unit secara langsung. Setiap sheet target memasang **script penerima** (satu file `.gs` yang disalin dari wizard), lalu di-deploy sebagai Web app: *Execute as: Me (pemilik sheet) · Who has access: Anyone*.
+- SKM memanggilnya lewat `UrlFetchApp` (POST JSON) dengan **kode rahasia** per target. Permintaan tanpa kode yang benar ditolak.
+- Aksi yang tersedia:
+
+  | Aksi | Isi |
+  |---|---|
+  | `info` | versi script, nama file, daftar tab, waktu ubah terakhir, status pencatat edit |
+  | `baca` | 15 baris teratas (untuk deteksi header) + kolom yang diminta saja |
+  | `tulis` | daftar sel `{baris, kolom, nilai}` + nilai kolom kunci yang diharapkan. Script mengunci (`LockService`), membaca ulang kolom kunci, menolak bila urutan berubah, lalu menulis dalam satu batch. Sel berformula tidak ditimpa |
+  | `edit` | edit manual yang tercatat di kolom milik FF sejak waktu tertentu |
+- **Pencatat edit manual:** pemilik menjalankan fungsi `pasang()` sekali untuk memasang trigger `onEdit` (installable). Trigger mencatat setiap edit pada kolom yang dipetakan sebagai TULIS: tab, baris, kolom, nilai lama, nilai baru, waktu, dan email pelaku. Catatan disimpan di Script Properties milik script penerima (dibatasi N catatan terakhir) dan diambil SKM setiap cek. Email pelaku bisa kosong untuk sebagian akun Gmail biasa; dalam hal itu yang tampil hanya waktunya.
+- Script penerima punya `VERSI`. Bila versi di sheet lebih lama dari versi yang disediakan SKM, target ditandai "Script perlu diperbarui" dan tetap berjalan selama masih kompatibel.
+- File besar (Billcom ±12 MB) bukan masalah, karena pembacaan dilakukan di dalam sheet itu sendiri dan hanya kolom yang dibutuhkan yang dikirim.
 
 ### 8.1 Cara kerja
 - Trigger tiap 15 menit menjalankan sinkron, tapi **hanya untuk target yang datanya berubah** sejak update terakhir, atau minimal sekali tiap 6 jam untuk mendeteksi kontrak baru.
@@ -263,19 +299,21 @@ normKey(s) = String(s ?? '').normalize('NFKC').toUpperCase()
   - Saat tab baru terdeteksi, muncul alarm `TAB_BERGANTI`. Bila `KONFIRMASI_TAB_BARU`, target itu hanya berjalan dalam mode Cek saja sampai admin menekan "Pakai tab baru".
 
 ### 8.4 Field yang bisa dipetakan
-- **TULIS**: `KENDALA_UMUM`, `KENDALA_DETIL`, `TAHAP`, `TGL_UPDATE`, `TGL_TAHAP:<kode>` (mis. tanggal BAST Done), `PIC`, `NO_BAST`, `PARSIAL` (contoh isi: "2/3 BAST · 40/60 lokasi").
+- **TULIS**: `KENDALA_UMUM`, `KENDALA_DETIL`, `TAHAP`, `TGL_UPDATE`, `TGL_TAHAP:<kode>` (mis. tanggal BAST Done), `PIC`, `NO_BAST`, `DOK_TAGIH` (BAST/BAA), `PARSIAL` (contoh isi: "2/3 BAST · 40/60 lokasi").
 - **BACA** (untuk prefill Antrian): `PELANGGAN`, `JUDUL`, `NILAI`, `TAHUN`, `POPULASI`, `SEGMENT`.
 - Nilainya sama untuk semua target. Per target, admin hanya memetakan header mana yang menerima field mana.
 
 ### 8.5 Jejak perubahan sel (jawaban pertanyaan no. 5)
 **Fakta teknis:** Google Sheets **tidak menyediakan** tanggal atau pelaku terakhir per sel lewat API. Riwayat edit per sel ("Show edit history") hanya ada di tampilan web. Yang tersedia lewat API hanya level file: waktu ubah terakhir file dan siapa yang mengubahnya.
 
+Dengan script penerima (§8.0), edit manual di kolom milik FF **bisa** dicatat per sel lewat trigger `onEdit`, termasuk waktu dan (bila tersedia) pelaku. Mekanisme di bawah tetap dipakai sebagai lapisan kedua, misalnya untuk perubahan lewat rumus, tempel massal, atau saat pencatat belum dipasang.
+
 **Solusi di SKM**, supaya log perubahan per sel tetap ada:
 1. Setiap sel yang ditulis SKM dicatat di `RiwayatPush`: waktu, oleh siapa, sheet, tab, baris, kontrak, field, nilai lama → nilai baru. Riwayat ini tampil di detail kontrak sebagai "Riwayat di sheet unit".
 2. Nilai terakhir yang ditulis disimpan di `JejakSel`. Setiap kali cek, nilai sel sekarang dibandingkan dengan `JejakSel`. Kalau berbeda, berarti **ada yang mengubah di luar aplikasi**. Hasilnya:
    - temuan `DIUBAH_LUAR` (nilai SKM vs nilai sekarang),
    - rentang waktu kejadian (antara cek terakhir dan sekarang),
-   - petunjuk dari level file (waktu ubah terakhir dan nama pengubah terakhir file),
+   - pelaku dan waktu persis dari pencatat edit bila ada; bila tidak, petunjuk level file (waktu ubah terakhir file),
    - catatan di `RiwayatPush` dengan jenis `DIUBAH_LUAR`.
 3. **Perubahan dari luar hanya dilaporkan sebagai notifikasi, tidak dilawan.** Kalau sel diubah orang lain, itu adalah mekanisme manual unit tersebut di luar SKM. Aturannya:
    - Kontrak **OPEN**:
@@ -286,9 +324,9 @@ normKey(s) = String(s ?? '').normalize('NFKC').toUpperCase()
 4. Ketika tab pertama kali dipakai, termasuk tab bulan baru Billcom, nilai yang ada dianggap titik awal, sehingga tidak muncul notifikasi.
 
 ### 8.6 Keamanan penulisan
-- Sebelum menulis, kolom kunci dibaca ulang. Kalau urutan baris berubah sejak dibaca (karena pemilik sheet menyisipkan atau mengurutkan), tab itu dibatalkan dan dicoba lagi di siklus berikutnya.
+- Sebelum menulis, script penerima membaca ulang kolom kunci di dalam `LockService`. Kalau urutan baris berubah sejak dibaca (karena pemilik sheet menyisipkan atau mengurutkan), tab itu dibatalkan dan dicoba lagi di siklus berikutnya.
 - Semua perubahan pada satu tab ditulis dalam satu panggilan batch.
-- File target yang besar (>10 MB) dibaca **hanya kolom yang dibutuhkan**.
+- Hanya kolom yang dibutuhkan yang dibaca dan dikirim balik ke SKM.
 
 ---
 
@@ -303,7 +341,7 @@ normKey(s) = String(s ?? '').normalize('NFKC').toUpperCase()
 
 ## 10. Halaman v1
 
-Tampilannya mengikuti gaya BAA.flow (Material Design 3, tema gelap, aksen teal, sidebar, kartu), tanpa CDN: font sistem, ikon inline SVG, dan chart SVG buatan sendiri. Bahasa UI: Indonesia.
+Tampilan mengikuti mockup `mockup/mockup.html` (desain "Orbit"): **tema terang dan gelap** (ikut sistem atau dipilih user, disimpan per browser), aksen teal, sidebar kaca, kartu, dan animasi transisi yang menghormati *reduced motion*. Tanpa CDN: ikon inline SVG, chart SVG buatan sendiri, font Plus Jakarta Sans + JetBrains Mono dengan cadangan font sistem. Bahasa UI: Indonesia.
 
 1. **Login.** Username + password. Password wajib diganti saat login pertama.
 2. **Dashboard**
@@ -313,13 +351,14 @@ Tampilannya mengikuti gaya BAA.flow (Material Design 3, tema gelap, aksen teal, 
    - Status sinkron per target.
 3. **Kontrak**
    - Tabel dengan filter (tahap, Kendala Umum, PIC, populasi, segment, pelanggan, status) dan pencarian.
-   - **Detail**: data kontrak, SO/MI, daftar BAST (tambah BAST parsial, ubah tahap, cakupan), kendala (buka/tutup), pratinjau nilai yang akan muncul di sheet unit, riwayat perubahan, dan riwayat di sheet unit.
+   - **Detail** dibuka sebagai panel geser dari kanan (daftar tetap terlihat; pindah kontrak dengan panah atau J/K; Esc menutup) dengan tab Proses · Data kontrak · Riwayat. Isinya: data kontrak, SO/MI, daftar BAST (tambah BAST parsial, ubah tahap, cakupan), kendala (buka/tutup), pratinjau nilai yang akan muncul di sheet unit, riwayat perubahan, dan riwayat di sheet unit.
    - Aksi massal: atur PIC.
+   - Pencarian cepat **Ctrl+K** dari halaman mana pun.
 4. **Perlu Perhatian** (§5.6).
 5. **Antrian** (§9).
 6. **Google Sheet**
-   - Daftar target, tombol **Cek saja** dan **Update ke GSheet**, alarm, dan tabel Update log.
-   - **Wizard target**: tempel URL → pilih tab atau pola → pilih header untuk setiap field dari dropdown → Cek saja → aktifkan.
+   - Daftar target, tombol **Tes koneksi**, **Cek saja**, dan **Update ke GSheet**, alarm, dan tabel Update log.
+   - **Wizard target**: salin script penerima + kode rahasia untuk pemilik sheet → tempel Web App URL dari pemilik → Tes koneksi → pilih tab atau pola → pilih header untuk setiap field dari dropdown → Cek saja → aktifkan.
 7. **Pengaturan**: Tahap, Kendala, Nilai Push (urutkan, tambah, aktif/nonaktif, pratinjau "berapa kontrak terkena"), Referensi, Role & izin, Users, Config, Import, Backup.
 8. **Log**, dengan filter dan export xlsx.
 9. **Notifikasi**: ikon lonceng dengan jumlah belum dibaca di topbar. Klik notifikasi membuka kontrak atau target terkait, dan ada tombol "tandai sudah dibaca".
@@ -338,7 +377,7 @@ Alurnya: unggah sheet FF lama (xlsx) → pemetaan kolom → **pratinjau + valida
 | Kolom lama | Ke SKM |
 |---|---|
 | NO WO/SPK/KL | NoKontrak. JenisDok ditebak dari teksnya |
-| TAHUN PROJECT, POPULASI, NAMA PELANGGAN, JUDUL KONTRAK, SEGMENT TSAT | kolom sejenis. Nilai referensi baru otomatis ditambahkan |
+| TAHUN PROJECT, POPULASI, NAMA PELANGGAN, JUDUL KONTRAK, SEGMENT TSAT | kolom sejenis. Nilai referensi baru otomatis ditambahkan (populasi baru wajib dipetakan ke DIRECT/INDIRECT di layar import) |
 | NILAI KONTRAK | `"Rp 95,352,000.00"` → 95352000 |
 | PIC | dicocokkan dengan `Users.AliasPIC` |
 | STATUS AWAL + KENDALA UMUM + KENDALA DETIL | tabel pemetaan di bawah (bisa diedit di layar import) |
@@ -364,7 +403,7 @@ Alurnya: unggah sheet FF lama (xlsx) → pemetaan kolom → **pratinjau + valida
 ```
 status-kontrak-manager/
 ├─ SPEC.md
-├─ appsscript.json   # Asia/Jakarta, V8, webapp executeAs USER_DEPLOYING + access ANYONE, Sheets API v4, Drive API v3
+├─ appsscript.json   # Asia/Jakarta, V8, webapp executeAs USER_DEPLOYING + access ANYONE, Drive API v3, scope script.external_request
 ├─ src/
 │  ├─ Code.gs        # doGet, api(token, action, payload) — satu pintu
 │  ├─ Auth.gs        # login, sesi, hash password, cek izin
@@ -374,8 +413,12 @@ status-kontrak-manager/
 │  ├─ Sync.gs        # cek, update, jejak sel, antrian, trigger
 │  ├─ Import.gs · Export.gs · Backup.gs · Setup.gs
 │  ├─ Index.html · Styles.html · Icons.html · App.js.html
+├─ receiver/Receiver.gs  # script penerima untuk pemilik sheet (ditandai VERSI)
+├─ tools/               # build: gabungkan src/ menjadi dist/Code.gs + halaman instalasi
+├─ dist/                # hasil build: Code.gs, appsscript.json, install.html
 └─ test/             # node --test: domain, sheet, import
 ```
+- **Distribusi**: user cukup menyalin 2 file (`Code.gs` + `appsscript.json`) dari halaman instalasi bertombol Salin. HTML UI disematkan di dalam `Code.gs`. Update versi = salin ulang `Code.gs`, lalu *Deploy › Manage deployments › Edit › New version*. Migrasi skema berjalan otomatis saat versi baru pertama kali dibuka.
 - **Konkurensi**: `LockService` untuk setiap penulisan, plus `Version` per baris. Kalau ada konflik, user diminta memuat ulang.
 - **Performa**: data dibaca sekali per request dan di-cache 5 menit. Penulisan hanya pada baris yang berubah.
 - **Kuota akun gratis**: runtime trigger 90 menit per hari. Karena sinkron hanya jalan saat ada perubahan, pemakaian diperkirakan di bawah 30 menit per hari.
@@ -390,16 +433,16 @@ status-kontrak-manager/
 
 ## 13. Setup
 1. Buat **Gmail khusus unit FF**.
-2. Minta setiap pemilik sheet target memberi akses **Editor** ke akun tersebut.
-3. Pasang kode lewat `clasp push` atau copy-paste di script.google.com.
-4. Aktifkan Sheets API dan Drive API.
+2. (Per target, saat F4) Kirim script penerima + kode rahasia ke pemilik sheet. Pemilik memasang, menjalankan `pasang()`, men-deploy, lalu mengirim balik Web App URL.
+3. Buka halaman instalasi, salin `Code.gs` dan `appsscript.json` ke project baru di script.google.com.
+4. Aktifkan Drive API (Services › Drive API).
 5. Jalankan `setup()` sekali. Fungsi ini membuat file DB, isi awal referensi, admin awal, dan trigger.
 6. Deploy sebagai Web app: Execute as Me, Anyone with Google account.
 7. Admin login, lalu:
    1. buat user (isi AliasPIC: Edo, Unggul, Baim, Alif, …),
    2. finalkan Nilai Push,
    3. import data FF lama,
-   4. tambah target lewat wizard → Cek saja → Update → aktifkan.
+   4. tambah target lewat wizard (script penerima) → Tes koneksi → Cek saja → Update → aktifkan.
 
 ---
 
@@ -407,18 +450,18 @@ status-kontrak-manager/
 
 | Fase | Isi | Selesai bila |
 |---|---|---|
-| F0 | Web app "hello" dari jaringan kantor | Bisa dibuka dan memanggil server. **Wajib lulus dulu** |
+| F0 | Web app "hello" dari jaringan kantor | Bisa dibuka, memanggil server, font Google & UrlFetch dicek. **Wajib lulus dulu** |
 | F1 | Setup, Repo + migrasi skema, login, Users, Role & izin, Log | Izin ditolak di server, semua aksi tercatat |
 | F2 | Kontrak, SO/MI, BAST, tahap fleksibel, kendala, reopen, parsial, Nilai Push | Semua aturan §5 lulus unit test, termasuk tambah/urut ulang/nonaktifkan tahap |
 | F3 | Dashboard, Perlu Perhatian, atur PIC | Angka cocok dengan hitungan manual |
-| F4 | Google Sheet: wizard, header & tab TERBARU, Cek saja, Update, jejak sel, notifikasi, Antrian | Uji dengan sheet tiruan lulus: kolom disisipkan, header hilang, sel berformula, kontrak berulang, tab bulan baru, baris diurutkan ulang · sel kontrak OPEN diubah manual → notifikasi + tidak ditimpa, lalu ditulis lagi setelah status di SKM berubah · kontrak CLOSE tidak ditulis lagi dan perubahan luar tanpa notifikasi · saat kontrak close, notifikasinya yang belum dibaca hilang dari lonceng · reopen → ditulis lagi |
+| F4 | Google Sheet: script penerima + pencatat edit, wizard, header & tab TERBARU, Cek saja, Update, jejak sel, notifikasi, Antrian | Uji dengan sheet tiruan lulus: kolom disisipkan, header hilang, sel berformula, kontrak berulang, tab bulan baru, baris diurutkan ulang · sel kontrak OPEN diubah manual → notifikasi + tidak ditimpa, lalu ditulis lagi setelah status di SKM berubah · kontrak CLOSE tidak ditulis lagi dan perubahan luar tanpa notifikasi · saat kontrak close, notifikasinya yang belum dibaca hilang dari lonceng · reopen → ditulis lagi |
 | F5 | Import data lama, Export, Backup | 4 baris contoh (Lampiran A) ter-import sesuai §11 |
 
 ---
 
 ## 15. Nanti (sesuai kondisi lapangan, sengaja tidak dibangun di v1)
 - Export ke **template customer** (unggah template → petakan kolom → isi) beserta preset per customer.
-- Mode koneksi **RECEIVER** (script penerima di sheet pemilik, pola BAA.flow), untuk pemilik sheet yang tidak mau memberi akses edit. Bisa dipakai juga untuk mencatat edit manual per sel lewat `onEdit`.
+- Mode koneksi **LANGSUNG** (akun FF diberi akses Editor, tanpa script di sheet pemilik), sebagai alternatif script penerima.
 - Mode tab `SEMUA` (update banyak tab sekaligus).
 - Email ringkasan harian (notifikasi di aplikasi sudah masuk v1).
 - Target & pace, serta indikator online/idle di dashboard.
@@ -432,15 +475,22 @@ status-kontrak-manager/
 
 | # | Hal | Status |
 |---|---|---|
-| D1 | Penyimpanan: A (Apps Script + file DB) atau B (server ala BAA.flow) | Default A, diputuskan sebelum F1 |
+| D1 | Penyimpanan: A (Apps Script + file DB) atau B (server ala BAA.flow) | ✔ A (Apps Script + file DB) |
 | D2 | Hak akses final | Draft §6, didiskusikan lagi. Karena berupa data, perubahannya tidak perlu ubah kode |
 | D3 | Teks final Nilai Push | ✔ Disetujui (§5.5), tetap bisa diubah dari aplikasi |
 | D4 | Pola nama tab bulanan Billcom | Diatur lewat wizard saat konfigurasi |
 | D5 | Nama kolom milik FF di tiap sheet target | Dipetakan lewat wizard. Kalau kolomnya belum ada, pemilik sheet yang menambahkan |
+| D6 | Cara koneksi ke sheet unit | ✔ Script penerima (§8.0) |
+| D7 | BAA sebagai dokumen tagih | ✔ Setara BAST, teks Nilai Push tetap sama |
+| D8 | Jenis customer | ✔ Diturunkan dari Populasi (§5.7) |
+| D9 | Tampilan | ✔ Desain "Orbit" (mockup), tema terang + gelap, detail = panel geser |
+| D10 | Cara pasang | ✔ Salin 2 file dari halaman instalasi |
 
 Sudah dikonfirmasi:
 - BAST ON REVIEW → tahap Draft Review Customer.
 - Billcom hanya meng-update tab bulan terbaru.
+- Kontrak tanpa BAST tidak pernah CLOSE.
+- Aging tidak berhenti; batas hanya untuk Perlu Perhatian.
 
 ---
 
@@ -466,5 +516,5 @@ Hasil yang diharapkan:
 
 | Nama | Spreadsheet ID | Tab | Catatan |
 |---|---|---|---|
-| Billcom Telkomsat 2026 | `1YtV-hUyijt-dDQCHUtDNrbswtIq_2caWx2bRsnfYaO8` | TERBARU (pindah tab tiap bulan) | ±12 MB, baca per kolom |
-| Populasi Outstanding Mansol TELKOMSAT-NEW | `1pLbTdFZE6rSh_HAyXXRmF_L3nb6JSK6rMmnZ_fOFx6Q` | FIXED: `DATA TELKOMSAT` | ±8 MB |
+| Billcom Telkomsat 2026 | `1YtV-hUyijt-dDQCHUtDNrbswtIq_2caWx2bRsnfYaO8` | TERBARU (pindah tab tiap bulan) | ±12 MB · pasang script penerima |
+| Populasi Outstanding Mansol TELKOMSAT-NEW | `1pLbTdFZE6rSh_HAyXXRmF_L3nb6JSK6rMmnZ_fOFx6Q` | FIXED: `DATA TELKOMSAT` | ±8 MB · pasang script penerima |
