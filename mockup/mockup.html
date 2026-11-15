@@ -1,0 +1,938 @@
+<title>Status Kontrak Manager</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: sidebar kiri + topbar sticky + area kerja berisi kartu (gaya MD3 gelap, aksen teal). Satu tema gelap, sesuai spec §10 (tema terang = "Nanti"). */
+:root{
+  color-scheme:dark;
+  --bg:#0e1416; --surface:#151c1e; --surface2:#1b2427; --surface3:#223033; --outline:#2a3739; --outline2:#36474a;
+  --fg:#dbe5e5; --muted:#8ea1a2; --dim:#64787a;
+  --accent:#4fd1c1; --accent-strong:#7ae6d8; --on-accent:#00201c; --accent-bg:rgba(79,209,193,.12);
+  --ok:#62cc8e; --ok-bg:rgba(98,204,142,.13); --warn:#e7b54d; --warn-bg:rgba(231,181,77,.13);
+  --crit:#ef7470; --crit-bg:rgba(239,116,112,.13); --info:#86a8ff; --info-bg:rgba(134,168,255,.13);
+  --fresh:#4fd1c1; --warm:#e7cf4d; --stale:#ec9a4a; --cold:#ef7470;
+  --font:"Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:Consolas,"Cascadia Mono","SFMono-Regular",Menlo,monospace;
+  --r:12px; --r-sm:8px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--font);font-size:14px;line-height:1.45}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.tnum{font-variant-numeric:tabular-nums}
+.mono{font-family:var(--mono);font-size:12.5px}
+.muted{color:var(--muted)} .dim{color:var(--dim)}
+svg.i{width:20px;height:20px;fill:currentColor;flex:none}
+svg.i.s{width:16px;height:16px}
+
+/* shell */
+.app{display:grid;grid-template-columns:236px minmax(0,1fr);min-height:100%}
+.side{background:var(--surface);border-right:1px solid var(--outline);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;padding-block:14px;padding-left:max(10px,env(safe-area-inset-left,0px));padding-right:10px}
+.brand{display:flex;gap:10px;align-items:center;padding:4px 10px 16px}
+.logo{width:36px;height:36px;border-radius:10px;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;font-weight:800;letter-spacing:.3px;font-size:11px;flex:none}
+.brand b{display:block;font-size:14px;line-height:1.15}
+.brand span{font-size:11.5px;color:var(--muted)}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav a{display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:999px;color:var(--muted);text-decoration:none;font-weight:500}
+.nav a:hover{background:var(--surface2);color:var(--fg)}
+.nav a.on{background:var(--accent-bg);color:var(--accent-strong)}
+.nav .cnt{margin-left:auto;font-size:11.5px;background:var(--surface3);color:var(--fg);border-radius:999px;padding:1px 8px}
+.nav a.on .cnt{background:var(--accent);color:var(--on-accent)}
+.navlbl{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);padding:14px 12px 6px}
+.side-foot{margin-top:auto;padding:12px;border-top:1px solid var(--outline);font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:6px}
+
+.main{min-width:0;display:flex;flex-direction:column}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:rgba(14,20,22,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--outline);display:flex;align-items:center;gap:12px;padding-block:10px;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--bg)}
+.top h1{font-size:18px;margin:0;font-weight:600;text-wrap:balance}
+.top .crumb{color:var(--muted);font-size:12.5px}
+.top .sp{flex:1}
+.mock{font-size:11px;letter-spacing:.06em;text-transform:uppercase;border:1px dashed var(--warn);color:var(--warn);padding:3px 8px;border-radius:6px;white-space:nowrap}
+.iconbtn{background:none;border:0;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:var(--muted);cursor:pointer;position:relative}
+.iconbtn:hover{background:var(--surface2);color:var(--fg)}
+.badge{position:absolute;top:3px;right:3px;min-width:17px;height:17px;border-radius:9px;background:var(--crit);color:#fff;font-size:10.5px;font-weight:700;display:grid;place-items:center;padding:0 4px}
+.me{display:flex;align-items:center;gap:8px;padding:4px 10px 4px 4px;border-radius:999px;background:var(--surface2);cursor:pointer;border:0}
+.av{width:28px;height:28px;border-radius:50%;background:var(--surface3);display:grid;place-items:center;font-size:12px;font-weight:700;color:var(--accent-strong)}
+.burger{display:none}
+.content{padding-block:20px 48px;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:18px;min-width:0}
+
+/* building blocks */
+.card{background:var(--surface);border:1px solid var(--outline);border-radius:var(--r);padding:16px;min-width:0}
+.card h2{font-size:15px;margin:0 0 12px;font-weight:600;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card h2 .sp{flex:1}
+.card h2 small{font-weight:400;color:var(--muted);font-size:12.5px}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.gd{grid-template-columns:minmax(0,1.55fr) minmax(0,1fr)}
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.kpi{background:var(--surface);border:1px solid var(--outline);border-radius:var(--r);padding:14px 16px}
+.kpi .l{font-size:12px;color:var(--muted)}
+.kpi .v{font-size:26px;font-weight:650;margin-top:4px;letter-spacing:-.01em}
+.kpi .s{font-size:12px;color:var(--dim);margin-top:2px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sp{flex:1}
+.btn{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:7px 14px;border:1px solid var(--outline2);background:transparent;color:var(--fg);cursor:pointer;font-weight:500;font-size:13px;white-space:nowrap}
+.btn:hover{background:var(--surface2)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn.pri:hover{background:var(--accent-strong)}
+.btn.ton{background:var(--accent-bg);border-color:transparent;color:var(--accent-strong)}
+.btn.danger{border-color:var(--crit);color:var(--crit)}
+.btn.sm{padding:4px 10px;font-size:12px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.inp,select.inp,textarea.inp{background:var(--surface2);border:1px solid var(--outline2);border-radius:var(--r-sm);padding:7px 10px;min-width:0}
+textarea.inp{width:100%;min-height:70px;resize:vertical}
+.inp:focus{border-color:var(--accent);outline:none}
+.search{display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--outline2);border-radius:999px;padding:5px 12px;flex:1 1 240px;min-width:0}
+.search input{background:none;border:0;outline:0;flex:1;min-width:0}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+label.f > .inp{color:var(--fg);font-size:13.5px}
+
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:500;white-space:nowrap;background:var(--surface3);color:var(--fg)}
+.pill .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+.p-ok{background:var(--ok-bg);color:var(--ok)} .p-warn{background:var(--warn-bg);color:var(--warn)}
+.p-crit{background:var(--crit-bg);color:var(--crit)} .p-info{background:var(--info-bg);color:var(--info)}
+.p-acc{background:var(--accent-bg);color:var(--accent-strong)} .p-dim{background:var(--surface2);color:var(--muted)}
+.ku{font-family:var(--mono);font-size:11.5px;letter-spacing:.02em;border-radius:6px;padding:2px 7px;white-space:nowrap;display:inline-block}
+
+.tbl-wrap{overflow-x:auto;border-radius:var(--r-sm)}
+table.t{width:100%;border-collapse:collapse;font-size:13px}
+.t th{text-align:left;font-weight:500;color:var(--muted);font-size:12px;padding:8px 10px;border-bottom:1px solid var(--outline);white-space:nowrap;background:var(--surface)}
+.t td{padding:9px 10px;border-bottom:1px solid var(--outline);vertical-align:middle}
+.t tr:last-child td{border-bottom:0}
+.t tbody tr.click{cursor:pointer}
+.t tbody tr.click:hover td{background:var(--surface2)}
+.t td.num,.t th.num{text-align:right;font-variant-numeric:tabular-nums}
+.t .no{font-family:var(--mono);font-size:12px;color:var(--fg)}
+.t .sub{display:block;font-size:12px;color:var(--muted);max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.agebar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--surface3);min-width:120px}
+.agebar i{display:block;height:100%}
+.age{font-size:11.5px;border-radius:6px;padding:1px 7px;font-weight:600;white-space:nowrap}
+.a-fresh{background:rgba(79,209,193,.14);color:var(--fresh)} .a-warm{background:rgba(231,207,77,.14);color:var(--warm)}
+.a-stale{background:rgba(236,154,74,.14);color:var(--stale)} .a-cold{background:rgba(239,116,112,.14);color:var(--cold)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+
+.hbars{display:flex;flex-direction:column;gap:9px}
+.hb{display:grid;grid-template-columns:minmax(0,190px) minmax(0,1fr) 36px;gap:10px;align-items:center;font-size:13px}
+.hb .lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hb .track{height:14px;background:var(--surface2);border-radius:4px;overflow:hidden}
+.hb .fill{height:100%;background:var(--accent);border-radius:4px}
+.hb .n{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+
+.syncs{display:grid;gap:10px}
+.sync{display:flex;gap:12px;align-items:flex-start;padding:10px 12px;border-radius:var(--r-sm);background:var(--surface2)}
+.sync .st{width:10px;height:10px;border-radius:50%;margin-top:5px;flex:none}
+
+/* detail */
+dl.kv{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:7px 16px;margin:0;font-size:13px}
+dl.kv dt{color:var(--muted)} dl.kv dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.bast{border:1px solid var(--outline);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:12px;background:var(--surface2)}
+.bast-h{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.bast-h b{font-family:var(--mono);font-size:13px}
+.stepper{display:flex;gap:4px;overflow-x:auto;padding-bottom:2px}
+.step{flex:1 1 0;min-width:96px;border:0;text-align:left;cursor:pointer;background:var(--surface3);border-radius:6px;padding:7px 9px 8px;color:var(--muted);font-size:11.5px;line-height:1.25;position:relative}
+.step:hover{color:var(--fg)}
+.step .u{font-size:10.5px;color:var(--dim);display:block}
+.step.done{background:rgba(79,209,193,.18);color:var(--accent-strong)}
+.step.cur{background:var(--accent);color:var(--on-accent)}
+.step.cur .u{color:rgba(0,32,28,.65)}
+.step.closer.done,.step.closer.cur{background:var(--ok);color:#06210f}
+.push{display:flex;flex-direction:column;gap:10px}
+.pushrow{display:grid;grid-template-columns:120px minmax(0,1fr);gap:10px;align-items:baseline;font-size:13px;padding:8px 10px;border-radius:var(--r-sm);background:var(--surface2)}
+.pushrow .k{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.pushrow .v{font-family:var(--mono);font-size:12.5px;overflow-wrap:anywhere}
+.tl{display:flex;flex-direction:column;gap:0;font-size:13px}
+.tl .e{display:grid;grid-template-columns:92px minmax(0,1fr);gap:12px;padding:8px 0;border-bottom:1px dashed var(--outline)}
+.tl .e:last-child{border:0}
+.tl .w{color:var(--dim);font-size:12px}
+.kend{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:var(--r-sm);background:var(--surface2);border-left:3px solid var(--crit)}
+.kend.done{border-left-color:var(--outline2);opacity:.7}
+.note{padding:10px 12px;border-radius:var(--r-sm);font-size:13px;display:flex;gap:10px;align-items:flex-start}
+.note.warn{background:var(--warn-bg);color:var(--warn)} .note.info{background:var(--info-bg);color:var(--info)}
+.note.ok{background:var(--ok-bg);color:var(--ok)} .note.crit{background:var(--crit-bg);color:var(--crit)}
+.note .tx{color:var(--fg)} .note b{color:inherit}
+
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--outline);overflow-x:auto}
+.tabs a{padding:9px 14px;color:var(--muted);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;font-weight:500}
+.tabs a.on{color:var(--accent-strong);border-bottom-color:var(--accent)}
+.bulk{position:sticky;bottom:12px;background:var(--surface3);border:1px solid var(--outline2);border-radius:999px;padding:8px 10px 8px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;box-shadow:0 8px 28px rgba(0,0,0,.4)}
+.wiz-steps{display:flex;gap:6px;flex-wrap:wrap}
+.wiz-steps span{display:flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:999px;background:var(--surface2);color:var(--muted);font-size:12.5px}
+.wiz-steps span i{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--surface3);font-style:normal;font-size:11.5px;font-weight:700}
+.wiz-steps span.on{color:var(--accent-strong);background:var(--accent-bg)}
+.wiz-steps span.on i{background:var(--accent);color:var(--on-accent)}
+.wiz-steps span.done i{background:var(--ok);color:#06210f}
+.chk{width:16px;height:16px;accent-color:var(--accent)}
+.toggle{width:34px;height:20px;border-radius:10px;background:var(--surface3);border:1px solid var(--outline2);position:relative;cursor:pointer;flex:none}
+.toggle::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--muted);transition:left .15s}
+.toggle.on{background:var(--accent);border-color:var(--accent)}
+.toggle.on::after{left:16px;background:var(--on-accent)}
+.matrix td,.matrix th{text-align:center}
+.matrix td:first-child,.matrix th:first-child{text-align:left}
+
+/* overlays */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;display:grid;place-items:center;padding:16px}
+.modal{background:var(--surface);border:1px solid var(--outline2);border-radius:16px;width:min(520px,100%);max-height:calc(100vh - 32px);overflow:auto;padding:20px;display:flex;flex-direction:column;gap:14px}
+.modal h3{margin:0;font-size:17px;font-weight:600}
+.modal .acts{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.notif{position:absolute;right:max(12px,env(safe-area-inset-right,0px));top:56px;width:min(400px,calc(100vw - 24px));background:var(--surface);border:1px solid var(--outline2);border-radius:14px;box-shadow:0 16px 40px rgba(0,0,0,.5);z-index:40;overflow:hidden}
+.notif-h{display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid var(--outline)}
+.notif-i{display:flex;gap:10px;padding:11px 14px;border-bottom:1px solid var(--outline);cursor:pointer;font-size:13px}
+.notif-i:hover{background:var(--surface2)}
+.notif-i.read{opacity:.55}
+.notif-i .w{font-size:11.5px;color:var(--dim);margin-top:3px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--surface3);border:1px solid var(--outline2);padding:10px 16px;border-radius:10px;z-index:60;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.4);max-width:calc(100vw - 32px)}
+
+/* login */
+.login{min-height:100%;display:grid;place-items:center;padding-block:24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background:radial-gradient(1200px 600px at 20% -10%,rgba(79,209,193,.10),transparent 60%),var(--bg)}
+.login .card{width:min(400px,100%);padding:28px;display:flex;flex-direction:column;gap:14px}
+.login .inp{width:100%}
+
+@media (max-width:1100px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.gd,.g3{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:860px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .side{position:fixed;left:0;top:0;bottom:0;z-index:45;width:250px;transform:translateX(-105%);transition:transform .2s}
+  .side.open{transform:none;box-shadow:0 0 40px rgba(0,0,0,.6)}
+  .burger{display:grid}
+  .g2{grid-template-columns:minmax(0,1fr)}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .top .crumb,.me .nm{display:none}
+  .hb{grid-template-columns:minmax(0,120px) minmax(0,1fr) 30px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div id="root"></div>
+
+<script>
+/* ============ Ikon (inline SVG, tanpa CDN) ============ */
+const IC={
+dash:"M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z",
+doc:"M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z",
+warn:"M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z",
+inbox:"M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 12h-4c0 1.66-1.34 3-3 3s-3-1.34-3-3H5V5h14v10z",
+sync:"M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z",
+gear:"M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z",
+log:"M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z",
+bell:"M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z",
+search:"M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z",
+dl:"M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z",
+add:"M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z",
+menu:"M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z",
+x:"M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z",
+check:"M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z",
+up:"M7 14l5-5 5 5z", down:"M7 10l5 5 5-5z",
+back:"M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z",
+eye:"M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z",
+up2:"M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z",
+flag:"M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z",
+out:"M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z",
+person:"M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+};
+const ic=(n,c='')=>`<svg class="i ${c}" viewBox="0 0 24 24" aria-hidden="true"><path d="${IC[n]}"/></svg>`;
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const rp=n=>n==null?'—':'Rp '+Number(n).toLocaleString('id-ID');
+const rpShort=n=>n>=1e12?'Rp '+(n/1e12).toLocaleString('id-ID',{maximumFractionDigits:1})+' T':n>=1e9?'Rp '+(n/1e9).toLocaleString('id-ID',{maximumFractionDigits:1})+' M':'Rp '+(n/1e6).toLocaleString('id-ID',{maximumFractionDigits:0})+' jt';
+
+/* ============ Data referensi (di aplikasi asli: tab Ref_* di DB) ============ */
+const TAHAP=[
+ {kode:'KOMPULIR',urut:1,label:'Kompulir Eviden',penutup:false,batas:14,aktif:true},
+ {kode:'DRAFTING',urut:2,label:'Drafting Dokumen',penutup:false,batas:14,aktif:true},
+ {kode:'REVIEW_CUST',urut:3,label:'Draft Review Customer',penutup:false,batas:14,aktif:true},
+ {kode:'SIRKULIR',urut:4,label:'Sirkulir Dokumen',penutup:false,batas:14,aktif:true},
+ {kode:'BAST_DONE',urut:5,label:'BAST Done',penutup:false,batas:14,aktif:true},
+ {kode:'TAKEOUT',urut:6,label:'BAST Takeout / BAST Sertim AR',penutup:true,batas:14,aktif:true},
+];
+const KREF=[
+ {kode:'REV_KONTRAK',label:'Revisi Kontrak',wajib:true,reopen:true,aktif:true},
+ {kode:'REV_DOKUMEN',label:'Revisi Dokumen',wajib:true,reopen:true,aktif:true},
+ {kode:'RETURN_CUST',label:'Return Customer',wajib:true,reopen:true,aktif:true},
+ {kode:'KENDALA_CUST',label:'Kendala Sisi Customer',wajib:true,reopen:false,aktif:true},
+ {kode:'LAINNYA',label:'Kendala Lainnya',wajib:true,reopen:false,aktif:true},
+];
+const RULES=[
+ {k:'CLOSE',v:'BAST TAKEOUT/SERTIM AR',aktif:true},
+ {k:'KENDALA:REV_KONTRAK',v:'REVISI KONTRAK',aktif:true},
+ {k:'KENDALA:REV_DOKUMEN',v:'REVISI DOKUMEN',aktif:true},
+ {k:'KENDALA:RETURN_CUST',v:'RETURN CUSTOMER',aktif:true},
+ {k:'KENDALA:KENDALA_CUST',v:'KENDALA CUSTOMER',aktif:true},
+ {k:'KENDALA:*',v:'KENDALA LAINNYA',aktif:true},
+ {k:'SISA_LOKASI',v:'BAST PARSIAL - MENUNGGU SISA LOKASI',aktif:true},
+ {k:'TAHAP:BAST_DONE',v:'BAST DONE',aktif:true},
+ {k:'TAHAP:SIRKULIR',v:'SIRKULIR DOKUMEN',aktif:true},
+ {k:'TAHAP:REVIEW_CUST',v:'DRAFT REVIEW CUSTOMER',aktif:true},
+ {k:'TAHAP:DRAFTING',v:'DRAFTING DOKUMEN',aktif:true},
+ {k:'TAHAP:KOMPULIR',v:'KOMPULIR EVIDEN',aktif:true},
+ {k:'BELUM_ADA_BAST',v:'BELUM DIPROSES',aktif:true},
+];
+const CONFIG=[['APP_NAMA','Status Kontrak Manager'],['SYNC_INTERVAL_MENIT','15'],['TAHAP_REOPEN','DRAFTING'],['AGING_BATAS','7,14,30'],['KENDALA_BATAS_HARI','14'],['KONFIRMASI_TAB_BARU','TRUE'],['BACKUP_SIMPAN','8'],['SKEMA_VERSI','1']];
+const AGING=[7,14,30];
+const PERMS=['dashboard.lihat','kontrak.lihat','export','kontrak.update','kontrak.daftar','kontrak.arsip','pic.atur','sinkron.jalankan','target.kelola','pengaturan.kelola','user.kelola','log.semua'];
+const ROLES={ADMIN:PERMS.slice(),STAFF:PERMS.slice(0,5),VIEWER:PERMS.slice(0,3)};
+const USERS=[
+ {u:'ompik',nama:'omPik',alias:'omPik',role:'ADMIN',aktif:true,last:'15 Nov 09:12'},
+ {u:'edo',nama:'Edo Pratama',alias:'Edo',role:'STAFF',aktif:true,last:'15 Nov 08:55'},
+ {u:'unggul',nama:'Unggul Wicaksono',alias:'Unggul',role:'STAFF',aktif:true,last:'15 Nov 08:40'},
+ {u:'baim',nama:'Ibrahim',alias:'Baim',role:'STAFF',aktif:true,last:'14 Nov 16:22'},
+ {u:'alif',nama:'Alif Ramadhan',alias:'Alif',role:'STAFF',aktif:true,last:'15 Nov 07:58'},
+ {u:'manajer',nama:'Manajer FF',alias:'',role:'VIEWER',aktif:true,last:'12 Nov 10:03',ganti:true},
+];
+const PICS=['Edo','Unggul','Baim','Alif'];
+
+/* ============ Data kontrak contoh (4 pertama = Lampiran A hasil import) ============ */
+let K=[
+ {id:'K-000001',no:'TEL.0317-0016/P8/LG.270/DES-A2027000/2017',jenis:'KL',tahun:2017,pop:'TREG',pel:'BANK PERMATA',judul:'Pengadaan Layanan VSAT IP 6 Lokasi',seg:'LBCS',nilai:95352000,lok:6,pic:'Edo',verif:true,sumber:'IMPORT',
+  orders:[{j:'SO',no:'SO-2017-00412',lay:'VSAT IP',pek:'Instalasi + Sewa',lok:6}],
+  bast:[{n:1,t:'KOMPULIR',s:1,cak:2,order:'SO-2017-00412',hari:19,ket:'2 lokasi online, 4 belum',dok:''}],
+  kend:[{id:'KD-0001',b:1,j:'REV_DOKUMEN',ket:'BAST Revisi, hanya dua lokasi diproses, 4 lokasi belum',st:'AKTIF',hari:19,oleh:'import'}]},
+ {id:'K-000002',no:'TEL.0719-0488/HK.810/DES-A1000000/2020',jenis:'KL',tahun:2020,pop:'SDA',pel:'BANK DANAMON INDONESIA Tbk',judul:'Layanan Komunikasi Data Satelit Nasional',seg:'GOS',nilai:29730240000,lok:null,pic:'Unggul',verif:true,sumber:'IMPORT',
+  orders:[{j:'SO',no:'SO-2020-01877',lay:'VSAT IP',pek:'Sewa',lok:420},{j:'MI',no:'MI-2020-0091',lay:'Backhaul',pek:'Instalasi',lok:12}],
+  bast:[{n:1,t:'REVIEW_CUST',s:1,cak:null,order:'SO-2020-01877, MI-2020-0091',hari:11,ket:'REVIEW ADMIN PRM',dok:''}],kend:[]},
+ {id:'K-000003',no:'TEL.0219-0003/P8/LG.270/DES-A2020000/2019',jenis:'KL',tahun:2019,pop:'PRM',pel:'PT HEXINDO ADI PERKASA',judul:'Sewa Link Satelit Site Tambang',seg:'ENS',nilai:206952000,lok:null,pic:'Baim',verif:true,sumber:'IMPORT',
+  orders:[{j:'SO',no:'SO-2019-00230',lay:'VSAT IP',pek:'Sewa',lok:3}],
+  bast:[{n:1,t:'KOMPULIR',s:1,cak:null,order:'SO-2019-00230',hari:5,ket:'KOMPULIR EVIDENCE',dok:''}],kend:[]},
+ {id:'K-000004',no:'TEL.0418-0152/P8/LG.270/DES-A2020000/2018',jenis:'KL',tahun:2018,pop:'DIRECT',pel:'PT Wananugraha Bima Lestari',judul:'Layanan Internet Satelit Kebun',seg:'OLOS',nilai:152294500,lok:null,pic:'Alif',verif:true,sumber:'IMPORT',
+  orders:[{j:'SO',no:'SO-2018-00655',lay:'VSAT Broadband',pek:'Sewa',lok:4}],
+  bast:[{n:1,t:'BAST_DONE',s:1,cak:null,order:'SO-2018-00655',hari:24,ket:'Belum takeout menunggu AO SID',dok:'BAST/TSAT/0418/2026'}],kend:[]},
+ {id:'K-000005',no:'TEL.0521-0102/HK.810/DES-A1000000/2021',jenis:'KL',tahun:2021,pop:'SDA',pel:'PT Mitra Energi Persada',judul:'Jaringan VSAT Remote Wellsite',seg:'ENS',nilai:1840500000,lok:null,pic:'Edo',verif:false,sumber:'ANTRIAN',
+  orders:[{j:'SO',no:'SO-2021-00981',lay:'VSAT IP',pek:'Instalasi + Sewa',lok:18}],
+  bast:[{n:1,t:'SIRKULIR',s:1,cak:null,order:'SO-2021-00981',hari:9,ket:'Menunggu TTD GM customer',dok:''}],kend:[]},
+ {id:'K-000006',no:'WO/0912/TSAT/X/2026',jenis:'WO',tahun:2026,pop:'TREG',pel:'Dinas Kominfo Prov. Jawa Barat',judul:'Internet Desa 25 Titik',seg:'GOS',nilai:3125000000,lok:25,pic:'Unggul',verif:false,sumber:'ANTRIAN',
+  orders:[{j:'SO',no:'SO-2026-03310',lay:'VSAT Broadband',pek:'Instalasi',lok:25}],
+  bast:[{n:1,t:'TAKEOUT',s:1,cak:15,order:'SO-2026-03310',hari:6,ket:'BAST tahap 1, 15 titik',dok:'BAST/TSAT/0912-1/2026'},
+        {n:2,t:'DRAFTING',s:1,cak:6,order:'SO-2026-03310',hari:3,ket:'Tahap 2, 6 titik online',dok:''}],kend:[]},
+ {id:'K-000007',no:'SPK.0088/LG.270/2026',jenis:'SPK',tahun:2026,pop:'PRM',pel:'PT Sinar Logistik Nusantara',judul:'Relokasi Terminal VSAT Gudang',seg:'LBCS',nilai:268000000,lok:null,pic:'Baim',verif:false,sumber:'ANTRIAN',
+  orders:[{j:'MI',no:'MI-2026-0412',lay:'VSAT IP',pek:'Relokasi',lok:2}],
+  bast:[{n:1,t:'TAKEOUT',s:1,cak:null,order:'MI-2026-0412',hari:12,ket:'Diserahkan ke AR 3 Nov',dok:'BAST/TSAT/0088/2026'}],kend:[]},
+ {id:'K-000008',no:'PO 4500031277',jenis:'PO',tahun:2026,pop:'DIRECT',pel:'PT Agro Lestari Mandiri',judul:'Penambahan Bandwidth 4 Kebun',seg:'OLOS',nilai:412800000,lok:null,pic:'Alif',verif:false,sumber:'ANTRIAN',
+  orders:[{j:'SO',no:'SO-2026-02901',lay:'VSAT IP',pek:'Upgrade',lok:4}],
+  bast:[{n:1,t:'REVIEW_CUST',s:1,cak:null,order:'SO-2026-02901',hari:4,ket:'Draft dikirim ke PIC customer',dok:''}],
+  kend:[{id:'KD-0004',b:1,j:'KENDALA_CUST',ket:'PIC customer cuti, review tertunda',st:'AKTIF',hari:21,oleh:'Alif'}]},
+ {id:'K-000009',no:'TEL.0145-0021/HK.810/DES-A1000000/2024',jenis:'KL',tahun:2024,pop:'SDA',pel:'Bank Daerah Sulselbar',judul:'Konektivitas ATM Remote 40 Unit',seg:'GOS',nilai:5280000000,lok:40,pic:'Edo',verif:false,sumber:'ANTRIAN',
+  orders:[{j:'SO',no:'SO-2024-01150',lay:'VSAT IP',pek:'Sewa',lok:40}],
+  bast:[{n:1,t:'TAKEOUT',s:1,cak:22,order:'SO-2024-01150',hari:40,ket:'Tahap 1: 22 ATM',dok:'BAST/TSAT/0145-1/2025'},
+        {n:2,t:'TAKEOUT',s:1,cak:10,order:'SO-2024-01150',hari:8,ket:'Tahap 2: 10 ATM',dok:'BAST/TSAT/0145-2/2026'}],kend:[]},
+ {id:'K-000010',no:'NP-0277/TSAT/2026',jenis:'Nota Pesanan',tahun:2026,pop:'TREG',pel:'PT Kapal Nusa Samudra',judul:'Maritime VSAT 3 Kapal',seg:'ENS',nilai:744000000,lok:null,pic:'',verif:false,sumber:'ANTRIAN',
+  orders:[],bast:[],kend:[]},
+ {id:'K-000011',no:'TEL.0610-0034/HK.810/DES-A1000000/2025',jenis:'KL',tahun:2025,pop:'PRM',pel:'PT Tambang Batu Hijau',judul:'Link Backup Kantor Site',seg:'ENS',nilai:975000000,lok:null,pic:'Unggul',verif:false,sumber:'ANTRIAN',
+  orders:[{j:'SO',no:'SO-2025-02210',lay:'VSAT IP',pek:'Sewa',lok:2}],
+  bast:[{n:1,t:'DRAFTING',s:2,cak:null,order:'SO-2025-02210',hari:2,ket:'Reopen: nilai kontrak berubah',dok:''}],
+  kend:[{id:'KD-0007',b:1,j:'REV_KONTRAK',ket:'Amandemen nilai kontrak, BAST harus dibuat ulang',st:'AKTIF',hari:2,oleh:'Unggul'}]},
+ {id:'K-000012',no:'SP-1103/TSAT/2026',jenis:'Surat Pesanan',tahun:2026,pop:'DIRECT',pel:'Puskesmas Kab. Merauke',judul:'Telemedis 5 Puskesmas',seg:'GOS',nilai:580000000,lok:null,pic:'Baim',verif:false,sumber:'ANTRIAN',
+  orders:[{j:'SO',no:'SO-2026-03401',lay:'VSAT Broadband',pek:'Instalasi',lok:5}],
+  bast:[{n:1,t:'DRAFTING',s:1,cak:null,order:'SO-2026-03401',hari:33,ket:'Menunggu foto eviden lokasi 4 & 5',dok:''}],kend:[]},
+];
+
+const TARGETS=[
+ {id:'T01',nama:'Billcom Telkomsat 2026',sid:'1YtV-hUyijt-dDQCHUtDNrbswtIq_2caWx2bRsnfYaO8',mode:'TERBARU',tab:'NOV 2026',pola:'MMM YYYY',baru:'DES 2026',size:'12 MB',cek:'15 Nov 09:00',upd:'15 Nov 08:45',st:'ALARM',pesan:'Tab baru "DES 2026" terdeteksi, menunggu konfirmasi',owner:'Rina (Billcom)',
+  kolom:[['KENDALA_UMUM','TULIS','STATUS BAST FF'],['KENDALA_DETIL','TULIS','KETERANGAN FF'],['TGL_UPDATE','TULIS','TGL UPDATE FF'],['PELANGGAN','BACA','NAMA CUSTOMER'],['JUDUL','BACA','NAMA LAYANAN'],['NILAI','BACA','NILAI KONTRAK']]},
+ {id:'T02',nama:'Populasi Outstanding Mansol TELKOMSAT-NEW',sid:'1pLbTdFZE6rSh_HAyXXRmF_L3nb6JSK6rMmnZ_fOFx6Q',mode:'FIXED',tab:'DATA TELKOMSAT',size:'8 MB',cek:'15 Nov 09:00',upd:'15 Nov 09:00',st:'OK',pesan:'14 baris cocok, 3 sel ditulis',owner:'Dimas (Mansol)',
+  kolom:[['KENDALA_UMUM','TULIS','KENDALA UMUM'],['KENDALA_DETIL','TULIS','KENDALA DETIL'],['TAHAP','TULIS','PROGRESS BAST'],['PELANGGAN','BACA','PELANGGAN']]},
+];
+/* baris tiruan di sheet target, untuk simulasi "Cek saja" */
+const SHEETROWS={
+ T01:[
+  {baris:118,raw:'TEL.0719-0488/HK.810/DES-A1000000/2020',now:'BAST ON REVIEW',jejak:null},
+  {baris:119,raw:'TEL.0719-0488/HK.810/DES-A1000000/2020 ',now:'BAST ON REVIEW',jejak:null},
+  {baris:120,raw:'TEL.0521-0102/HK.810/DES-A1000000/2021',now:'BAST DONE',jejak:'SIRKULIR DOKUMEN'},
+  {baris:121,raw:'SPK.0088/LG.270/2026',now:'BAST TAKEOUT/SERTIM AR',jejak:'BAST TAKEOUT/SERTIM AR',closedWritten:true},
+  {baris:122,raw:'PO 4500031277',now:'=VLOOKUP(B122;REF!A:C;3;0)',formula:true},
+  {baris:123,raw:'TEL.0622-0311/HK.810/DES-A1000000/2022',now:''},
+  {baris:124,raw:'WO-2026-0118 / WO-2026-0119',now:''},
+  {baris:125,raw:'tel.0418-0152/p8/lg.270/des-a2020000/2018.',now:'',jejak:null},
+ ],
+ T02:[
+  {baris:14,raw:'TEL.0317-0016/P8/LG.270/DES-A2027000/2017',now:'BAST REVISI',jejak:null},
+  {baris:15,raw:'TEL.0219-0003/P8/LG.270/DES-A2020000/2019',now:'KOMPULIR EVIDEN',jejak:'KOMPULIR EVIDEN'},
+  {baris:16,raw:'WO/0912/TSAT/X/2026',now:'DRAFTING DOKUMEN',jejak:'DRAFTING DOKUMEN'},
+  {baris:17,raw:'TEL.0145-0021/HK.810/DES-A1000000/2024',now:'BAST TAKEOUT/SERTIM AR',jejak:'BAST TAKEOUT/SERTIM AR',closedWritten:true},
+ ]
+};
+let ANTRIAN=[
+ {id:'A-0031',t:'T01',tab:'NOV 2026',baris:123,no:'TEL.0622-0311/HK.810/DES-A1000000/2022',pel:'PT Pelayaran Bahtera Timur',judul:'VSAT Kapal Tanker 2 Unit',nilai:612000000,st:'BARU',hari:0},
+ {id:'A-0029',t:'T02',tab:'DATA TELKOMSAT',baris:88,no:'TEL 0317-0016/P8/LG.270/DES-A2027000/2017',pel:'BANK PERMATA',judul:'Pengadaan Layanan VSAT IP',nilai:95352000,st:'BARU',hari:2,mirip:'K-000001'},
+ {id:'A-0027',t:'T01',tab:'NOV 2026',baris:140,no:'KL-0441/TSAT/2026',pel:'Kementerian Kelautan',judul:'Monitoring Pelabuhan 8 Titik',nilai:2210000000,st:'BARU',hari:3},
+ {id:'A-0022',t:'T02',tab:'DATA TELKOMSAT',baris:91,no:'TOTAL',pel:'',judul:'',nilai:null,st:'BARU',hari:6},
+];
+let NOTIF=[
+ {id:1,j:'DIUBAH_LUAR',k:'K-000005',t:'T01',msg:'Kolom STATUS BAST FF kontrak TEL.0521-0102/… di sheet Billcom (tab NOV 2026, baris 120) diubah di luar SKM: "SIRKULIR DOKUMEN" → "BAST DONE"',w:'15 Nov 09:00',read:false},
+ {id:2,j:'TAB_BERGANTI',t:'T01',msg:'Billcom Telkomsat 2026: tab baru "DES 2026" terdeteksi. Target berjalan mode Cek saja sampai dikonfirmasi.',w:'15 Nov 09:00',read:false},
+ {id:3,j:'ANTRIAN_BARU',msg:'1 nomor kontrak baru masuk Antrian dari Billcom (baris 123).',w:'15 Nov 09:00',read:false},
+ {id:4,j:'PIC_DITUGASKAN',k:'K-000012',msg:'Anda ditugaskan sebagai PIC kontrak SP-1103/TSAT/2026 (Puskesmas Kab. Merauke) oleh omPik.',w:'14 Nov 15:10',read:true},
+];
+let LOG=[
+ ['15 Nov 09:02','trigger','SINKRON','Target','T02','—','','3 sel ditulis','Update terjadwal'],
+ ['15 Nov 08:51','unggul','UBAH_TAHAP','BAST','K-000002-B1','KodeTahap','DRAFTING','REVIEW_CUST',''],
+ ['15 Nov 08:47','alif','BUKA_KENDALA','Kendala','KD-0004','Status','','AKTIF','PIC customer cuti'],
+ ['15 Nov 08:30','edo','UBAH_TAHAP','BAST','K-000006-B2','KodeTahap','KOMPULIR','DRAFTING','bantu (PIC: Unggul)'],
+ ['14 Nov 16:20','ompik','ATUR_PIC','Kontrak','K-000012','PIC','','Baim',''],
+ ['14 Nov 15:55','unggul','REOPEN','BAST','K-000011-B1','Siklus','1','2','Amandemen nilai kontrak'],
+ ['14 Nov 14:11','ompik','UBAH_NILAI_PUSH','Ref_NilaiPush','#7','Kendala Umum','BAST PARSIAL','BAST PARSIAL - MENUNGGU SISA LOKASI',''],
+ ['14 Nov 10:05','ompik','IMPORT','Kontrak','—','—','','4 baris','sheet FF lama'],
+];
+
+/* ============ Logika domain (di aplikasi asli: Domain.gs, fungsi murni + unit test) ============ */
+const tah=k=>TAHAP.find(t=>t.kode===k);
+const tahLabel=k=>tah(k)?.label??k;
+const closer=()=>TAHAP.find(t=>t.penutup&&t.aktif);
+const bastClose=b=>!!tah(b.t)?.penutup;
+const activeKend=k=>k.kend.filter(x=>x.st==='AKTIF');
+function statusK(k){
+  if(!k.bast.length) return {st:'OPEN',belum:true,sisa:false,cak:0};
+  const all=k.bast.every(bastClose);
+  const cak=k.bast.reduce((a,b)=>a+(b.cak||0),0);
+  if(all&&(!k.lok||cak>=k.lok)) return {st:'CLOSE',sisa:false,cak};
+  if(all) return {st:'OPEN',sisa:true,cak};
+  return {st:'OPEN',sisa:false,cak};
+}
+function tahapK(k){
+  const open=k.bast.filter(b=>!bastClose(b));
+  if(!open.length) return k.bast.length?closer().kode:null;
+  return open.slice().sort((a,b)=>tah(a.t).urut-tah(b.t).urut)[0].t;
+}
+function bottleneck(k){const open=k.bast.filter(b=>!bastClose(b));return open.sort((a,b)=>tah(a.t).urut-tah(b.t).urut)[0];}
+function evalPush(k){
+  const s=statusK(k), tk=tahapK(k), ak=activeKend(k);
+  for(let i=0;i<RULES.length;i++){
+    const r=RULES[i]; if(!r.aktif) continue;
+    let hit=null;
+    if(r.k==='CLOSE'&&s.st==='CLOSE') hit='tahap';
+    else if(r.k==='SISA_LOKASI'&&s.sisa) hit='tahap';
+    else if(r.k==='BELUM_ADA_BAST'&&s.belum) hit='tahap';
+    else if(r.k.startsWith('TAHAP:')&&s.st!=='CLOSE'&&!s.sisa&&tk===r.k.slice(6)) hit='tahap';
+    else if(r.k.startsWith('KENDALA:')){const c=r.k.slice(8);const m=ak.find(x=>c==='*'||x.j===c);if(m) hit=m;}
+    if(hit){
+      let detil;
+      if(hit==='tahap'){const lb=k.bast[k.bast.length-1];detil=lb?lb.ket:'';const o=ak.length;if(o)detil+=` (+${o})`;}
+      else{detil=hit.ket;const o=ak.length-1;if(o>0)detil+=` (+${o})`;}
+      return {i,r,umum:r.v,detil};
+    }
+  }
+  return {i:-1,r:null,umum:null,detil:null};
+}
+const bucket=h=>h<=AGING[0]?'fresh':h<=AGING[1]?'warm':h<=AGING[2]?'stale':'cold';
+const BLBL={fresh:'Fresh',warm:'Warm',stale:'Stale',cold:'Cold'};
+const agingK=k=>{const b=bottleneck(k);if(b)return b.hari;if(statusK(k).sisa)return k.bast[k.bast.length-1].hari;return null;};
+function parsialTxt(k){if(k.bast.length<2&&!k.lok)return '—';const c=k.bast.filter(bastClose).length;const s=statusK(k);return `${c}/${k.bast.length} BAST`+(k.lok?` · ${s.cak}/${k.lok} lokasi`:'');}
+const normKey=s=>String(s??'').normalize('NFKC').toUpperCase().replace(/[‐-―−]/g,'-').replace(/\s+/g,'').replace(/\.+$/,'');
+
+/* ============ Komponen tampilan ============ */
+function tahapPill(k){ if(!k) return '<span class="pill p-dim">Belum ada BAST</span>'; const t=tah(k); return `<span class="pill ${t.penutup?'p-ok':'p-acc'}"><span class="dot"></span>${esc(t.label)}</span>`; }
+function kuChip(p){
+  if(!p||!p.r) return '<span class="ku p-crit">TANPA ATURAN</span>';
+  const k=p.r.k; const cls=k==='CLOSE'?'p-ok':k.startsWith('KENDALA')?'p-crit':k==='SISA_LOKASI'?'p-warn':k==='BELUM_ADA_BAST'?'p-dim':'p-info';
+  return `<span class="ku ${cls}">${esc(p.umum)}</span>`;
+}
+function statusPill(k){const s=statusK(k);if(s.st==='CLOSE')return '<span class="pill p-ok">CLOSE</span>';if(s.sisa)return '<span class="pill p-warn">OPEN · Menunggu BAST lanjutan</span>';return '<span class="pill p-dim">OPEN</span>';}
+function ageChip(h){if(h==null)return '<span class="dim">—</span>';const b=bucket(h);return `<span class="age a-${b}">${h} hr</span>`;}
+
+/* ============ State + router ============ */
+const S={sel:new Set(),filters:{q:'',tahap:'',ku:'',pic:'',pop:'',seg:'',st:'OPEN'},notifOpen:false,cek:{},wiz:1,wizMode:'TERBARU',setTab:'tahap',loggedIn:true,gantiPw:false,impStep:3};
+const NAV=[
+ ['dashboard','Dashboard','dash'],['kontrak','Kontrak','doc'],['perhatian','Perlu Perhatian','warn'],['antrian','Antrian','inbox'],
+ ['gsheet','Google Sheet','sync'],['pengaturan','Pengaturan','gear'],['log','Log','log']];
+function route(){return (location.hash||'#dashboard').slice(1);}
+window.addEventListener('hashchange',()=>{S.notifOpen=false;render();window.scrollTo(0,0);});
+
+function countPerhatian(){return perhatianItems().length;}
+function render(){
+  const r=route(); const root=document.getElementById('root');
+  if(r==='login'||!S.loggedIn){root.innerHTML=viewLogin();bindLogin();return;}
+  const base=r.split('-')[0];
+  let title='',crumb='',body='';
+  if(base==='dashboard'){title='Dashboard';crumb='Ringkasan tim FF';body=viewDash();}
+  else if(r.startsWith('kontrak-K')){const k=K.find(x=>x.id===r.slice(8));title=k?k.pel:'Kontrak';crumb='Kontrak / '+(k?k.id:'');body=k?viewDetail(k):'<div class="card">Kontrak tidak ditemukan.</div>';}
+  else if(base==='kontrak'){title='Kontrak';crumb=K.length+' kontrak terdaftar';body=viewKontrak();}
+  else if(base==='perhatian'){title='Perlu Perhatian';crumb='Hal yang perlu ditindaklanjuti';body=viewPerhatian();}
+  else if(base==='antrian'){title='Antrian Kontrak Baru';crumb='Nomor dari sheet unit yang belum terdaftar';body=viewAntrian();}
+  else if(base==='gsheet'){title='Google Sheet';crumb='Sinkron ke sheet unit';body=viewGsheet();}
+  else if(base==='wizard'){title='Tambah Target';crumb='Google Sheet / Wizard';body=viewWizard();}
+  else if(base==='pengaturan'){title='Pengaturan';crumb='Data referensi & sistem';const sub=r.split('-')[1];if(sub)S.setTab=sub;body=viewSet();}
+  else if(base==='log'){title='Log';crumb='Semua perubahan, hanya ditambah';body=viewLog();}
+  else {location.hash='#dashboard';return;}
+  const unread=NOTIF.filter(n=>!n.read).length;
+  const navBase=r.startsWith('kontrak')?'kontrak':base==='wizard'?'gsheet':base;
+  const counts={perhatian:countPerhatian(),antrian:ANTRIAN.filter(a=>a.st==='BARU').length};
+  root.innerHTML=`<div class="app">
+   <aside class="side" id="side">
+    <div class="brand"><div class="logo">SKM</div><div><b>Status Kontrak Manager</b><span>Unit Fulfillment</span></div></div>
+    <nav class="nav">${NAV.map(([h,l,i])=>`<a href="#${h}" class="${navBase===h?'on':''}">${ic(i)}<span>${l}</span>${counts[h]?`<span class="cnt">${counts[h]}</span>`:''}</a>`).join('')}</nav>
+    <div class="side-foot"><span>Sinkron otomatis tiap 15 menit</span><span class="dim">Terakhir: 15 Nov 09:02 · v1 mockup</span></div>
+   </aside>
+   <div class="main">
+    <header class="top">
+     <button class="iconbtn burger" id="burger" aria-label="Menu">${ic('menu')}</button>
+     <div style="min-width:0"><h1>${esc(title)}</h1><div class="crumb">${esc(crumb)}</div></div>
+     <div class="sp"></div>
+     <span class="mock">Mockup · data contoh</span>
+     <button class="iconbtn" id="bell" aria-label="Notifikasi">${ic('bell')}${unread?`<span class="badge">${unread}</span>`:''}</button>
+     <button class="me" id="me"><span class="av">OP</span><span class="nm">omPik · ADMIN</span></button>
+     ${S.notifOpen?viewNotif():''}
+    </header>
+    <main class="content">${body}</main>
+   </div></div>`;
+  bindCommon(); bindView(base,r);
+}
+
+/* ============ Login ============ */
+function viewLogin(){
+  if(S.gantiPw) return `<div class="login"><div class="card">
+   <div class="brand" style="padding:0"><div class="logo">SKM</div><div><b>Ganti password</b><span>Wajib saat login pertama</span></div></div>
+   <div class="note info">${ic('person','s')}<span class="tx">Halo <b>manajer</b>, password awal Anda harus diganti sebelum melanjutkan.</span></div>
+   <label class="f">Password baru<input class="inp" type="password" id="pw1" value="••••••••••"></label>
+   <label class="f">Ulangi password baru<input class="inp" type="password" id="pw2" value="••••••••••"></label>
+   <span class="muted" style="font-size:12px">Minimal 8 karakter. Akun dikunci 15 menit setelah 5 kali gagal login.</span>
+   <button class="btn pri" id="doGanti" style="justify-content:center">Simpan &amp; masuk</button></div></div>`;
+  return `<div class="login"><div class="card">
+   <div class="brand" style="padding:0 0 6px"><div class="logo">SKM</div><div><b>Status Kontrak Manager</b><span>Unit Fulfillment</span></div></div>
+   <label class="f">Username<input class="inp" id="lu" value="ompik" autocomplete="username"></label>
+   <label class="f">Password<input class="inp" id="lp" type="password" value="password" autocomplete="current-password"></label>
+   <button class="btn pri" id="doLogin" style="justify-content:center">Masuk</button>
+   <span class="muted" style="font-size:12px">Akun dibuat oleh admin. Lupa password? Hubungi admin FF.</span>
+   <button class="btn sm" id="demoGanti" style="align-self:flex-start">Lihat layar ganti password (demo)</button>
+  </div></div>`;
+}
+function bindLogin(){
+  const g=id=>document.getElementById(id);
+  g('doLogin')&&(g('doLogin').onclick=()=>{S.loggedIn=true;location.hash='#dashboard';render();});
+  g('demoGanti')&&(g('demoGanti').onclick=()=>{S.gantiPw=true;render();});
+  g('doGanti')&&(g('doGanti').onclick=()=>{S.gantiPw=false;S.loggedIn=true;location.hash='#dashboard';render();toast('Password diganti. Selamat datang.');});
+}
+
+/* ============ Dashboard ============ */
+function viewDash(){
+  const open=K.filter(k=>statusK(k).st==='OPEN');
+  const bastOpen=K.reduce((a,k)=>a+k.bast.filter(b=>!bastClose(b)).length,0);
+  const nilai=open.reduce((a,k)=>a+(k.nilai||0),0);
+  const kend=K.reduce((a,k)=>a+activeKend(k).length,0);
+  const perT=TAHAP.filter(t=>!t.penutup).map(t=>({l:t.label,n:open.filter(k=>tahapK(k)===t.kode&&!statusK(k).sisa).length}));
+  perT.push({l:'Menunggu BAST lanjutan',n:open.filter(k=>statusK(k).sisa).length});
+  perT.push({l:'Belum ada BAST',n:open.filter(k=>!k.bast.length).length});
+  const maxT=Math.max(1,...perT.map(x=>x.n));
+  const ku={};K.forEach(k=>{const p=evalPush(k);ku[p.umum]=(ku[p.umum]||0)+1;});
+  const kuArr=RULES.filter(r=>ku[r.v]).map(r=>({r,n:ku[r.v]}));const maxK=Math.max(1,...kuArr.map(x=>x.n));
+  const team=PICS.map((p,i)=>{
+    const mine=open.filter(k=>k.pic===p);
+    const ag={fresh:0,warm:0,stale:0,cold:0};mine.forEach(k=>{const h=agingK(k);if(h!=null)ag[bucket(h)]++;});
+    const tot=Math.max(1,mine.length);
+    return {p,open:mine.length,kend:mine.reduce((a,k)=>a+activeKend(k).length,0),ag,tot,upd:[14,9,6,11][i],bantu:[3,0,1,2][i],last:['15 Nov 08:30 · ubah tahap K-000006-B2','15 Nov 08:51 · ubah tahap K-000002-B1','14 Nov 16:05 · tambah SO K-000012','15 Nov 08:47 · buka kendala K-000008'][i]};
+  });
+  const noPic=open.filter(k=>!k.pic).length;
+  return `
+  <div class="kpis">
+   <div class="kpi"><div class="l">Kontrak OPEN</div><div class="v tnum">${open.length}</div><div class="s">dari ${K.length} terdaftar</div></div>
+   <div class="kpi"><div class="l">BAST OPEN</div><div class="v tnum">${bastOpen}</div><div class="s">termasuk BAST parsial</div></div>
+   <div class="kpi"><div class="l">Nilai kontrak OPEN</div><div class="v tnum">${rpShort(nilai)}</div><div class="s tnum">${rp(nilai)}</div></div>
+   <div class="kpi"><div class="l">Kendala aktif</div><div class="v tnum" style="color:var(--crit)">${kend}</div><div class="s">${K.reduce((a,k)=>a+activeKend(k).filter(x=>x.hari>14).length,0)} lebih dari 14 hari</div></div>
+   <div class="kpi"><div class="l">Close bulan ini</div><div class="v tnum" style="color:var(--ok)">${K.filter(k=>statusK(k).st==='CLOSE').length}</div><div class="s">Nov 2026, dari RiwayatTahap</div></div>
+  </div>
+  <div class="grid g2">
+   <div class="card"><h2>Kontrak OPEN per tahap <span class="sp"></span><small>tahap = BAST OPEN paling awal</small></h2>
+    <div class="hbars">${perT.map(x=>`<div class="hb"><span class="lbl">${esc(x.l)}</span><div class="track"><div class="fill" style="width:${x.n/maxT*100}%"></div></div><span class="n">${x.n}</span></div>`).join('')}</div></div>
+   <div class="card"><h2>Kontrak per Kendala Umum <span class="sp"></span><small>nilai yang di-push ke sheet unit</small></h2>
+    <div class="hbars">${kuArr.map(x=>{const col=x.r.k==='CLOSE'?'var(--ok)':x.r.k.startsWith('KENDALA')?'var(--crit)':x.r.k==='SISA_LOKASI'?'var(--warn)':x.r.k==='BELUM_ADA_BAST'?'var(--dim)':'var(--info)';return `<div class="hb"><span class="lbl mono" style="font-size:11.5px">${esc(x.r.v)}</span><div class="track"><div class="fill" style="width:${x.n/maxK*100}%;background:${col}"></div></div><span class="n">${x.n}</span></div>`}).join('')}</div></div>
+  </div>
+  <div class="card"><h2>Tim <span class="sp"></span><span class="legend"><span><i style="background:var(--fresh)"></i>Fresh ≤7</span><span><i style="background:var(--warm)"></i>Warm 8–14</span><span><i style="background:var(--stale)"></i>Stale 15–30</span><span><i style="background:var(--cold)"></i>Cold &gt;30</span></span></h2>
+   <div class="tbl-wrap"><table class="t"><thead><tr><th>PIC</th><th class="num">Open</th><th class="num">Kendala</th><th>Aging kontrak open</th><th class="num">Update 7 hari</th><th>Perubahan terakhir</th></tr></thead><tbody>
+   ${team.map(t=>`<tr class="click" data-pic="${t.p}"><td><div class="row" style="flex-wrap:nowrap"><span class="av">${t.p[0]}</span>${t.p}</div></td><td class="num">${t.open}</td><td class="num">${t.kend?`<span style="color:var(--crit)">${t.kend}</span>`:'0'}</td>
+     <td><div class="agebar" title="Fresh ${t.ag.fresh} · Warm ${t.ag.warm} · Stale ${t.ag.stale} · Cold ${t.ag.cold}">${['fresh','warm','stale','cold'].map(b=>t.ag[b]?`<i style="width:${t.ag[b]/t.tot*100}%;background:var(--${b})"></i>`:'').join('')}</div></td>
+     <td class="num">${t.upd}${t.bantu?` <span class="muted">(${t.bantu} bantu)</span>`:''}</td><td class="muted" style="font-size:12.5px">${t.last}</td></tr>`).join('')}
+   ${noPic?`<tr class="click" data-pic="__none"><td><div class="row" style="flex-wrap:nowrap"><span class="av" style="color:var(--warn)">?</span><span style="color:var(--warn)">Tanpa PIC</span></div></td><td class="num">${noPic}</td><td class="num">0</td><td></td><td></td><td class="muted" style="font-size:12.5px">Perlu ditugaskan</td></tr>`:''}
+   </tbody></table></div></div>
+  <div class="card"><h2>Status sinkron per target <span class="sp"></span><a class="btn sm" href="#gsheet">Buka Google Sheet</a></h2>
+   <div class="syncs">${TARGETS.map(syncRow).join('')}</div></div>`;
+}
+function syncRow(t){const c=t.st==='OK'?'var(--ok)':t.st==='ALARM'?'var(--warn)':'var(--crit)';
+  return `<div class="sync"><span class="st" style="background:${c}"></span><div style="min-width:0;flex:1"><b>${esc(t.nama)}</b> <span class="pill p-dim" style="margin-left:4px">${t.mode==='TERBARU'?'Tab terbaru: '+t.tab:'Tab: '+t.tab}</span><div class="muted" style="font-size:12.5px;margin-top:2px">${esc(t.pesan)}</div></div><div class="muted tnum" style="font-size:12px;text-align:right;white-space:nowrap">Cek ${t.cek}<br>Update ${t.upd}</div></div>`;}
+
+/* ============ Daftar kontrak ============ */
+function filtered(){const f=S.filters;const q=f.q.toLowerCase();
+  return K.filter(k=>{const p=evalPush(k),s=statusK(k);
+    if(f.st&&s.st!==f.st)return false; if(f.tahap&&tahapK(k)!==f.tahap)return false; if(f.ku&&p.umum!==f.ku)return false;
+    if(f.pic==='__none'&&k.pic)return false; if(f.pic&&f.pic!=='__none'&&k.pic!==f.pic)return false;
+    if(f.pop&&k.pop!==f.pop)return false; if(f.seg&&k.seg!==f.seg)return false;
+    if(q&&!(k.no+' '+k.pel+' '+k.judul+' '+k.id).toLowerCase().includes(q))return false; return true;});}
+const uniq=a=>[...new Set(a)].filter(Boolean).sort();
+function sel(id,lbl,opts,val){return `<select class="inp" id="${id}" aria-label="${lbl}"><option value="">${lbl}: semua</option>${opts.map(([v,l])=>`<option value="${esc(v)}" ${v===val?'selected':''}>${esc(l)}</option>`).join('')}</select>`;}
+function viewKontrak(){
+  const f=S.filters,rows=filtered();
+  return `<div class="card" style="display:flex;flex-direction:column;gap:12px">
+   <div class="row">
+    <div class="search">${ic('search','s')}<input id="q" placeholder="Cari nomor kontrak, pelanggan, judul…" value="${esc(f.q)}"></div>
+    <a class="btn ton" href="#antrian">${ic('add','s')}Kontrak baru</a>
+    <button class="btn" id="exp">${ic('dl','s')}Export xlsx</button>
+   </div>
+   <div class="row">
+    ${sel('fst','Status',[['OPEN','OPEN'],['CLOSE','CLOSE']],f.st)}
+    ${sel('ftahap','Tahap',TAHAP.map(t=>[t.kode,t.label]),f.tahap)}
+    ${sel('fku','Kendala Umum',RULES.map(r=>[r.v,r.v]),f.ku)}
+    ${sel('fpic','PIC',[...PICS.map(p=>[p,p]),['__none','(Tanpa PIC)']],f.pic)}
+    ${sel('fpop','Populasi',uniq(K.map(k=>k.pop)).map(x=>[x,x]),f.pop)}
+    ${sel('fseg','Segment',uniq(K.map(k=>k.seg)).map(x=>[x,x]),f.seg)}
+    <span class="sp"></span><span class="muted tnum">${rows.length} kontrak</span>
+   </div>
+   <div class="tbl-wrap"><table class="t"><thead><tr><th><input type="checkbox" class="chk" id="selAll" aria-label="Pilih semua"></th><th>No. kontrak / pelanggan</th><th>Tahap</th><th>Kendala Umum (push)</th><th>PIC</th><th>Aging</th><th class="num">Nilai</th><th>Status</th></tr></thead><tbody>
+   ${rows.map(k=>{const p=evalPush(k);return `<tr class="click" data-k="${k.id}"><td><input type="checkbox" class="chk rowchk" data-id="${k.id}" ${S.sel.has(k.id)?'checked':''} aria-label="Pilih ${k.id}"></td>
+     <td><span class="no">${esc(k.no)}</span><span class="sub">${esc(k.pel)} · ${esc(k.judul)}</span></td>
+     <td>${tahapPill(tahapK(k))}${k.bast.length>1?` <span class="pill p-dim">${k.bast.length} BAST</span>`:''}</td>
+     <td>${kuChip(p)}${activeKend(k).length?'':''}</td>
+     <td>${k.pic?esc(k.pic):'<span class="pill p-warn">Tanpa PIC</span>'}</td>
+     <td>${ageChip(agingK(k))}</td><td class="num">${rp(k.nilai)}</td>
+     <td>${statusPill(k)}${k.verif?' <span class="pill p-info">Perlu verifikasi</span>':''}</td></tr>`}).join('')||'<tr><td colspan="8" class="muted" style="text-align:center;padding:24px">Tidak ada kontrak yang cocok dengan filter.</td></tr>'}
+   </tbody></table></div>
+  </div>
+  ${S.sel.size?`<div class="bulk"><b class="tnum">${S.sel.size} dipilih</b><span class="sp"></span><select class="inp" id="bulkPic" aria-label="PIC baru"><option value="">Pilih PIC…</option>${PICS.map(p=>`<option>${p}</option>`).join('')}</select><button class="btn pri sm" id="bulkGo">Atur PIC</button><button class="btn sm" id="bulkClr">Batal</button></div>`:''}`;
+}
+
+/* ============ Detail kontrak ============ */
+function viewDetail(k){
+  const p=evalPush(k),s=statusK(k);
+  const tlist=TAHAP.filter(t=>t.aktif).sort((a,b)=>a.urut-b.urut);
+  return `
+  <div class="row"><a class="btn sm" href="#kontrak">${ic('back','s')}Kontrak</a><span class="sp"></span>
+   ${k.verif?'<button class="btn sm ton" id="verif">'+ic('check','s')+'Tandai sudah diverifikasi</button>':''}
+   <button class="btn sm" id="arsip">Arsipkan</button></div>
+  <div class="card"><div class="row" style="align-items:flex-start">
+   <div style="min-width:0;flex:1 1 380px"><div class="mono" style="font-size:14px;overflow-wrap:anywhere">${esc(k.no)}</div>
+    <div style="font-size:20px;font-weight:600;margin-top:4px">${esc(k.pel)}</div><div class="muted">${esc(k.judul)}</div>
+    <div class="row" style="margin-top:10px">${statusPill(k)} ${tahapPill(tahapK(k))} ${kuChip(p)} ${k.verif?'<span class="pill p-info">Hasil import · perlu verifikasi</span>':''}</div></div>
+   <div style="display:flex;flex-direction:column;gap:8px;min-width:200px">
+    <label class="f">PIC<select class="inp" id="picSel"><option value="">— Tanpa PIC —</option>${PICS.map(x=>`<option ${x===k.pic?'selected':''}>${x}</option>`).join('')}</select></label>
+    <span class="muted" style="font-size:12px">Semua staff boleh meng-update. Update oleh non-PIC tercatat sebagai "bantu".</span></div>
+  </div></div>
+  <div class="grid gd">
+   <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+    <div class="card"><h2>BAST <small>${k.bast.length} BAST${k.lok?` · cakupan ${s.cak}/${k.lok} lokasi`:''}</small><span class="sp"></span><button class="btn sm ton" id="addBast">${ic('add','s')}Tambah BAST parsial</button></h2>
+     ${s.sisa?`<div class="note warn" style="margin-bottom:12px">${ic('warn','s')}<span class="tx">Semua BAST sudah close, tapi masih ada <b>${k.lok-s.cak} lokasi</b> tersisa. Kontrak tetap OPEN sampai BAST lanjutan dibuat.</span></div>`:''}
+     <div style="display:flex;flex-direction:column;gap:12px">
+     ${k.bast.length?k.bast.map(b=>{const cur=tah(b.t);return `<div class="bast">
+       <div class="bast-h"><b>${k.id}-B${b.n}</b>${bastClose(b)?'<span class="pill p-ok">CLOSE</span>':'<span class="pill p-dim">OPEN</span>'}${b.s>1?`<span class="pill p-warn">Siklus ${b.s} (reopen)</span>`:''}<span class="sp"></span>${ageChip(b.hari)}<span class="muted" style="font-size:12px">di tahap ini · batas ${cur.batas} hr</span></div>
+       <div class="stepper" role="group" aria-label="Tahap BAST ${b.n}">${tlist.map(t=>`<button class="step ${t.penutup?'closer':''} ${t.urut<cur.urut?'done':''} ${t.kode===b.t?'cur':''}" data-b="${b.n}" data-t="${t.kode}"><span class="u">${t.urut}</span>${esc(t.label)}</button>`).join('')}</div>
+       <dl class="kv"><dt>Cakupan order</dt><dd class="mono">${esc(b.order)}</dd><dt>Cakupan lokasi</dt><dd>${b.cak??'<span class="muted">semua (tidak diisi)</span>'}</dd><dt>No. dok BAST</dt><dd class="mono">${esc(b.dok)||'<span class="muted">—</span>'}</dd><dt>Keterangan</dt><dd>${esc(b.ket)}</dd></dl>
+      </div>`}).join(''):`<div class="note info">${ic('doc','s')}<span class="tx">Kontrak ini belum punya BAST, sehingga di sheet unit tampil <b class="mono">BELUM DIPROSES</b>. Tambahkan BAST untuk mulai memproses.</span></div>`}
+     </div></div>
+    <div class="card"><h2>Kendala <small>${activeKend(k).length} aktif</small><span class="sp"></span><button class="btn sm ton" id="addKend" ${k.bast.length?'':'disabled'}>${ic('flag','s')}Buka kendala</button></h2>
+     <div style="display:flex;flex-direction:column;gap:8px">${k.kend.length?k.kend.map(x=>{const r=KREF.find(y=>y.kode===x.j);return `<div class="kend ${x.st==='AKTIF'?'':'done'}"><div style="flex:1;min-width:0"><div class="row"><b>${esc(r.label)}</b><span class="muted" style="font-size:12px">B${x.b} · ${x.st==='AKTIF'?`aktif ${x.hari} hari`:'selesai'} · oleh ${esc(x.oleh)}</span>${x.hari>14&&x.st==='AKTIF'?'<span class="pill p-crit">&gt; 14 hari</span>':''}${r.reopen?'<span class="pill p-dim">memicu reopen</span>':''}</div><div style="margin-top:4px">${esc(x.ket)}</div></div>${x.st==='AKTIF'?`<button class="btn sm" data-tutup="${x.id}">Selesaikan</button>`:''}</div>`}).join(''):'<span class="muted">Tidak ada kendala.</span>'}</div></div>
+    <div class="card"><h2>SO / MI <small>order internal</small><span class="sp"></span><button class="btn sm">${ic('add','s')}Tambah</button></h2>
+     <div class="tbl-wrap"><table class="t"><thead><tr><th>Jenis</th><th>No. order</th><th>Layanan</th><th>Pekerjaan</th><th class="num">Lokasi</th></tr></thead><tbody>
+     ${k.orders.map(o=>`<tr><td><span class="pill p-dim">${o.j}</span></td><td class="no">${esc(o.no)}</td><td>${esc(o.lay)}</td><td>${esc(o.pek)}</td><td class="num">${o.lok}</td></tr>`).join('')||'<tr><td colspan="5" class="muted">Belum ada SO/MI.</td></tr>'}</tbody></table></div></div>
+   </div>
+   <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+    <div class="card"><h2>Pratinjau di sheet unit</h2>
+     <div class="push">
+      <div class="pushrow"><span class="k">KENDALA_UMUM</span><span class="v">${p.umum?esc(p.umum):'<span style="color:var(--crit)">(tidak diubah, alarm TANPA_ATURAN)</span>'}</span></div>
+      <div class="pushrow"><span class="k">KENDALA_DETIL</span><span class="v">${esc(p.detil)||'—'}</span></div>
+      <div class="pushrow"><span class="k">TAHAP</span><span class="v">${tahapK(k)?esc(tahLabel(tahapK(k))):'—'}</span></div>
+      <div class="pushrow"><span class="k">PARSIAL</span><span class="v">${esc(parsialTxt(k))}</span></div>
+      <div class="pushrow"><span class="k">PIC</span><span class="v">${esc(k.pic)||'—'}</span></div>
+     </div>
+     <div class="muted" style="font-size:12px;margin-top:10px">Cocok dengan aturan Nilai Push <b>#${p.i+1}</b> <span class="mono">${esc(p.r?.k??'')}</span>. ${s.st==='CLOSE'?'Kontrak CLOSE: setelah nilai penutup tertulis, SKM berhenti menulis.':'Ditulis ke 2 target pada sinkron berikutnya.'}</div></div>
+    <div class="card"><h2>Data kontrak <span class="sp"></span><button class="btn sm">Ubah</button></h2>
+     <dl class="kv"><dt>ID</dt><dd class="mono">${k.id}</dd><dt>Jenis dok</dt><dd>${esc(k.jenis)}</dd><dt>Tahun project</dt><dd>${k.tahun}</dd><dt>Populasi</dt><dd>${esc(k.pop)}</dd><dt>Segment</dt><dd>${esc(k.seg)}</dd><dt>Nilai</dt><dd class="tnum">${rp(k.nilai)}</dd><dt>Jumlah lokasi</dt><dd>${k.lok??'<span class="muted">tidak diisi</span>'}</dd><dt>Sumber</dt><dd>${esc(k.sumber)}</dd><dt>Alias</dt><dd class="mono" style="font-size:12px">${k.id==='K-000001'?'TEL 0317-0016/P8/LG.270/DES-A2027000/2017':'<span class="muted">—</span>'}</dd></dl></div>
+    <div class="card"><h2>Riwayat perubahan</h2><div class="tl">
+     ${(k.hist||defaultHist(k)).map(e=>`<div class="e"><span class="w">${e[0]}</span><span>${e[1]}</span></div>`).join('')}</div></div>
+    <div class="card"><h2>Riwayat di sheet unit</h2><div class="tbl-wrap"><table class="t"><thead><tr><th>Waktu</th><th>Jenis</th><th>Sheet · baris</th><th>Nilai lama → baru</th></tr></thead><tbody>
+     ${k.id==='K-000005'?`<tr><td class="tnum">15 Nov 09:00</td><td><span class="pill p-warn">DIUBAH_LUAR</span></td><td>Billcom · NOV 2026 · 120</td><td class="mono" style="font-size:11.5px">SIRKULIR DOKUMEN → BAST DONE<br><span class="muted">antara 08:45–09:00 · file terakhir diubah: Rina</span></td></tr>`:''}
+     <tr><td class="tnum">14 Nov 15:00</td><td><span class="pill p-acc">TULIS</span></td><td>Mansol · DATA TELKOMSAT · 22</td><td class="mono" style="font-size:11.5px">— → ${esc(p.umum)}</td></tr>
+     <tr><td class="tnum">14 Nov 15:00</td><td><span class="pill p-acc">TULIS</span></td><td>Billcom · NOV 2026 · 120</td><td class="mono" style="font-size:11.5px">DRAFTING DOKUMEN → ${esc(p.umum)}</td></tr>
+     </tbody></table></div></div>
+   </div>
+  </div>`;
+}
+function defaultHist(k){const b=k.bast[0];return [
+  ['15 Nov 08:51',`<b>${esc(k.pic||'omPik')}</b> memindahkan B1 ke tahap <b>${esc(b?tahLabel(b.t):'—')}</b>`],
+  ['14 Nov 16:20','<b>omPik</b> mengatur PIC menjadi <b>'+esc(k.pic||'—')+'</b>'],
+  ['14 Nov 10:05',`Kontrak dibuat dari <b>${k.sumber==='IMPORT'?'import sheet FF lama':'Antrian (Billcom)'}</b>`]];}
+
+/* ============ Perlu Perhatian ============ */
+function perhatianItems(){
+  const it=[];
+  K.forEach(k=>{k.bast.forEach(b=>{if(!bastClose(b)&&b.hari>tah(b.t).batas)it.push({g:'aging',k,txt:`${k.id}-B${b.n} di <b>${esc(tahLabel(b.t))}</b> sudah ${b.hari} hari (batas ${tah(b.t).batas})`});});
+    activeKend(k).forEach(x=>{if(x.hari>14)it.push({g:'kend',k,txt:`${esc(KREF.find(r=>r.kode===x.j).label)} aktif ${x.hari} hari: ${esc(x.ket)}`});});
+    if(!k.pic&&statusK(k).st==='OPEN')it.push({g:'pic',k,txt:'Kontrak OPEN tanpa PIC'});
+    if(k.verif)it.push({g:'verif',k,txt:'Data hasil import belum diverifikasi'});});
+  it.push({g:'sync',t:TARGETS[0],txt:'Tab baru "DES 2026" terdeteksi. Target hanya berjalan mode Cek saja sampai dikonfirmasi.'});
+  it.push({g:'sync',k:K.find(k=>k.id==='K-000005'),txt:'Sel KENDALA UMUM di Billcom baris 120 diubah di luar SKM ("SIRKULIR DOKUMEN" → "BAST DONE"). Tidak ditimpa.'});
+  return it;
+}
+function viewPerhatian(){
+  const it=perhatianItems();
+  const G=[['aging','BAST melewati batas aging tahap','var(--stale)'],['kend','Kendala aktif lebih dari 14 hari','var(--crit)'],['pic','Kontrak tanpa PIC','var(--warn)'],['verif','Data import belum diverifikasi','var(--info)'],['sync','Target error / sel diubah di luar aplikasi','var(--warn)']];
+  return `<div class="grid g2">${G.map(([g,l,c])=>{const xs=it.filter(x=>x.g===g);return `<div class="card"><h2><span style="width:10px;height:10px;border-radius:3px;background:${c};display:inline-block"></span>${l}<span class="sp"></span><span class="pill p-dim tnum">${xs.length}</span></h2>
+   <div style="display:flex;flex-direction:column;gap:6px">${xs.map(x=>`<a class="sync" style="text-decoration:none;color:inherit" href="${x.k?'#kontrak-'+x.k.id:'#gsheet'}"><div style="min-width:0;flex:1">${x.k?`<span class="mono" style="font-size:12px">${esc(x.k.no)}</span> <span class="muted">· ${esc(x.k.pel)}${x.k.pic?' · PIC '+esc(x.k.pic):''}</span>`:`<b>${esc(x.t.nama)}</b>`}<div style="margin-top:3px;font-size:13px">${x.txt}</div></div></a>`).join('')||'<span class="muted">Tidak ada. Bagus.</span>'}</div></div>`}).join('')}</div>`;
+}
+
+/* ============ Antrian ============ */
+function viewAntrian(){
+  const baru=ANTRIAN.filter(a=>a.st==='BARU'),done=ANTRIAN.filter(a=>a.st!=='BARU');
+  return `<div class="note info">${ic('inbox','s')}<span class="tx">Nomor kontrak di sheet unit yang belum dikenal SKM masuk ke sini sekali per nomor. Data pelanggan/judul/nilai diambil dari kolom BACA di sheet unit.</span></div>
+  <div class="card"><h2>Menunggu diproses <small>${baru.length}</small></h2>
+   <div class="tbl-wrap"><table class="t"><thead><tr><th>No. kontrak (asli di sheet)</th><th>Sumber</th><th>Prefill</th><th class="num">Nilai</th><th></th></tr></thead><tbody>
+   ${baru.map(a=>`<tr><td><span class="no">${esc(a.no)}</span>${a.mirip?`<span class="sub" style="color:var(--warn)">Mirip ${a.mirip} (beda spasi/titik) — mungkin perlu dialiaskan</span>`:''}<span class="sub">normKey: ${esc(normKey(a.no))}</span></td>
+     <td>${esc(TARGETS.find(t=>t.id===a.t).nama)}<span class="sub">${esc(a.tab)} · baris ${a.baris} · ${a.hari?a.hari+' hari lalu':'hari ini'}</span></td>
+     <td>${esc(a.pel)||'<span class="muted">—</span>'}<span class="sub">${esc(a.judul)}</span></td><td class="num">${rp(a.nilai)}</td>
+     <td><div class="row" style="flex-wrap:nowrap;justify-content:flex-end"><button class="btn sm pri" data-daftar="${a.id}">Daftarkan</button><button class="btn sm" data-alias="${a.id}">Aliaskan</button><button class="btn sm" data-abai="${a.id}">Abaikan</button></div></td></tr>`).join('')||'<tr><td colspan="5" class="muted" style="text-align:center;padding:20px">Antrian kosong.</td></tr>'}
+   </tbody></table></div></div>
+  ${done.length?`<div class="card"><h2>Sudah diproses</h2><div class="tbl-wrap"><table class="t"><tbody>${done.map(a=>`<tr><td class="no">${esc(a.no)}</td><td><span class="pill ${a.st==='DIDAFTARKAN'?'p-ok':a.st==='DIALIASKAN'?'p-info':'p-dim'}">${a.st}</span></td><td class="muted">${esc(a.catatan||'')}</td><td class="muted">omPik · baru saja</td></tr>`).join('')}</tbody></table></div></div>`:''}`;
+}
+
+/* ============ Google Sheet ============ */
+function cekTarget(t){
+  const rows=SHEETROWS[t.id],out=[],alarms=[],antri=[];
+  rows.forEach(r=>{
+    const nk=normKey(r.raw);
+    if(/\/\s|\s\//.test(r.raw)&&r.raw.split(/\s\/\s/).length>1){alarms.push({j:'MULTI_NOMOR',b:r.baris,txt:`Sel berisi lebih dari satu nomor: "${r.raw}". Tidak ditulis.`});return;}
+    const k=K.find(x=>normKey(x.no)===nk)||(nk===normKey('TEL 0317-0016/P8/LG.270/DES-A2027000/2017')?K[0]:null);
+    if(!k){antri.push({b:r.baris,no:r.raw});return;}
+    const p=evalPush(k),s=statusK(k);
+    if(r.formula){alarms.push({j:'FORMULA',b:r.baris,txt:`Sel tujuan berisi formula (${r.now}). Tidak ditimpa.`});return;}
+    if(s.st==='CLOSE'&&r.closedWritten){out.push({b:r.baris,k,now:r.now,next:r.now,act:'SELESAI'});return;}
+    if(r.jejak&&r.now!==r.jejak){
+      if(p.umum===r.jejak){out.push({b:r.baris,k,now:r.now,next:p.umum,act:'DIUBAH_LUAR'});alarms.push({j:'DIUBAH_LUAR',b:r.baris,txt:`${k.no}: diubah di luar SKM ("${r.jejak}" → "${r.now}"). Tidak ditimpa, notifikasi ke PIC ${k.pic} & admin.`});return;}
+      out.push({b:r.baris,k,now:r.now,next:p.umum,act:'TULIS',why:'Status di SKM berubah, update FF menang'});return;}
+    if(r.now===p.umum){out.push({b:r.baris,k,now:r.now,next:p.umum,act:'SAMA'});return;}
+    out.push({b:r.baris,k,now:r.now,next:p.umum,act:'TULIS'});
+  });
+  return {out,alarms,antri};
+}
+function viewGsheet(){
+  return `<div class="row"><span class="muted">Akun FF harus punya akses <b>Editor</b> di setiap sheet target. Yang ditulis hanya kolom milik FF.</span><span class="sp"></span><a class="btn pri" href="#wizard">${ic('add','s')}Tambah target</a></div>
+  ${TARGETS.map(t=>{const c=S.cek[t.id];const res=c?cekTarget(t):null;return `<div class="card">
+   <h2>${esc(t.nama)} <span class="pill ${t.st==='OK'?'p-ok':'p-warn'}">${t.st}</span><span class="sp"></span>
+    <button class="btn sm" data-cek="${t.id}">${ic('eye','s')}Cek saja</button>
+    <button class="btn sm pri" data-upd="${t.id}" ${t.mode==='TERBARU'&&t.baru?'disabled title="Konfirmasi tab baru dulu"':''}>${ic('up2','s')}Update ke GSheet</button></h2>
+   <div class="grid g3" style="gap:10px 20px;font-size:13px">
+    <dl class="kv"><dt>Mode tab</dt><dd>${t.mode==='TERBARU'?`TERBARU · pola <span class="mono">${t.pola}</span>`:'FIXED'}</dd><dt>Tab dipakai</dt><dd class="mono">${esc(t.tab)}</dd><dt>Ukuran</dt><dd>${t.size}${parseInt(t.size)>10?' · baca per kolom':''}</dd></dl>
+    <dl class="kv"><dt>Cek terakhir</dt><dd class="tnum">${t.cek}</dd><dt>Update terakhir</dt><dd class="tnum">${t.upd}</dd><dt>Pemilik</dt><dd>${esc(t.owner)}</dd></dl>
+    <dl class="kv">${t.kolom.map(([f,a,h])=>`<dt class="mono" style="font-size:11.5px">${f}</dt><dd><span class="pill ${a==='TULIS'?'p-acc':'p-dim'}" style="font-size:11px">${a}</span> ${esc(h)}</dd>`).join('')}</dl>
+   </div>
+   ${t.baru?`<div class="note warn" style="margin-top:12px">${ic('warn','s')}<span class="tx" style="flex:1"><b>TAB_BERGANTI</b> · Tab baru <b class="mono">${t.baru}</b> terdeteksi (sebelumnya <span class="mono">${t.tab}</span>). Nilai yang sudah ada di tab baru akan dianggap titik awal, tanpa notifikasi.</span><button class="btn sm pri" data-tabbaru="${t.id}">Pakai tab baru</button></div>`:''}
+   ${res?`<div style="margin-top:14px;display:flex;flex-direction:column;gap:10px">
+     <div class="row"><b>Hasil Cek saja</b><span class="muted">· tidak ada yang ditulis</span><span class="sp"></span>
+      <span class="pill p-acc">${res.out.filter(x=>x.act==='TULIS').length} sel akan ditulis</span><span class="pill p-warn">${res.alarms.length} alarm</span><span class="pill p-info">${res.antri.length} ke Antrian</span></div>
+     <div class="tbl-wrap"><table class="t"><thead><tr><th class="num">Baris</th><th>Kontrak</th><th>Nilai sekarang</th><th>Nilai SKM</th><th>Tindakan</th></tr></thead><tbody>
+     ${res.out.map(x=>`<tr><td class="num">${x.b}</td><td class="no">${esc(x.k.no)}</td><td class="mono" style="font-size:11.5px">${esc(x.now)||'<span class="dim">(kosong)</span>'}</td><td class="mono" style="font-size:11.5px">${esc(x.next)}</td>
+       <td>${x.act==='TULIS'?'<span class="pill p-acc">Tulis</span>'+(x.why?` <span class="muted" style="font-size:12px">${x.why}</span>`:''):x.act==='SAMA'?'<span class="pill p-dim">Sudah sama</span>':x.act==='SELESAI'?'<span class="pill p-ok">CLOSE · tidak ditulis lagi</span>':'<span class="pill p-warn">Diubah luar · tidak ditimpa</span>'}</td></tr>`).join('')}
+     </tbody></table></div>
+     ${res.alarms.map(a=>`<div class="note ${a.j==='DIUBAH_LUAR'?'warn':'crit'}">${ic('warn','s')}<span class="tx"><b>${a.j}</b> · baris ${a.b} · ${esc(a.txt)}</span></div>`).join('')}
+     ${res.antri.map(a=>`<div class="note info">${ic('inbox','s')}<span class="tx">Baris ${a.b}: <span class="mono">${esc(a.no)}</span> belum terdaftar → masuk Antrian.</span></div>`).join('')}
+   </div>`:''}
+  </div>`}).join('')}
+  <div class="card"><h2>Update log</h2><div class="tbl-wrap"><table class="t"><thead><tr><th>Waktu</th><th>Oleh</th><th>Jenis</th><th>Target · tab</th><th class="num">Baris cocok</th><th class="num">Sel ditulis</th><th class="num">Gagal</th><th class="num">Alarm</th></tr></thead><tbody>
+   <tr><td class="tnum">15 Nov 09:02</td><td>trigger</td><td><span class="pill p-acc">UPDATE</span></td><td>Mansol · DATA TELKOMSAT</td><td class="num">14</td><td class="num">3</td><td class="num">0</td><td class="num">0</td></tr>
+   <tr><td class="tnum">15 Nov 09:00</td><td>trigger</td><td><span class="pill p-dim">CEK</span></td><td>Billcom · NOV 2026</td><td class="num">212</td><td class="num">0</td><td class="num">0</td><td class="num">4</td></tr>
+   <tr><td class="tnum">15 Nov 08:45</td><td>ompik</td><td><span class="pill p-acc">UPDATE</span></td><td>Billcom · NOV 2026</td><td class="num">212</td><td class="num">18</td><td class="num">0</td><td class="num">2</td></tr>
+   <tr><td class="tnum">15 Nov 03:00</td><td>trigger</td><td><span class="pill p-crit">UPDATE</span></td><td>Billcom · NOV 2026</td><td class="num">—</td><td class="num">0</td><td class="num">1</td><td class="num">0</td></tr>
+  </tbody></table></div><div class="muted" style="font-size:12px;margin-top:8px">Baris 03:00 dibatalkan: urutan baris berubah saat akan ditulis (pemilik sheet mengurutkan ulang). Dicoba lagi di siklus berikutnya.</div></div>`;
+}
+function viewWizard(){
+  const st=S.wiz, L=['Tempel URL','Tab','Petakan header','Cek saja','Aktifkan'];
+  const hdrs=['NO','NO KONTRAK','NAMA CUSTOMER','NAMA LAYANAN','NILAI KONTRAK','PERIODE TAGIH','STATUS BAST FF','KETERANGAN FF','TGL UPDATE FF','AM','SEGMENT'];
+  const fields=[['Kolom kunci (no. kontrak)','KUNCI','NO KONTRAK'],['KENDALA_UMUM','TULIS','STATUS BAST FF'],['KENDALA_DETIL','TULIS','KETERANGAN FF'],['TGL_UPDATE','TULIS','TGL UPDATE FF'],['TAHAP','TULIS',''],['PIC','TULIS',''],['PELANGGAN','BACA','NAMA CUSTOMER'],['JUDUL','BACA','NAMA LAYANAN'],['NILAI','BACA','NILAI KONTRAK'],['SEGMENT','BACA','SEGMENT']];
+  let body='';
+  if(st===1) body=`<label class="f">URL Google Sheet<input class="inp" id="wurl" value="https://docs.google.com/spreadsheets/d/1YtV-hUyijt-dDQCHUtDNrbswtIq_2caWx2bRsnfYaO8/edit"></label>
+   <label class="f">Nama target<input class="inp" value="Billcom Telkomsat 2026"></label>
+   <div class="note ok">${ic('check','s')}<span class="tx">File ditemukan: <b>Billcom Telkomsat 2026</b> · 12,3 MB · akun FF punya akses <b>Editor</b>.</span></div>`;
+  if(st===2) body=`<div class="row"><label class="row" style="gap:6px"><input type="radio" name="wm" value="FIXED" ${S.wizMode==='FIXED'?'checked':''}> Tab tetap (FIXED)</label><label class="row" style="gap:6px"><input type="radio" name="wm" value="TERBARU" ${S.wizMode==='TERBARU'?'checked':''}> Tab berganti tiap bulan (TERBARU)</label></div>
+   ${S.wizMode==='TERBARU'?`<div class="grid g2"><label class="f">Pola nama tab<input class="inp mono" value="MMM YYYY"></label><label class="f">Cara menentukan terbaru<select class="inp"><option>TANGGAL_DI_NAMA (baca bulan dari nama tab)</option><option>POSISI_TERAKHIR (tab paling kanan)</option></select></label></div>
+   <div><div class="muted" style="font-size:12px;margin-bottom:6px">Pratinjau tab yang cocok (12 dari 15 tab)</div><div class="row">${['JAN 2026','FEB 2026','MAR 2026','…','SEP 2026','OKT 2026'].map(x=>`<span class="pill p-dim mono">${x}</span>`).join('')}<span class="pill p-acc mono">NOV 2026 · terbaru</span></div>
+   <div class="muted" style="font-size:12px;margin-top:8px">Tidak cocok: <span class="mono">REKAP</span>, <span class="mono">REF</span>, <span class="mono">PIVOT</span></div></div>`:`<label class="f">Pilih tab<select class="inp"><option>DATA TELKOMSAT</option><option>REKAP</option></select></label>`}`;
+  if(st===3) body=`<div class="muted" style="font-size:13px">Header terdeteksi di <b>baris 3</b> tab <span class="mono">NOV 2026</span>. Pilih header untuk setiap field; kosongkan field yang tidak dipakai. Kolom dicari berdasarkan judul, jadi aman bila pemilik menyisipkan kolom.</div>
+   <div class="tbl-wrap"><table class="t"><thead><tr><th>Field SKM</th><th>Arah</th><th>Header di sheet</th></tr></thead><tbody>
+   ${fields.map(([f,a,h])=>`<tr><td class="mono" style="font-size:12px">${f}</td><td><span class="pill ${a==='TULIS'?'p-acc':a==='KUNCI'?'p-warn':'p-dim'}">${a}</span></td><td><select class="inp" style="min-width:200px"><option value="">— tidak dipakai —</option>${hdrs.map(x=>`<option ${x===h?'selected':''}>${x}</option>`).join('')}</select></td></tr>`).join('')}
+   </tbody></table></div>
+   <div class="row"><label class="f" style="flex:1 1 200px">Alias header kunci (pisah koma)<input class="inp" value="NO KONTRAK, NO KL, NOMOR KONTRAK"></label><label class="f" style="flex:1 1 160px">Format tanggal<input class="inp mono" value="dd/MM/yyyy"></label></div>`;
+  if(st===4) body=`<div class="note info">${ic('eye','s')}<span class="tx">Cek saja membaca sheet dan menunjukkan apa yang akan ditulis, <b>tanpa menulis apa pun</b>.</span></div>
+   <div class="row"><span class="pill p-dim">212 baris dibaca</span><span class="pill p-ok">188 cocok</span><span class="pill p-acc">96 sel akan ditulis</span><span class="pill p-warn">3 alarm</span><span class="pill p-info">21 ke Antrian</span></div>
+   <div class="note crit">${ic('warn','s')}<span class="tx"><b>FORMULA</b> · 2 sel tujuan berisi formula, tidak akan ditimpa.</span></div>
+   <div class="note crit">${ic('warn','s')}<span class="tx"><b>MULTI_NOMOR</b> · 1 sel berisi lebih dari satu nomor kontrak.</span></div>
+   <div class="note ok">${ic('check','s')}<span class="tx">Tab pertama kali dipakai: nilai yang ada dijadikan titik awal, tidak memunculkan notifikasi DIUBAH_LUAR.</span></div>`;
+  if(st===5) body=`<div class="note ok">${ic('check','s')}<span class="tx">Konfigurasi siap. Setelah diaktifkan, target ikut sinkron terjadwal tiap 15 menit (hanya bila ada perubahan).</span></div>
+   <label class="row" style="gap:8px"><input type="checkbox" class="chk" checked> Jalankan <b>Update ke GSheet</b> sekarang juga</label>`;
+  return `<div class="card" style="display:flex;flex-direction:column;gap:16px;max-width:880px">
+   <div class="wiz-steps">${L.map((l,i)=>`<span class="${i+1===st?'on':i+1<st?'done':''}"><i>${i+1<st?'✓':i+1}</i>${l}</span>`).join('')}</div>
+   ${body}
+   <div class="row"><a class="btn" href="#gsheet">Batal</a><span class="sp"></span>${st>1?'<button class="btn" id="wprev">Kembali</button>':''}<button class="btn pri" id="wnext">${st===4?'Lanjut':st===5?'Aktifkan target':'Lanjut'}</button></div></div>`;
+}
+
+/* ============ Pengaturan ============ */
+function viewSet(){
+  const T=[['tahap','Tahap'],['kendala','Kendala'],['push','Nilai Push'],['ref','Referensi'],['role','Role & izin'],['users','Users'],['config','Config'],['import','Import'],['backup','Backup']];
+  const tab=S.setTab; let b='';
+  if(tab==='tahap'){const ts=TAHAP.slice().sort((a,b)=>a.urut-b.urut);
+    b=`<div class="card"><h2>Tahapan BAST <small>urutan menentukan maju/mundur</small><span class="sp"></span><button class="btn sm pri" id="addTahap">${ic('add','s')}Tambah tahap</button></h2>
+    <div class="tbl-wrap"><table class="t"><thead><tr><th>Urutan</th><th>Kode</th><th>Label</th><th>Penutup</th><th class="num">Batas aging</th><th class="num">BAST open</th><th>Aktif</th></tr></thead><tbody>
+    ${ts.map((t,i)=>{const n=K.reduce((a,k)=>a+k.bast.filter(x=>x.t===t.kode&&!bastClose(x)).length,0);return `<tr><td><div class="row" style="flex-wrap:nowrap;gap:2px"><span class="tnum" style="width:18px">${t.urut}</span><button class="iconbtn" style="width:28px;height:28px" data-tup="${t.kode}" ${i===0?'disabled':''} aria-label="Naik">${ic('up','s')}</button><button class="iconbtn" style="width:28px;height:28px" data-tdn="${t.kode}" ${i===ts.length-1?'disabled':''} aria-label="Turun">${ic('down','s')}</button></div></td>
+     <td class="mono" style="font-size:12px">${t.kode}</td><td><input class="inp" value="${esc(t.label)}" style="width:100%;min-width:160px"></td><td>${t.penutup?'<span class="pill p-ok">Penutup</span>':''}</td><td class="num"><input class="inp tnum" value="${t.batas}" style="width:60px;text-align:right"> hr</td><td class="num">${n}</td><td><button class="toggle ${t.aktif?'on':''}" data-tact="${t.kode}" aria-label="Aktif"></button></td></tr>`}).join('')}
+    </tbody></table></div>
+    <div class="muted" style="font-size:12px;margin-top:8px">Kode tidak bisa diubah setelah dibuat. Menonaktifkan tahap ditolak selama masih ada BAST OPEN di tahap itu. Harus ada tepat satu tahap penutup aktif.</div></div>`;}
+  if(tab==='kendala') b=`<div class="card"><h2>Jenis kendala<span class="sp"></span><button class="btn sm pri">${ic('add','s')}Tambah jenis</button></h2><div class="tbl-wrap"><table class="t"><thead><tr><th>Kode</th><th>Label</th><th>Wajib keterangan</th><th>Memicu reopen</th><th class="num">Aktif sekarang</th><th>Aktif</th></tr></thead><tbody>
+    ${KREF.map(r=>`<tr><td class="mono" style="font-size:12px">${r.kode}</td><td><input class="inp" value="${esc(r.label)}"></td><td><input type="checkbox" class="chk" ${r.wajib?'checked':''}></td><td><input type="checkbox" class="chk" ${r.reopen?'checked':''}></td><td class="num">${K.reduce((a,k)=>a+activeKend(k).filter(x=>x.j===r.kode).length,0)}</td><td><button class="toggle ${r.aktif?'on':''}"></button></td></tr>`).join('')}</tbody></table></div>
+    <div class="muted" style="font-size:12px;margin-top:8px">Jenis lama hanya dinonaktifkan, tidak dihapus. Kendala dengan "memicu reopen" yang dibuka pada BAST close akan membuka ulang BAST (siklus +1, kembali ke tahap ${CONFIG[2][1]}).</div></div>`;
+  if(tab==='push'){const cnt=RULES.map(()=>0);K.forEach(k=>{const p=evalPush(k);if(p.i>=0)cnt[p.i]++;});
+    const unc=[...TAHAP.filter(t=>t.aktif&&!t.penutup&&!RULES.some(r=>r.aktif&&r.k==='TAHAP:'+t.kode)).map(t=>({tipe:'tahap',kode:t.kode,label:t.label})),...(RULES.some(r=>r.aktif&&r.k==='KENDALA:*')?[]:KREF.filter(x=>x.aktif&&!RULES.some(r=>r.aktif&&r.k==='KENDALA:'+x.kode)).map(x=>({tipe:'kendala',kode:x.kode,label:x.label})))];
+    b=`${unc.length?unc.map(u=>`<div class="note warn">${ic('warn','s')}<span class="tx" style="flex:1">Tahap <b>${esc(u.label)}</b> (<span class="mono">${u.kode}</span>) belum tercakup aturan mana pun. Kontrak di tahap ini tidak akan di-update di sheet unit (alarm TANPA_ATURAN).</span><button class="btn sm pri" data-mkrule="${u.kode}">Buat aturan</button></div>`).join(''):`<div class="note ok">${ic('check','s')}<span class="tx">Semua tahap dan kendala aktif sudah tercakup aturan.</span></div>`}
+    <div class="card"><h2>Nilai Push <small>dibaca dari atas, aturan pertama yang cocok dipakai</small><span class="sp"></span><button class="btn sm">${ic('add','s')}Tambah aturan</button></h2>
+    <div class="tbl-wrap"><table class="t"><thead><tr><th>#</th><th>Kondisi</th><th>Kendala Umum (teks di sheet unit)</th><th class="num">Kontrak terkena</th><th>Aktif</th></tr></thead><tbody>
+    ${RULES.map((r,i)=>`<tr><td><div class="row" style="flex-wrap:nowrap;gap:2px"><span class="tnum" style="width:20px">${i+1}</span><button class="iconbtn" style="width:28px;height:28px" data-rup="${i}" ${i===0?'disabled':''} aria-label="Naik">${ic('up','s')}</button><button class="iconbtn" style="width:28px;height:28px" data-rdn="${i}" ${i===RULES.length-1?'disabled':''} aria-label="Turun">${ic('down','s')}</button></div></td>
+     <td><span class="ku p-dim">${esc(r.k)}</span></td><td><input class="inp mono" data-rv="${i}" value="${esc(r.v)}" style="width:100%;min-width:220px;font-size:12.5px"></td><td class="num">${cnt[i]?`<b>${cnt[i]}</b>`:'<span class="dim">0</span>'}</td><td><button class="toggle ${r.aktif?'on':''}" data-ract="${i}"></button></td></tr>`).join('')}
+    </tbody></table></div>
+    <div class="muted" style="font-size:12px;margin-top:8px">Coba ubah urutan atau nonaktifkan aturan: kolom "Kontrak terkena" dihitung ulang langsung. Setelah disimpan, sinkron berikutnya menyeragamkan semua sheet.</div></div>`;}
+  if(tab==='ref') b=`<div class="grid g3">${[['Jenis dokumen',['KL','WO','SPK','PO','Nota Pesanan','Surat Pesanan']],['Populasi',['TREG','SDA','PRM','DIRECT']],['Segment',['LBCS','GOS','ENS','OLOS']]].map(([l,xs])=>`<div class="card"><h2>${l}<span class="sp"></span><button class="btn sm">${ic('add','s')}</button></h2><div style="display:flex;flex-direction:column;gap:6px">${xs.map(x=>`<div class="row" style="flex-wrap:nowrap"><span class="mono" style="flex:1">${x}</span><button class="toggle on"></button></div>`).join('')}</div></div>`).join('')}</div>`;
+  if(tab==='role') b=`<div class="card"><h2>Role &amp; izin <small>draft §6, bisa diubah tanpa ubah kode</small><span class="sp"></span><button class="btn sm">${ic('add','s')}Role baru</button></h2><div class="tbl-wrap"><table class="t matrix"><thead><tr><th>Izin</th>${Object.keys(ROLES).map(r=>`<th>${r}</th>`).join('')}</tr></thead><tbody>
+    ${PERMS.map(p=>`<tr><td class="mono" style="font-size:12px">${p}</td>${Object.keys(ROLES).map(r=>`<td><input type="checkbox" class="chk" ${ROLES[r].includes(p)?'checked':''} ${r==='ADMIN'&&p==='user.kelola'?'disabled title="Minimal harus ada satu admin dengan user.kelola"':''}></td>`).join('')}</tr>`).join('')}</tbody></table></div></div>`;
+  if(tab==='users') b=`<div class="card"><h2>Users<span class="sp"></span><button class="btn sm pri">${ic('add','s')}Tambah user</button></h2><div class="tbl-wrap"><table class="t"><thead><tr><th>Username</th><th>Nama</th><th>Alias PIC</th><th>Role</th><th>Status</th><th>Login terakhir</th><th></th></tr></thead><tbody>
+    ${USERS.map(u=>`<tr><td class="mono">${u.u}</td><td>${esc(u.nama)}</td><td>${esc(u.alias)||'<span class="dim">—</span>'}</td><td><span class="pill ${u.role==='ADMIN'?'p-acc':'p-dim'}">${u.role}</span></td><td>${u.ganti?'<span class="pill p-warn">Wajib ganti password</span>':'<span class="pill p-ok">Aktif</span>'}</td><td class="tnum muted">${u.last}</td><td><button class="btn sm">Reset password</button></td></tr>`).join('')}</tbody></table></div></div>`;
+  if(tab==='config') b=`<div class="card"><h2>Config</h2><div class="tbl-wrap"><table class="t"><thead><tr><th>Key</th><th>Nilai</th></tr></thead><tbody>${CONFIG.map(([k,v])=>`<tr><td class="mono" style="font-size:12px">${k}</td><td><input class="inp ${/^\d|TRUE|,/.test(v)?'mono':''}" value="${esc(v)}" ${k==='SKEMA_VERSI'?'disabled':''}></td></tr>`).join('')}</tbody></table></div>
+    <div class="muted" style="font-size:12px;margin-top:8px"><span class="mono">KENDALA_BATAS_HARI</span> adalah usulan tambahan (spec menyebut 14 hari tetap di §5.6).</div></div>`;
+  if(tab==='import'){const rows=[['TEL.0317-0016/…/2017','BANK PERMATA','Edo','BAST PARSIAL','BAST REVISI','KOMPULIR · parsial · kendala REV_DOKUMEN','REVISI DOKUMEN'],['TEL.0719-0488/…/2020','BANK DANAMON INDONESIA Tbk','Unggul','KOMPULIR EVIDENCE','BAST ON REVIEW','REVIEW_CUST','DRAFT REVIEW CUSTOMER'],['TEL.0219-0003/…/2019','PT HEXINDO ADI PERKASA','Baim','KOMPULIR EVIDENCE','KOMPULIR EVIDEN','KOMPULIR','KOMPULIR EVIDEN'],['TEL.0418-0152/…/2018','PT Wananugraha Bima Lestari','Alif','KOMPULIR EVIDENCE','BAST DONE','BAST_DONE (paling maju)','BAST DONE']];
+    b=`<div class="card" style="display:flex;flex-direction:column;gap:14px"><h2>Import data FF lama</h2>
+    <div class="wiz-steps">${['Unggah xlsx','Petakan kolom','Pratinjau & validasi','Simpan'].map((l,i)=>`<span class="${i===2?'on':i<2?'done':''}"><i>${i<2?'✓':i+1}</i>${l}</span>`).join('')}</div>
+    <div class="row"><span class="pill p-dim">FF_STATUS_LAMA.xlsx · 4 baris</span><span class="pill p-ok">4 valid</span><span class="pill p-dim">0 dilewati (sudah ada)</span><span class="pill p-info">2 nilai referensi baru: populasi SDA, PRM</span></div>
+    <div class="tbl-wrap"><table class="t"><thead><tr><th>No. kontrak</th><th>Pelanggan</th><th>PIC</th><th>STATUS AWAL</th><th>KENDALA UMUM lama</th><th>Hasil di SKM</th><th>Push</th></tr></thead><tbody>
+    ${rows.map(r=>`<tr><td class="no">${r[0]}</td><td>${esc(r[1])}</td><td>${r[2]} <span class="pill p-ok" style="font-size:11px">cocok</span></td><td class="mono" style="font-size:11.5px">${r[3]}</td><td class="mono" style="font-size:11.5px">${r[4]}</td><td>${r[5]}</td><td><span class="ku p-info">${r[6]}</span></td></tr>`).join('')}</tbody></table></div>
+    <details><summary class="muted" style="cursor:pointer">Tabel pemetaan nilai lama (bisa diedit)</summary><div class="tbl-wrap" style="margin-top:8px"><table class="t"><tbody>
+     ${[['KOMPULIR EVIDENCE / KOMPULIR EVIDEN','BAST-1 tahap KOMPULIR'],['BAST ON REVIEW','tahap REVIEW_CUST'],['BAST DONE','tahap BAST_DONE'],['BAST TAKEOUT / SERTIM AR','tahap TAKEOUT'],['BAST REVISI','kendala REV_DOKUMEN, keterangan = KENDALA DETIL'],['BAST PARSIAL','kontrak ditandai parsial'],['nilai lain','tahap KOMPULIR + kendala LAINNYA']].map(([a,c])=>`<tr><td class="mono" style="font-size:12px">${a}</td><td>→ ${c}</td></tr>`).join('')}</tbody></table></div></details>
+    <div class="row"><span class="muted" style="font-size:12px">Semua hasil import diberi tanda <b>Perlu verifikasi</b>.</span><span class="sp"></span><button class="btn">Kembali</button><button class="btn pri">Simpan 4 kontrak</button></div></div>`;}
+  if(tab==='backup') b=`<div class="card"><h2>Backup <small>mingguan otomatis, simpan 8 terakhir</small><span class="sp"></span><button class="btn sm pri" id="bkNow">Backup sekarang</button></h2><div class="tbl-wrap"><table class="t"><thead><tr><th>Waktu</th><th>Jenis</th><th>File di Drive</th><th class="num">Ukuran</th></tr></thead><tbody>
+    ${['10 Nov 02:00','03 Nov 02:00','27 Okt 02:00','20 Okt 02:00'].map((w,i)=>`<tr><td class="tnum">${w}</td><td><span class="pill p-dim">${i===1?'MANUAL':'TERJADWAL'}</span></td><td class="mono" style="font-size:12px">SKM_DB_backup_2026-${['11-10','11-03','10-27','10-20'][i]}</td><td class="num">1,${8-i} MB</td></tr>`).join('')}</tbody></table></div></div>`;
+  return `<div class="tabs">${T.map(([k,l])=>`<a href="#pengaturan-${k}" class="${tab===k?'on':''}">${l}</a>`).join('')}</div>${b}`;
+}
+
+/* ============ Log ============ */
+function viewLog(){
+  return `<div class="card" style="display:flex;flex-direction:column;gap:12px"><div class="row">
+   <div class="search">${ic('search','s')}<input placeholder="Cari entitas, ID, nilai…"></div>
+   <select class="inp"><option>User: semua</option>${USERS.map(u=>`<option>${u.u}</option>`).join('')}<option>trigger</option></select>
+   <select class="inp"><option>Aksi: semua</option>${uniq(LOG.map(l=>l[2])).map(a=>`<option>${a}</option>`).join('')}</select>
+   <input class="inp" type="date" value="2026-11-08" aria-label="Dari"><input class="inp" type="date" value="2026-11-15" aria-label="Sampai">
+   <button class="btn">${ic('dl','s')}Export xlsx</button></div>
+   <div class="tbl-wrap"><table class="t"><thead><tr><th>Waktu</th><th>User</th><th>Aksi</th><th>Entitas</th><th>Field</th><th>Lama → baru</th><th>Catatan</th></tr></thead><tbody>
+   ${LOG.map(l=>`<tr><td class="tnum">${l[0]}</td><td class="mono">${l[1]}</td><td><span class="pill p-dim">${l[2]}</span></td><td>${l[3]} <span class="mono" style="font-size:12px">${l[4]}</span></td><td>${l[5]}</td><td class="mono" style="font-size:11.5px">${esc(l[6])||'—'} → ${esc(l[7])}</td><td class="muted">${esc(l[8])}</td></tr>`).join('')}
+   </tbody></table></div></div>`;
+}
+
+/* ============ Notifikasi ============ */
+function viewNotif(){
+  const L={DIUBAH_LUAR:['warn','var(--warn)'],TAB_BERGANTI:['sync','var(--warn)'],ANTRIAN_BARU:['inbox','var(--info)'],PIC_DITUGASKAN:['person','var(--accent)'],SINKRON_ERROR:['warn','var(--crit)']};
+  const vis=NOTIF.filter(n=>n.read!=='AUTO_CLOSE');
+  return `<div class="notif" id="notifPanel"><div class="notif-h"><b>Notifikasi</b><span class="sp"></span><button class="btn sm" id="readAll">Tandai semua dibaca</button></div>
+   ${vis.map(n=>`<div class="notif-i ${n.read?'read':''}" data-n="${n.id}"><span style="color:${L[n.j][1]}">${ic(L[n.j][0])}</span><div style="min-width:0"><div>${esc(n.msg)}</div><div class="w">${n.j} · ${n.w}</div></div></div>`).join('')||'<div class="notif-i read">Tidak ada notifikasi.</div>'}
+   <div class="notif-i read" style="cursor:default;font-size:12px">Kontrak CLOSE tidak memunculkan notifikasi; notifikasinya yang belum dibaca ditutup otomatis.</div></div>`;
+}
+
+/* ============ Modal & toast ============ */
+function modal(title,body,acts){
+  const d=document.createElement('div');d.className='scrim';
+  d.innerHTML=`<div class="modal" role="dialog" aria-modal="true"><h3>${title}</h3>${body}<div class="acts">${acts.map((a,i)=>`<button class="btn ${a.pri?'pri':''}" data-a="${i}">${a.l}</button>`).join('')}</div></div>`;
+  document.body.appendChild(d);
+  d.addEventListener('click',e=>{if(e.target===d)d.remove();const b=e.target.closest('[data-a]');if(b){const a=acts[+b.dataset.a];if(!a.fn||a.fn(d)!==false)d.remove();}});
+  const f=d.querySelector('input,select,textarea');f&&f.focus();
+}
+let toastT;function toast(m){document.querySelector('.toast')?.remove();const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);clearTimeout(toastT);toastT=setTimeout(()=>t.remove(),3200);}
+function log(user,aksi,ent,id,field,a,b,cat){LOG.unshift(['15 Nov '+new Date().toTimeString().slice(0,5),user,aksi,ent,id,field,a,b,cat||'']);}
+function onClose(k){ /* §10.9: saat kontrak close, notifikasi miliknya yang belum dibaca ditutup otomatis */
+  let n=0;NOTIF.forEach(x=>{if(x.k===k.id&&!x.read){x.read='AUTO_CLOSE';n++;}});return n;}
+
+/* ============ Binding ============ */
+function bindCommon(){
+  const g=id=>document.getElementById(id);
+  g('burger')&&(g('burger').onclick=()=>g('side').classList.toggle('open'));
+  g('bell').onclick=e=>{e.stopPropagation();S.notifOpen=!S.notifOpen;render();};
+  g('me').onclick=()=>modal('omPik · ADMIN','<div class="muted">Login sebagai <b>ompik</b>. Sesi berlaku 6 jam, diperpanjang setiap aksi.</div>',[{l:'Tutup'},{l:'Keluar',pri:true,fn:()=>{S.loggedIn=false;location.hash='#login';render();}}]);
+  const np=g('notifPanel');
+  if(np){np.onclick=e=>e.stopPropagation();
+    g('readAll').onclick=()=>{NOTIF.forEach(n=>{if(!n.read)n.read=true;});render();};
+    np.querySelectorAll('[data-n]').forEach(el=>el.onclick=()=>{const n=NOTIF.find(x=>x.id==el.dataset.n);if(!n.read)n.read=true;S.notifOpen=false;location.hash=n.k?'#kontrak-'+n.k:n.t?'#gsheet':'#antrian';render();});}
+  document.onclick=()=>{if(S.notifOpen){S.notifOpen=false;render();}};
+}
+function bindView(base,r){
+  const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s);
+  if(base==='dashboard') $$('[data-pic]').forEach(el=>el.onclick=()=>{S.filters={q:'',tahap:'',ku:'',pic:el.dataset.pic,pop:'',seg:'',st:'OPEN'};location.hash='#kontrak';});
+  if(r==='kontrak'){
+    const q=$('#q');q.oninput=()=>{S.filters.q=q.value;const pos=q.selectionStart;render();const n=$('#q');n.focus();n.setSelectionRange(pos,pos);};
+    [['fst','st'],['ftahap','tahap'],['fku','ku'],['fpic','pic'],['fpop','pop'],['fseg','seg']].forEach(([id,k])=>$('#'+id).onchange=e=>{S.filters[k]=e.target.value;render();});
+    $$('tr[data-k]').forEach(tr=>tr.onclick=e=>{if(e.target.closest('input'))return;location.hash='#kontrak-'+tr.dataset.k;});
+    $$('.rowchk').forEach(c=>c.onchange=()=>{c.checked?S.sel.add(c.dataset.id):S.sel.delete(c.dataset.id);render();});
+    $('#selAll').onchange=e=>{filtered().forEach(k=>e.target.checked?S.sel.add(k.id):S.sel.delete(k.id));render();};
+    $('#exp').onclick=()=>toast(`Export ${filtered().length} kontrak terfilter → Kontrak_2026-11-15.xlsx (dibuat di server)`);
+    if($('#bulkGo')){$('#bulkGo').onclick=()=>{const p=$('#bulkPic').value;if(!p){toast('Pilih PIC dulu.');return;}S.sel.forEach(id=>{const k=K.find(x=>x.id===id);log('ompik','ATUR_PIC','Kontrak',id,'PIC',k.pic,p);k.pic=p;});toast(`PIC ${S.sel.size} kontrak diatur ke ${p}. Notifikasi PIC_DITUGASKAN dikirim.`);S.sel.clear();render();};
+      $('#bulkClr').onclick=()=>{S.sel.clear();render();};}
+  }
+  if(r.startsWith('kontrak-K')){const k=K.find(x=>x.id===r.slice(8));if(!k)return;
+    $('#picSel').onchange=e=>{log('ompik','ATUR_PIC','Kontrak',k.id,'PIC',k.pic,e.target.value);k.pic=e.target.value;toast('PIC diperbarui.');render();};
+    $('#verif')&&($('#verif').onclick=()=>{k.verif=false;toast('Ditandai sudah diverifikasi.');render();});
+    $('#arsip').onclick=()=>modal('Arsipkan kontrak?','<div class="muted">Kontrak diarsipkan tidak tampil di daftar dan tidak disinkron. Data tetap tersimpan dan bisa dikembalikan. Hanya admin (izin <span class="mono">kontrak.arsip</span>).</div>',[{l:'Batal'},{l:'Arsipkan',pri:true,fn:()=>toast('(Mockup) Kontrak diarsipkan.')}]);
+    $$('.step').forEach(btn=>btn.onclick=()=>moveTahap(k,+btn.dataset.b,btn.dataset.t));
+    $('#addBast').onclick=()=>modal('Tambah BAST parsial',`<div class="grid g2"><label class="f">Cakupan order<select class="inp">${k.orders.map(o=>`<option>${o.no}</option>`).join('')||'<option>(belum ada SO/MI)</option>'}</select></label><label class="f">Jumlah lokasi<input class="inp" id="mLok" type="number" value="${k.lok?Math.max(0,k.lok-statusK(k).cak):''}"></label></div><label class="f">Daftar lokasi (opsional)<textarea class="inp" placeholder="Satu lokasi per baris"></textarea></label><label class="f">Keterangan<input class="inp" id="mKet" value="BAST lanjutan"></label><div class="muted" style="font-size:12px">BAST baru dimulai di tahap ${tahLabel(TAHAP.find(t=>t.urut===1).kode)} dengan ID ${k.id}-B${k.bast.length+1}.</div>`,
+      [{l:'Batal'},{l:'Tambah',pri:true,fn:d=>{const n=k.bast.length+1;k.bast.push({n,t:'KOMPULIR',s:1,cak:+d.querySelector('#mLok').value||null,order:k.orders[0]?.no||'',hari:0,ket:d.querySelector('#mKet').value,dok:''});if(!k.hist)k.hist=defaultHist(k);k.hist.unshift(['baru saja',`<b>omPik</b> menambah BAST <b>${k.id}-B${n}</b>`]);log('ompik','TAMBAH_BAST','BAST',k.id+'-B'+n,'','','KOMPULIR');toast('BAST ditambahkan. Pratinjau sheet unit diperbarui.');render();}}]);
+    $('#addKend').onclick=()=>modal('Buka kendala',`<label class="f">BAST<select class="inp" id="mB">${k.bast.map(b=>`<option value="${b.n}">${k.id}-B${b.n} · ${tahLabel(b.t)}${bastClose(b)?' (CLOSE)':''}</option>`).join('')}</select></label><label class="f">Jenis<select class="inp" id="mJ">${KREF.filter(x=>x.aktif).map(x=>`<option value="${x.kode}">${x.label}${x.reopen?' · memicu reopen':''}</option>`).join('')}</select></label><label class="f">Keterangan (wajib)<textarea class="inp" id="mK"></textarea></label><div class="muted" style="font-size:12px">Bila jenis "memicu reopen" dibuka pada BAST yang sudah close: siklus +1 dan BAST kembali OPEN di tahap ${tahLabel(CONFIG[2][1])}.</div>`,
+      [{l:'Batal'},{l:'Buka kendala',pri:true,fn:d=>{const ket=d.querySelector('#mK').value.trim();if(!ket){d.querySelector('#mK').style.borderColor='var(--crit)';toast('Keterangan wajib diisi.');return false;}
+        const bn=+d.querySelector('#mB').value,j=d.querySelector('#mJ').value,b=k.bast.find(x=>x.n===bn),ref=KREF.find(x=>x.kode===j);
+        k.kend.push({id:'KD-'+String(Math.floor(Math.random()*9000)+1000),b:bn,j,ket,st:'AKTIF',hari:0,oleh:'omPik'});
+        if(!k.hist)k.hist=defaultHist(k);k.hist.unshift(['baru saja',`<b>omPik</b> membuka kendala <b>${esc(ref.label)}</b> pada B${bn}`]);
+        if(bastClose(b)&&ref.reopen){b.s++;b.t=CONFIG[2][1];b.hari=0;k.hist.unshift(['baru saja',`<b>Reopen</b>: ${k.id}-B${bn} siklus ${b.s}, kembali ke <b>${tahLabel(b.t)}</b>`]);toast(`Reopen: B${bn} kembali OPEN (siklus ${b.s}). Push ke sheet unit berjalan lagi.`);}
+        else toast('Kendala dibuka. Kendala Umum di sheet unit ikut berubah.');log('ompik','BUKA_KENDALA','Kendala',k.id,'Status','','AKTIF',ket);render();}}]);
+    $$('[data-tutup]').forEach(b=>b.onclick=()=>{const x=k.kend.find(y=>y.id===b.dataset.tutup);x.st='SELESAI';if(!k.hist)k.hist=defaultHist(k);k.hist.unshift(['baru saja',`<b>omPik</b> menyelesaikan kendala <b>${esc(KREF.find(r=>r.kode===x.j).label)}</b>`]);log('ompik','TUTUP_KENDALA','Kendala',x.id,'Status','AKTIF','SELESAI');toast('Kendala selesai.');render();});
+  }
+  if(base==='antrian'){
+    const done=(a,st,cat)=>{a.st=st;a.catatan=cat;render();};
+    $$('[data-daftar]').forEach(b=>b.onclick=()=>{const a=ANTRIAN.find(x=>x.id===b.dataset.daftar);modal('Daftarkan kontrak',`<label class="f">No. kontrak<input class="inp mono" value="${esc(a.no)}"></label><div class="grid g2"><label class="f">Pelanggan<input class="inp" value="${esc(a.pel)}"></label><label class="f">Jenis dok<select class="inp"><option>KL</option><option>WO</option><option>SPK</option><option>PO</option></select></label></div><label class="f">Judul<input class="inp" value="${esc(a.judul)}"></label><div class="grid g2"><label class="f">Nilai<input class="inp tnum" value="${a.nilai??''}"></label><label class="f">PIC<select class="inp" id="mP">${PICS.map(p=>`<option>${p}</option>`).join('')}</select></label></div>`,
+      [{l:'Batal'},{l:'Daftarkan',pri:true,fn:d=>{const id='K-0000'+(K.length+1);K.push({id,no:a.no,jenis:'KL',tahun:2026,pop:'TREG',pel:a.pel,judul:a.judul,seg:'GOS',nilai:a.nilai,lok:null,pic:d.querySelector('#mP').value,verif:false,sumber:'ANTRIAN',orders:[],bast:[],kend:[]});done(a,'DIDAFTARKAN','→ '+id);toast(`Didaftarkan sebagai ${id}. Di sheet unit akan tampil BELUM DIPROSES.`);}}]);});
+    $$('[data-alias]').forEach(b=>b.onclick=()=>{const a=ANTRIAN.find(x=>x.id===b.dataset.alias);modal('Aliaskan ke kontrak yang ada',`<div class="muted">Nomor <span class="mono">${esc(a.no)}</span> akan dikenali sebagai kontrak berikut di semua sinkron berikutnya.</div><label class="f">Kontrak<select class="inp" id="mA">${K.map(k=>`<option value="${k.id}" ${k.id===a.mirip?'selected':''}>${k.id} · ${esc(k.no)}</option>`).join('')}</select></label>`,
+      [{l:'Batal'},{l:'Aliaskan',pri:true,fn:d=>{done(a,'DIALIASKAN','→ '+d.querySelector('#mA').value);toast('Alias disimpan.');}}]);});
+    $$('[data-abai]').forEach(b=>b.onclick=()=>{const a=ANTRIAN.find(x=>x.id===b.dataset.abai);modal('Abaikan nomor ini?',`<label class="f">Alasan<input class="inp" id="mR" value="${a.no==='TOTAL'?'Baris total, bukan kontrak':''}"></label>`,
+      [{l:'Batal'},{l:'Abaikan',pri:true,fn:d=>{done(a,'DIABAIKAN',d.querySelector('#mR').value);}}]);});
+  }
+  if(base==='gsheet'){
+    $$('[data-cek]').forEach(b=>b.onclick=()=>{S.cek[b.dataset.cek]=true;render();toast('Cek saja selesai. Tidak ada yang ditulis.');});
+    $$('[data-upd]').forEach(b=>b.onclick=()=>{const t=TARGETS.find(x=>x.id===b.dataset.upd);const res=cekTarget(t);const n=res.out.filter(x=>x.act==='TULIS').length;
+      modal('Update ke GSheet?',`<div>Akan menulis <b>${n} baris</b> (KENDALA UMUM + KENDALA DETIL) ke <b>${esc(t.nama)}</b>, tab <span class="mono">${esc(t.tab)}</span>, dalam satu panggilan batch.</div><div class="muted" style="font-size:12px">Kolom kunci dibaca ulang sebelum menulis. Bila urutan baris berubah, update dibatalkan dan dicoba lagi.</div>`,
+      [{l:'Batal'},{l:'Update',pri:true,fn:()=>{SHEETROWS[t.id].forEach(r=>{const k=K.find(x=>normKey(x.no)===normKey(r.raw));if(!k||r.formula)return;const res2=cekTarget(t).out.find(o=>o.b===r.baris);if(res2&&res2.act==='TULIS'){r.now=res2.next;r.jejak=res2.next;if(statusK(k).st==='CLOSE')r.closedWritten=true;}});t.upd='15 Nov '+new Date().toTimeString().slice(0,5);t.st='OK';t.pesan=`${n} sel ditulis`;S.cek[t.id]=true;render();toast(`${n} baris ditulis. Tercatat di RiwayatPush & JejakSel.`);}}]);});
+    $$('[data-tabbaru]').forEach(b=>b.onclick=()=>{const t=TARGETS.find(x=>x.id===b.dataset.tabbaru);t.tab=t.baru;t.baru=null;t.st='OK';t.pesan='Tab DES 2026 dipakai sejak 15 Nov';NOTIF.forEach(n=>{if(n.j==='TAB_BERGANTI')n.read=true;});render();toast('Tab DES 2026 dipakai. Nilai yang ada dijadikan titik awal.');});
+  }
+  if(base==='wizard'){
+    $('#wnext').onclick=()=>{if(S.wiz===5){S.wiz=1;location.hash='#gsheet';toast('(Mockup) Target diaktifkan.');return;}S.wiz++;render();};
+    $('#wprev')&&($('#wprev').onclick=()=>{S.wiz--;render();});
+    $$('input[name=wm]').forEach(x=>x.onchange=()=>{S.wizMode=x.value;render();});
+  }
+  if(base==='pengaturan'){
+    const resort=()=>TAHAP.sort((a,b)=>a.urut-b.urut).forEach((t,i)=>t.urut=i+1);
+    $$('[data-tup]').forEach(b=>b.onclick=()=>{const t=tah(b.dataset.tup),o=TAHAP.find(x=>x.urut===t.urut-1);[t.urut,o.urut]=[o.urut,t.urut];resort();render();});
+    $$('[data-tdn]').forEach(b=>b.onclick=()=>{const t=tah(b.dataset.tdn),o=TAHAP.find(x=>x.urut===t.urut+1);[t.urut,o.urut]=[o.urut,t.urut];resort();render();});
+    $$('[data-tact]').forEach(b=>b.onclick=()=>{const t=tah(b.dataset.tact);const n=K.reduce((a,k)=>a+k.bast.filter(x=>x.t===t.kode&&!bastClose(x)).length,0);
+      if(t.aktif&&t.penutup){toast('Tahap penutup tidak bisa dinonaktifkan: harus ada tepat satu penutup aktif.');return;}
+      if(t.aktif&&n){modal('Tidak bisa menonaktifkan',`<div>Masih ada <b>${n} BAST OPEN</b> di tahap <b>${esc(t.label)}</b>. Pindahkan dulu ke tahap lain.</div><label class="f">Pindahkan semua ke<select class="inp" id="mT">${TAHAP.filter(x=>x.aktif&&x.kode!==t.kode&&!x.penutup).map(x=>`<option value="${x.kode}">${x.label}</option>`).join('')}</select></label>`,
+        [{l:'Batal'},{l:'Pindahkan & nonaktifkan',pri:true,fn:d=>{const to=d.querySelector('#mT').value;K.forEach(k=>k.bast.forEach(x=>{if(x.t===t.kode&&!bastClose(x)){x.t=to;x.hari=0;}}));t.aktif=false;render();toast(`${n} BAST dipindah ke ${tahLabel(to)}. Tahap dinonaktifkan; histori tetap aman.`);}}]);return;}
+      t.aktif=!t.aktif;render();});
+    $('#addTahap')&&($('#addTahap').onclick=()=>modal('Tambah tahap',`<div class="grid g2"><label class="f">Kode (tetap)<input class="inp mono" id="mK" value="VERIF_INTERNAL"></label><label class="f">Label<input class="inp" id="mL" value="Verifikasi Internal"></label></div><label class="f">Sisipkan setelah<select class="inp" id="mP">${TAHAP.filter(t=>!t.penutup).sort((a,b)=>a.urut-b.urut).map(t=>`<option value="${t.urut}" ${t.kode==='DRAFTING'?'selected':''}>${t.label}</option>`).join('')}</select></label>`,
+      [{l:'Batal'},{l:'Tambah',pri:true,fn:d=>{const kode=d.querySelector('#mK').value.toUpperCase().replace(/\W/g,'_'),pos=+d.querySelector('#mP').value;if(tah(kode)){toast('Kode sudah dipakai.');return false;}TAHAP.forEach(t=>{if(t.urut>pos)t.urut++;});TAHAP.push({kode,urut:pos+1,label:d.querySelector('#mL').value,penutup:false,batas:14,aktif:true});resort();S.setTab='push';location.hash='#pengaturan-push';render();toast('Tahap ditambahkan. Buat aturan Nilai Push-nya sekarang.');}}]));
+    $$('[data-rup]').forEach(b=>b.onclick=()=>{const i=+b.dataset.rup;[RULES[i-1],RULES[i]]=[RULES[i],RULES[i-1]];render();});
+    $$('[data-rdn]').forEach(b=>b.onclick=()=>{const i=+b.dataset.rdn;[RULES[i+1],RULES[i]]=[RULES[i],RULES[i+1]];render();});
+    $$('[data-ract]').forEach(b=>b.onclick=()=>{const r=RULES[+b.dataset.ract];r.aktif=!r.aktif;render();});
+    $$('[data-rv]').forEach(inp=>inp.onchange=()=>{RULES[+inp.dataset.rv].v=inp.value.toUpperCase();render();});
+    $$('[data-mkrule]').forEach(b=>b.onclick=()=>{const kode=b.dataset.mkrule,t=tah(kode);const idx=RULES.findIndex(r=>r.k.startsWith('TAHAP:')&&tah(r.k.slice(6))&&tah(r.k.slice(6)).urut<t.urut);RULES.splice(idx<0?RULES.length-1:idx,0,{k:'TAHAP:'+kode,v:t.label.toUpperCase(),aktif:true});render();toast('Aturan dibuat. Ubah teksnya bila perlu.');});
+    $('#bkNow')&&($('#bkNow').onclick=()=>toast('(Mockup) Salinan DB dibuat di folder Drive SKM_Backup.'));
+  }
+}
+function moveTahap(k,bn,to){
+  const b=k.bast.find(x=>x.n===bn); if(b.t===to) return;
+  const from=tah(b.t),dest=tah(to),mundur=dest.urut<from.urut;
+  const before=evalPush(k).umum,wasClose=statusK(k).st==='CLOSE';
+  modal(`${mundur?'Mundurkan':'Majukan'} ${k.id}-B${bn}`,`<div><b>${esc(from.label)}</b> → <b>${esc(dest.label)}</b>${dest.penutup?' <span class="pill p-ok">menutup BAST</span>':''}</div>
+   <label class="f">Keterangan${mundur?' (wajib karena mundur)':' (opsional)'}<textarea class="inp" id="mK" placeholder="${mundur?'Alasan mundur…':'Misal: dokumen sudah ditandatangani'}"></textarea></label>
+   <div class="muted" style="font-size:12px">Tercatat di RiwayatTahap (masuk/keluar, oleh siapa). Tanggal tiap tahap diambil dari riwayat ini.</div>`,
+   [{l:'Batal'},{l:'Simpan',pri:true,fn:d=>{const ket=d.querySelector('#mK').value.trim();if(mundur&&!ket){d.querySelector('#mK').style.borderColor='var(--crit)';toast('Mundur wajib disertai keterangan.');return false;}
+     b.t=to;b.hari=0;if(ket)b.ket=ket;if(!k.hist)k.hist=defaultHist(k);k.hist.unshift(['baru saja',`<b>omPik</b> ${mundur?'memundurkan':'memindahkan'} B${bn} ke <b>${esc(dest.label)}</b>${k.pic&&k.pic!=='omPik'?' <span class="pill p-dim">bantu</span>':''}`]);
+     log('ompik','UBAH_TAHAP','BAST',k.id+'-B'+bn,'KodeTahap',from.kode,to,ket);
+     const after=evalPush(k).umum,nowClose=statusK(k).st==='CLOSE';let msg=before!==after?`Kendala Umum: ${before} → ${after}`:'Tahap disimpan.';
+     if(!wasClose&&nowClose){const n=onClose(k);msg='Kontrak CLOSE. '+(n?`${n} notifikasi belum dibaca ditutup otomatis.`:'Tugas FF selesai.');}
+     render();toast(msg);}}]);
+}
+
+render();
+</script>
