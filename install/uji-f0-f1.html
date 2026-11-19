@@ -1,0 +1,158 @@
+<title>Panduan Uji F0 F1</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: satu kolom; atas = persiapan & tautan, lalu dua bagian uji (F0, F1) berisi kartu langkah bernomor dengan hasil yang diharapkan + OK/Gagal + catatan; bawah = laporan yang bisa disalin. */
+:root{--bg:#edf2f5;--surface:#fff;--surface2:#f3f7f9;--line:#d9e3e9;--line2:#c3d1d9;--fg:#0c1a24;--muted:#4d606d;--dim:#7b8d99;--accent:#07857b;--on-accent:#fff;--accent-bg:rgba(7,133,123,.10);--ok:#14905a;--ok-bg:rgba(20,144,90,.11);--crit:#cc3b3b;--crit-bg:rgba(204,59,59,.10);--warn:#9c6205;--warn-bg:rgba(214,150,30,.15);
+  --font:"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif;--mono:"JetBrains Mono",Consolas,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#060b14;--surface:#0d1522;--surface2:#121d2e;--line:#1b293d;--line2:#2a3c57;--fg:#e4edf6;--muted:#93a6bb;--dim:#617490;--accent:#37e2cb;--on-accent:#022320;--accent-bg:rgba(55,226,203,.12);--ok:#4fd897;--ok-bg:rgba(79,216,151,.12);--crit:#ff7c78;--crit-bg:rgba(255,124,120,.12);--warn:#f4c552;--warn-bg:rgba(244,197,82,.12);color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#060b14;--surface:#0d1522;--surface2:#121d2e;--line:#1b293d;--line2:#2a3c57;--fg:#e4edf6;--muted:#93a6bb;--dim:#617490;--accent:#37e2cb;--on-accent:#022320;--accent-bg:rgba(55,226,203,.12);--ok:#4fd897;--ok-bg:rgba(79,216,151,.12);--crit:#ff7c78;--crit-bg:rgba(255,124,120,.12);--warn:#f4c552;--warn-bg:rgba(244,197,82,.12);color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font);line-height:1.55;font-size:14px}
+.wrap{max-width:900px;margin:0 auto;padding-block:36px 72px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:22px}
+.eyebrow{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--accent)}
+h1{font-size:clamp(26px,4vw,38px);margin:4px 0 8px;font-weight:800;letter-spacing:-.03em;line-height:1.1;text-wrap:balance}
+h2{font-size:20px;margin:0;font-weight:800;letter-spacing:-.02em}
+h3{font-size:15px;margin:0;font-weight:700}
+p{margin:0;max-width:70ch}
+a{color:var(--accent);font-weight:600}
+.muted{color:var(--muted)} .mono{font-family:var(--mono);font-size:.92em;font-variant-ligatures:none}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:20px}
+.links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}
+.lk{display:flex;flex-direction:column;gap:4px;padding:14px;border-radius:14px;background:var(--surface2);border:1px solid var(--line);text-decoration:none;color:var(--fg)}
+.lk:hover{border-color:var(--accent)}
+.lk b{font-size:14px} .lk span{font-size:12.5px;color:var(--muted);font-weight:400}
+.lk.main{background:var(--accent-bg);border-color:transparent}
+.files{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.files a{font-family:var(--mono);font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--line2);text-decoration:none}
+.prep{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}
+.prep div{padding:12px 14px;border-radius:14px;background:var(--surface2);font-size:13px}
+.prep b{display:block}
+.sec{display:flex;flex-direction:column;gap:12px}
+.sechead{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.sechead .sp{flex:1}
+.prog{font-size:12.5px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
+.step{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px 18px;display:grid;grid-template-columns:40px minmax(0,1fr);gap:14px;transition:border-color .2s,background .2s}
+.step.ok{border-color:color-mix(in srgb,var(--ok) 45%,transparent)} .step.fail{border-color:color-mix(in srgb,var(--crit) 55%,transparent);background:var(--crit-bg)}
+.num{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:12.5px;background:var(--surface2);border:1.5px solid var(--line2);color:var(--muted)}
+.step.ok .num{background:var(--ok);border-color:var(--ok);color:var(--on-accent)} .step.fail .num{background:var(--crit);border-color:var(--crit);color:#fff}
+.body{display:flex;flex-direction:column;gap:8px;min-width:0}
+.do{font-size:13.5px}
+.exp{font-size:13px;padding:9px 12px;border-radius:10px;background:var(--surface2);border-left:3px solid var(--accent)}
+.exp b{color:var(--accent)}
+.ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ctl button{font:inherit;font-weight:700;font-size:12.5px;border:1.5px solid var(--line2);background:var(--surface);color:var(--fg);border-radius:999px;padding:5px 14px;cursor:pointer}
+.ctl button.on.okb{background:var(--ok);border-color:var(--ok);color:var(--on-accent)}
+.ctl button.on.failb{background:var(--crit);border-color:var(--crit);color:#fff}
+.ctl input{flex:1 1 220px;min-width:0;font:inherit;font-size:13px;border:1px solid var(--line2);border-radius:10px;padding:6px 10px;background:var(--surface);color:var(--fg)}
+.opt{font-size:11px;font-weight:700;color:var(--warn);background:var(--warn-bg);border-radius:999px;padding:1px 8px;margin-left:6px;vertical-align:2px}
+kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line2);border-bottom-width:2px;border-radius:6px;padding:0 6px;background:var(--surface2)}
+pre{margin:0;white-space:pre-wrap;font:12px/1.6 var(--mono);font-variant-ligatures:none;background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:14px;color:var(--muted);max-height:320px;overflow:auto}
+.btn{font:inherit;font-weight:700;font-size:13.5px;border:0;border-radius:999px;padding:10px 18px;background:var(--accent);color:var(--on-accent);cursor:pointer}
+.btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--line2)}
+.note{padding:12px 14px;border-radius:14px;font-size:13px;background:var(--warn-bg)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (max-width:700px){.links,.prep{grid-template-columns:minmax(0,1fr)}.step{grid-template-columns:minmax(0,1fr)}}
+</style>
+
+<div class="wrap">
+ <div><div class="eyebrow">Status Kontrak Manager · F0 v1.0 + F1 v1.0.0</div><h1>Panduan uji F0 &amp; F1</h1>
+  <p class="muted">Ikuti langkah dari atas ke bawah. Setiap langkah punya <b>hasil yang diharapkan</b>; tandai <b>OK</b> atau <b>Gagal</b> dan isi catatan bila perlu. Di akhir, klik <b>Salin laporan</b> lalu tempel di chat. Centang Anda tersimpan di browser ini saja.</p></div>
+
+ <div class="card"><h2>Persiapan</h2>
+  <div class="prep">
+   <div><b>Akun Gmail khusus FF</b>Login di Chrome/Edge sebelum mulai.</div>
+   <div><b>PC kantor + jaringan kantor</b>Bukan hotspot, supaya hasil F0 mewakili kondisi sebenarnya.</div>
+   <div><b>±40 menit</b>F0 ±10 menit, F1 ±30 menit. Siapkan satu jendela <i>Incognito</i> untuk uji akun staff.</div>
+  </div>
+  <div class="links">
+   <a class="lk main" href="https://claude.ai/artifact/LLpsSLLDSBvuWoAjSsmk74" target="_blank" rel="noopener"><b>① Halaman pasang F0 →</b><span>6 langkah + tombol Salin untuk 2 file F0</span></a>
+   <a class="lk main" href="https://claude.ai/artifact/YSjKT3pZubEmgrS9ef71yT" target="_blank" rel="noopener"><b>② Halaman pasang F1 →</b><span>Langkah untuk project F0 yang sudah ada + tombol Salin untuk 2 file F1</span></a>
+   <a class="lk" href="https://claude.ai/artifact/1FfXMRSWQ9Taa9f54uACLn" target="_blank" rel="noopener"><b>Arti hasil F0 →</b><span>Tabel "Kalau hasilnya…" di mockup F0</span></a>
+   <a class="lk" href="https://claude.ai/artifact/31q8wCgretvwX2HerJkPgK" target="_blank" rel="noopener"><b>Mockup F1 →</b><span>Pembanding tampilan yang disetujui</span></a>
+  </div>
+  <div style="margin-top:14px"><h3>File kode (sumber yang sama dengan tombol Salin)</h3>
+   <div class="files">
+    <a href="https://github.com/ompikonmeta-maker/Kontrak-Manager/blob/claude/peaceful-keller-42cnp7/f0/Code.gs" target="_blank" rel="noopener">F0 · Code.gs</a>
+    <a href="https://github.com/ompikonmeta-maker/Kontrak-Manager/blob/claude/peaceful-keller-42cnp7/f0/appsscript.json" target="_blank" rel="noopener">F0 · appsscript.json</a>
+    <a href="https://github.com/ompikonmeta-maker/Kontrak-Manager/blob/claude/peaceful-keller-42cnp7/dist/Code.gs" target="_blank" rel="noopener">F1 · Code.gs</a>
+    <a href="https://github.com/ompikonmeta-maker/Kontrak-Manager/blob/claude/peaceful-keller-42cnp7/dist/appsscript.json" target="_blank" rel="noopener">F1 · appsscript.json</a>
+   </div>
+   <p class="muted" style="font-size:12.5px;margin-top:8px">Tautan GitHub butuh login ke akun yang punya akses repo. Cara paling mudah tetap tombol <b>Salin</b> di halaman pasang ① dan ②.</p></div>
+ </div>
+
+ <section class="sec" id="secF0"></section>
+ <section class="sec" id="secF1"></section>
+
+ <div class="card" style="display:flex;flex-direction:column;gap:12px"><h2>Laporan</h2>
+  <p class="muted">Laporan berisi status setiap langkah dan catatan Anda. Tempel di chat; kalau ada langkah gagal, sertakan screenshot.</p>
+  <pre id="rep"></pre>
+  <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="copy">Salin laporan</button><button class="btn ghost" id="reset">Kosongkan semua centang</button><span id="msg" class="muted" style="align-self:center;font-size:13px"></span></div>
+ </div>
+</div>
+
+<script>
+var F0=[
+ ['Pasang F0','Buka halaman pasang <b>①</b> dan ikuti 6 langkahnya: project baru <span class="mono">Status Kontrak Manager</span>, tempel 2 file, Deploy sebagai Web app (Execute as <b>Me</b>, Who has access <b>Anyone with Google account</b>), izinkan akses.','Deploy berhasil dan Anda mendapat <b>Web app URL</b> berakhiran <span class="mono">/exec</span>.'],
+ ['Buka dari PC kantor','Buka Web app URL di Chrome/Edge di PC kantor (jaringan kantor). Tunggu sampai semua baris selesai berputar.','Halaman "Uji koneksi dari jaringan ini" tampil, lima baris selesai, kesimpulan <b>Lulus</b> atau <b>Lulus dengan catatan</b> (font kuning boleh).'],
+ ['Salin hasil','Klik <b>Salin hasil</b> di halaman uji. Tempel teksnya di kolom catatan langkah ini (atau langsung di chat).','Teks diawali <span class="mono">Hasil uji F0 SKM (v1.0): …</span> dan berisi 5 baris.']
+];
+var F1=[
+ ['Ganti kode ke F1','Buka halaman pasang <b>②</b>, pilih <b>Sudah pasang F0</b>. Di project yang sama, ganti isi <span class="mono">appsscript.json</span> dan <span class="mono">Code.gs</span> dengan tombol Salin, lalu <kbd>Ctrl</kbd>+<kbd>S</kbd>.','Tersimpan tanpa garis merah/error di editor.'],
+ ['Jalankan setup()','Pilih fungsi <span class="mono">setup</span> di toolbar → <b>Run</b>. Izinkan akses bila diminta (izin baru: membuat & mengelola spreadsheet). Buka <b>Execution log</b>.','Log berisi: membuat file <span class="mono">SKM_DB</span>, 5 tab dibuat, isi awal role & config, lalu <span class="mono">username: admin &nbsp;password sementara: xxx-xxx-xxx</span>. Catat passwordnya.'],
+ ['Cek file database','Buka Google Drive akun FF. Cari file <span class="mono">SKM_DB</span> dan buka sebentar. <b>Jangan mengubah isinya.</b>','Ada tab <span class="mono">Users, Ref_Role, Log, Config, _Meta</span>. Tab Users berisi 1 baris (admin) dengan password berupa kode panjang <span class="mono">sha256$500$…</span>, bukan password asli.'],
+ ['setup() aman diulang','Jalankan <span class="mono">setup</span> sekali lagi.','Log: "Database sudah ada…", "User sudah ada; admin awal tidak dibuat ulang". Tidak ada file/tab baru.'],
+ ['Perbarui deployment','<b>Deploy › Manage deployments</b> → deployment F0 → pensil (<b>Edit</b>) → Version: <b>New version</b> → Deploy.','URL web app tetap sama seperti F0.'],
+ ['Login salah','Buka Web app URL. Username <span class="mono">admin</span>, password asal → Masuk.','Pesan kuning: "Username atau password salah. <b>Sisa 4 percobaan</b> sebelum akun dikunci 15 menit."'],
+ ['Login pertama admin','Masuk dengan <span class="mono">admin</span> + password sementara dari setup().','Langsung ke layar <b>Buat password baru</b>. Tombol Simpan aktif hanya bila semua syarat tercentang (min. 8 karakter, huruf + angka, kedua isian sama).'],
+ ['Ganti password','Isi password baru 2 kali → <b>Simpan &amp; masuk</b>.','Masuk ke Beranda "Selamat datang, Admin awal". Menu Dashboard–Google Sheet redup dengan label fase; ada grup <b>Pengaturan</b> (Users, Role &amp; izin, Sistem) dan Log.'],
+ ['Buat akun pribadi (ADMIN)','<b>Users → Tambah user</b>. Username pribadi Anda (mis. <span class="mono">ompik</span> atau NIK), nama, alias PIC, role <b>ADMIN</b>, password <b>Buat acak</b> → Buat user.','Muncul jendela password sementara dengan tombol Salin; setelah ditutup tidak bisa dilihat lagi. User baru tampil dengan cincin kuning "Wajib ganti password".'],
+ ['Buat akun staff uji','Tambah user lagi: username NIK (mis. <span class="mono">95210101</span>), role <b>STAFF</b>, password <b>Ketik sendiri</b> (mis. <span class="mono">Mulai2026</span>).','User tersimpan; username angka tampil utuh (nol di depan tidak hilang bila ada).'],
+ ['Login staff di Incognito','Buka jendela Incognito → Web app URL → login staff dengan password tadi → ganti password.','Masuk ke Beranda. <b>Tidak ada</b> grup Pengaturan. Menu log bernama <b>Log saya</b> dan hanya berisi aksi staff itu.'],
+ ['Izin berlaku tanpa login ulang','Di jendela admin: <b>Role &amp; izin</b> → centang <span class="mono">user.kelola</span> di kolom STAFF → Simpan izin. Di jendela staff: muat ulang halaman.','Staff sekarang melihat grup Pengaturan dan bisa membuka Users.'],
+ ['Izin ditolak di server','Di jendela admin: hapus lagi centang <span class="mono">user.kelola</span> STAFF → Simpan. Di jendela staff (tanpa muat ulang): klik menu <b>Users</b>.','Staff melihat layar <b>"Anda tidak punya izin untuk halaman ini"</b>. Di Log admin muncul <span class="mono">IZIN_DITOLAK</span> oleh staff dengan hasil DITOLAK.'],
+ ['Kunci akun','Di Incognito: keluar, lalu login staff dengan password salah 5 kali.','Percobaan ke-5: pesan merah "Akun terkunci sampai HH:MM". Di Users admin, staff bercincin merah "Terkunci s/d HH:MM".'],
+ ['Buka kunci','Admin: menu <b>⋮</b> di baris staff → <b>Buka kunci</b>. Staff login lagi dengan password benar.','Staff berhasil masuk.'],
+ ['Reset password mengakhiri sesi','Admin: klik baris staff → nyalakan <b>Reset password</b> → Buat acak → Simpan. Di jendela staff: klik menu apa saja.','Admin melihat password sementara baru. Staff terlempar ke layar login dengan pesan "Sesi Anda berakhir".'],
+ ['Pengaman admin terakhir','Admin: <b>Role &amp; izin</b> → hapus centang <span class="mono">user.kelola</span> di kolom ADMIN → Simpan izin.','Ditolak: "perubahan ini membuat tidak ada lagi user aktif dengan izin user.kelola". Izin tidak berubah.'],
+ ['Hapus hanya tanpa aktivitas','Admin: buat user <span class="mono">uji.hapus</span> → menu ⋮ → Hapus → konfirmasi. Lalu buka menu ⋮ di baris staff.','<span class="mono">uji.hapus</span> terhapus. Di baris staff, Hapus redup: "Sudah punya riwayat. Nonaktifkan saja."'],
+ ['Log lengkap','Admin: buka <b>Log</b>. Coba filter Hasil = <b>DITOLAK</b> dan <b>GAGAL</b>.','Semua aksi di atas tercatat (LOGIN, GANTI_PASSWORD, BUAT_USER, UBAH_IZIN, IZIN_DITOLAK, AKUN_TERKUNCI, BUKA_KUNCI, RESET_PASSWORD, HAPUS_USER, …). Filter hanya menampilkan hasil yang dipilih.'],
+ ['Pemeriksaan sistem','Admin: <b>Sistem → Jalankan</b>.','6 centang hijau, termasuk "File database tidak dibagikan".'],
+ ['Login akun pribadi','Keluar (menu nama di kanan atas → Keluar). Masuk dengan akun pribadi ADMIN + password sementaranya → ganti password.','Masuk sebagai akun pribadi dengan menu Pengaturan lengkap.'],
+ ['Nonaktifkan admin awal','Dengan akun pribadi: Users → baris <span class="mono">admin</span> → matikan <b>Akun aktif</b> → Simpan.','Tersimpan. Login dengan <span class="mono">admin</span> ditolak: "Akun ini dinonaktifkan".',true],
+ ['Tema & ponsel','Klik ikon tema di kanan atas beberapa kali. Buka Web app URL di ponsel.','Tema berganti terang/gelap/ikut sistem dengan animasi. Di ponsel menu tersembunyi di tombol ☰ dan tidak ada yang terpotong.',true]
+];
+var KEY='skm-uji-f0f1';
+var st={};try{st=JSON.parse(localStorage.getItem(KEY)||'{}');}catch(e){st={};}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(st));}catch(e){}}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function sec(id,kode,judul,intro,list){
+  var el=document.getElementById(id);
+  el.innerHTML='<div class="sechead"><div><div class="eyebrow">Bagian '+kode+'</div><h2>'+judul+'</h2><p class="muted" style="margin-top:4px">'+intro+'</p></div><span class="sp"></span><span class="prog" id="prog'+kode+'"></span></div>'+
+   list.map(function(s,i){var k=kode+'-'+(i+1);return '<div class="step" id="st-'+k+'"><div class="num">'+kode+(i+1)+'</div><div class="body"><h3>'+s[0]+(s[3]?'<span class="opt">opsional</span>':'')+'</h3><div class="do">'+s[1]+'</div><div class="exp"><b>Harusnya:</b> '+s[2]+'</div>'+
+    '<div class="ctl"><button type="button" class="okb" data-k="'+k+'" data-v="OK">OK</button><button type="button" class="failb" data-k="'+k+'" data-v="GAGAL">Gagal</button><input type="text" data-n="'+k+'" placeholder="Catatan (opsional)" aria-label="Catatan '+k+'"></div></div></div>';}).join('');
+}
+sec('secF0','A','Uji F0: koneksi dari jaringan kantor','Wajib di PC kantor. Kalau ada baris merah, berhenti dan kirim hasilnya; jangan lanjut ke F1 dulu.',F0);
+sec('secF1','B','Uji F1: fondasi aplikasi','Lanjutkan setelah F0 lulus. Semua langkah memakai project dan Web app URL yang sama.',F1);
+function paint(){
+  document.querySelectorAll('[data-k]').forEach(function(b){var v=(st[b.dataset.k]||{}).v;b.classList.toggle('on',v===b.dataset.v);});
+  document.querySelectorAll('[data-n]').forEach(function(i){if(document.activeElement!==i)i.value=(st[i.dataset.n]||{}).n||'';});
+  document.querySelectorAll('.step').forEach(function(s){var k=s.id.slice(3),v=(st[k]||{}).v;s.classList.toggle('ok',v==='OK');s.classList.toggle('fail',v==='GAGAL');});
+  [['A',F0],['B',F1]].forEach(function(x){var n=x[1].length,ok=0,f=0;for(var i=1;i<=n;i++){var v=(st[x[0]+'-'+i]||{}).v;if(v==='OK')ok++;if(v==='GAGAL')f++;}
+    document.getElementById('prog'+x[0]).textContent=ok+' OK · '+f+' gagal · '+(n-ok-f)+' belum';});
+  document.getElementById('rep').textContent=report();
+}
+function report(){
+  var lines=['Laporan uji SKM F0 v1.0 + F1 v1.0.0'];
+  [['A','F0',F0],['B','F1',F1]].forEach(function(x){lines.push('','['+x[1]+']');x[2].forEach(function(s,i){var k=x[0]+'-'+(i+1),e=st[k]||{};lines.push(x[0]+(i+1)+' '+s[0]+': '+(e.v||'belum')+(e.n?' — '+e.n:''));});});
+  return lines.join('\n');
+}
+document.addEventListener('click',function(e){var b=e.target.closest('[data-k]');if(!b)return;var k=b.dataset.k;st[k]=st[k]||{};st[k].v=st[k].v===b.dataset.v?'':b.dataset.v;save();paint();});
+document.addEventListener('input',function(e){var i=e.target.closest('[data-n]');if(!i)return;st[i.dataset.n]=st[i.dataset.n]||{};st[i.dataset.n].n=i.value;save();document.getElementById('rep').textContent=report();});
+document.getElementById('copy').onclick=function(){var t=report(),m=document.getElementById('msg');
+  var pilih=function(){var r=document.createRange();r.selectNodeContents(document.getElementById('rep'));getSelection().removeAllRanges();getSelection().addRange(r);m.textContent='Teks dipilih, tekan Ctrl+C.';};
+  try{navigator.clipboard.writeText(t).then(function(){m.textContent='Laporan tersalin. Tempel di chat.';},pilih);}catch(err){pilih();}};
+var resetArmed=false;document.getElementById('reset').onclick=function(){var b=this,m=document.getElementById('msg');if(!resetArmed){resetArmed=true;b.textContent='Klik lagi untuk mengosongkan';m.textContent='';setTimeout(function(){resetArmed=false;b.textContent='Kosongkan semua centang';},4000);return;}
+  st={};save();paint();resetArmed=false;b.textContent='Kosongkan semua centang';m.textContent='Semua centang dikosongkan.';};
+paint();
+</script>

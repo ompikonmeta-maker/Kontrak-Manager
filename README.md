@@ -10,7 +10,7 @@ Aplikasi Apps Script untuk Unit Fulfillment: status BAST diperbarui di satu temp
 | `src/server/` | Kode server Apps Script per modul (Config, Domain, Repo, Auth, Api, Setup). |
 | `src/ui/` | Tampilan web app (HTML, CSS, JS) yang disematkan ke `Code.gs` saat build. |
 | `dist/` | Hasil build untuk dipasang: `Code.gs` + `appsscript.json`. Jangan diedit langsung. |
-| `install/` | Halaman instalasi bertombol Salin, dibuat oleh `tools/build-install.js`. |
+| `install/` | Halaman instalasi bertombol Salin (dibuat oleh `tools/build-install.js`) dan `uji-f0-f1.html` (panduan uji F0 & F1). |
 | `tools/` | Skrip build. |
 | `test/` | Unit test (`npm test`). Layanan Apps Script ditiru; halaman diuji di Chromium headless. |
 
