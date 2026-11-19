@@ -1,11 +1,12 @@
 /**
  * Status Kontrak Manager — F0: uji web app dari jaringan kantor.
- * Halaman ini hanya mengecek 4 hal, lalu menampilkan hasil yang bisa disalin.
+ * Halaman ini mengecek koneksi, lalu menampilkan hasil yang bisa disalin ke chat.
  * Di F1 file ini diganti dengan aplikasi lengkap.
  */
+var F0_VERSI = '1.0';
 
 function doGet() {
-  return HtmlService.createHtmlOutput(PAGE_HTML)
+  return HtmlService.createHtmlOutput(PAGE_HTML.split('{{VERSI}}').join(F0_VERSI))
     .setTitle('SKM · Uji F0')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
@@ -20,45 +21,58 @@ function ping() {
   };
 }
 
-/** Cek apakah server bisa memanggil Web App lain (dipakai untuk script penerima di F4). */
+/** Cek apakah server bisa memanggil Web App lain (syarat script penerima di F4a). */
 function cekFetch() {
   try {
     var r = UrlFetchApp.fetch('https://script.google.com/home', { muteHttpExceptions: true, followRedirects: false });
-    return { ok: r.getResponseCode() < 500, status: r.getResponseCode() };
+    var code = r.getResponseCode();
+    return { ok: code < 500, status: code };
   } catch (err) {
-    return { ok: false, status: String(err) };
+    return { ok: false, status: String(err && err.message || err) };
   }
 }
 
 var PAGE_HTML = `
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap">
+<link rel="stylesheet" id="gfont" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap">
 <style>
-  :root{--bg:#edf2f5;--surface:#fff;--line:#d9e3e9;--fg:#0c1a24;--muted:#4d606d;--accent:#07857b;--ok:#14905a;--warn:#9c6205;--crit:#cc3b3b;color-scheme:light}
-  @media (prefers-color-scheme:dark){:root{--bg:#060b14;--surface:#0d1522;--line:#1b293d;--fg:#e4edf6;--muted:#93a6bb;--accent:#37e2cb;--ok:#4fd897;--warn:#f4c552;--crit:#ff7c78;color-scheme:dark}}
+  :root{--bg:#edf2f5;--surface:#fff;--surface2:#f3f7f9;--line:#d9e3e9;--fg:#0c1a24;--muted:#4d606d;--accent:#07857b;--on-accent:#fff;
+    --ok:#14905a;--ok-bg:rgba(20,144,90,.11);--warn:#9c6205;--warn-bg:rgba(214,150,30,.15);--crit:#cc3b3b;--crit-bg:rgba(204,59,59,.10);color-scheme:light}
+  @media (prefers-color-scheme:dark){:root{--bg:#060b14;--surface:#0d1522;--surface2:#121d2e;--line:#1b293d;--fg:#e4edf6;--muted:#93a6bb;--accent:#37e2cb;--on-accent:#022320;
+    --ok:#4fd897;--ok-bg:rgba(79,216,151,.12);--warn:#f4c552;--warn-bg:rgba(244,197,82,.12);--crit:#ff7c78;--crit-bg:rgba(255,124,120,.12);color-scheme:dark}}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 "Plus Jakarta Sans","Segoe UI",system-ui,sans-serif;padding:32px 16px}
   .wrap{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
-  h1{margin:0;font-size:24px;font-weight:800;letter-spacing:-.02em}
+  .eyebrow{font-size:11.5px;font-weight:700;letter-spacing:.1em;color:var(--muted)}
+  h1{margin:2px 0 4px;font-size:24px;font-weight:800;letter-spacing:-.02em}
   .muted{color:var(--muted)}
-  .card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:6px 18px}
-  .row{display:flex;gap:12px;align-items:flex-start;padding:14px 0;border-bottom:1px solid var(--line)}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:4px 18px}
+  .row{display:flex;gap:12px;align-items:flex-start;padding:13px 0;border-bottom:1px solid var(--line)}
   .row:last-child{border-bottom:0}
-  .ic{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-weight:800;flex:none;background:var(--line);color:var(--muted)}
+  .ic{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-weight:800;flex:none;font-size:13px}
+  .ic.wait{border:2px solid var(--line);border-top-color:var(--accent);animation:sp 1s linear infinite}
   .ic.ok{background:var(--ok);color:var(--bg)} .ic.warn{background:var(--warn);color:var(--bg)} .ic.crit{background:var(--crit);color:var(--bg)}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){.ic.wait{animation:none}}
   .row b{display:block} .row small{color:var(--muted);font-size:12.5px;overflow-wrap:anywhere}
-  button{font:inherit;font-weight:700;border:0;border-radius:999px;padding:10px 18px;background:var(--accent);color:var(--bg);cursor:pointer}
-  pre{font-variant-ligatures:none;white-space:pre-wrap;font:12px/1.5 Consolas,monospace;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;margin:0}
+  .verdict{border-radius:14px;padding:13px 16px;font-size:13.5px}
+  .verdict.ok{background:var(--ok-bg)} .verdict.warn{background:var(--warn-bg)} .verdict.crit{background:var(--crit-bg)}
+  .verdict b{display:block}
+  button{font:inherit;font-weight:700;border:0;border-radius:999px;padding:10px 18px;background:var(--accent);color:var(--on-accent);cursor:pointer}
+  button[disabled]{opacity:.45;cursor:not-allowed}
+  pre{font-variant-ligatures:none;white-space:pre-wrap;font:12px/1.55 Consolas,monospace;background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:12px;margin:0;overflow-wrap:anywhere}
 </style>
 <div class="wrap">
-  <div><div class="muted" style="font-size:12px;font-weight:700;letter-spacing:.1em">STATUS KONTRAK MANAGER · F0</div><h1>Uji koneksi dari jaringan ini</h1>
+  <div><div class="eyebrow">STATUS KONTRAK MANAGER · F0 · v{{VERSI}}</div><h1>Uji koneksi dari jaringan ini</h1>
   <div class="muted">Tunggu semua baris selesai, lalu klik <b>Salin hasil</b> dan tempel di chat.</div></div>
   <div class="card" id="list"></div>
-  <div><button id="copy">Salin hasil</button> <span class="muted" id="msg"></span></div>
+  <div class="verdict" id="verdict" hidden></div>
+  <div><button id="copy" disabled>Salin hasil</button> <span class="muted" id="msg"></span></div>
   <pre id="out" hidden></pre>
 </div>
 <script>
-  var hasil = {};
+(function () {   // dibungkus supaya tidak bentrok dengan variabel bawaan browser (mis. window.status)
+  var BATAS_MS = 20000;
   var ITEMS = [
     ['halaman', 'Halaman terbuka dari jaringan ini'],
     ['server',  'Server menjawab (google.script.run)'],
@@ -66,46 +80,86 @@ var PAGE_HTML = `
     ['fetch',   'Server bisa memanggil Web App lain (untuk script penerima)'],
     ['browser', 'Browser']
   ];
+  var hasil = {}, statusCek = {};
   var list = document.getElementById('list');
   ITEMS.forEach(function (it) {
-    list.insertAdjacentHTML('beforeend', '<div class="row" id="r-' + it[0] + '"><span class="ic">…</span><div><b>' + it[1] + '</b><small>memeriksa…</small></div></div>');
+    list.insertAdjacentHTML('beforeend', '<div class="row" id="r-' + it[0] + '"><span class="ic wait"></span><div><b>' + it[1] + '</b><small>memeriksa…</small></div></div>');
   });
-  function set(key, status, text) {
+
+  function set(key, st, text) {
+    if (statusCek[key]) return;                       // hasil pertama yang dipakai
+    statusCek[key] = st;
     var row = document.getElementById('r-' + key), ic = row.querySelector('.ic');
-    ic.className = 'ic ' + status; ic.textContent = status === 'ok' ? '✓' : status === 'warn' ? '!' : '✕';
-    row.querySelector('small').textContent = text; hasil[key] = (status === 'ok' ? 'OK' : status.toUpperCase()) + ' — ' + text;
+    ic.className = 'ic ' + st; ic.textContent = st === 'ok' ? '✓' : st === 'warn' ? '!' : '✕';
+    row.querySelector('small').textContent = text;
+    hasil[key] = (st === 'ok' ? 'OK' : st.toUpperCase()) + ' — ' + text;
+    if (ITEMS.every(function (it) { return statusCek[it[0]]; })) selesai();
   }
+
+  function selesai() {
+    var vals = ITEMS.map(function (it) { return statusCek[it[0]]; });
+    var v = vals.indexOf('crit') >= 0 ? ['crit', 'Belum lulus', 'Ada pemeriksaan yang gagal. Salin hasil ini ke chat supaya kita bahas jalan keluarnya.']
+          : vals.indexOf('warn') >= 0 ? ['warn', 'Lulus dengan catatan', 'Aplikasi bisa dipakai dari jaringan ini. Font Google diblokir, jadi aplikasi memakai font sistem.']
+          : ['ok', 'Lulus', 'Semua pemeriksaan hijau. Aplikasi bisa dipakai dari jaringan ini.'];
+    var el = document.getElementById('verdict');
+    el.className = 'verdict ' + v[0]; el.hidden = false;
+    el.innerHTML = '<b>' + v[1] + '</b>' + v[2];
+    hasil._kesimpulan = v[1];
+    document.getElementById('copy').disabled = false;
+  }
+
+  // 1. Halaman
   set('halaman', 'ok', 'Terbuka ' + new Date().toLocaleString('id-ID'));
 
+  // 2. Server
   var t0 = Date.now();
   google.script.run
     .withSuccessHandler(function (r) { set('server', 'ok', (Date.now() - t0) + ' ms · waktu server ' + r.waktuServer + ' (' + r.zona + ') · berjalan sebagai ' + r.akunEksekusi); })
     .withFailureHandler(function (e) { set('server', 'crit', String(e && e.message || e)); })
     .ping();
 
+  // 3. UrlFetch dari server
   google.script.run
     .withSuccessHandler(function (r) { set('fetch', r.ok ? 'ok' : 'crit', 'Status ' + r.status); })
     .withFailureHandler(function (e) { set('fetch', 'crit', String(e && e.message || e)); })
     .cekFetch();
 
-  var fontDone = false;
-  function cekFont() {
-    if (fontDone) return; fontDone = true;
-    var ok = document.fonts && document.fonts.check('16px "Plus Jakarta Sans"');
-    set('font', ok ? 'ok' : 'warn', ok ? 'Termuat' : 'Diblokir atau lambat. Aplikasi akan memakai Segoe UI (tetap berfungsi).');
+  setTimeout(function () {
+    set('server', 'crit', 'Tidak ada jawaban dalam ' + (BATAS_MS / 1000) + ' detik');
+    set('fetch', 'crit', 'Tidak ada jawaban dalam ' + (BATAS_MS / 1000) + ' detik');
+  }, BATAS_MS);
+
+  // 4. Font: dianggap termuat hanya bila ada FontFace "Plus Jakarta Sans" berstatus loaded
+  function fontTermuat() {
+    var ok = false;
+    if (document.fonts && document.fonts.forEach) {
+      document.fonts.forEach(function (f) { if (/Plus Jakarta Sans/i.test(f.family) && f.status === 'loaded') ok = true; });
+    }
+    return ok;
   }
-  if (document.fonts) { document.fonts.load('16px "Plus Jakarta Sans"').then(cekFont, cekFont); }
-  setTimeout(cekFont, 5000);
+  function cekFont() {
+    set('font', fontTermuat() ? 'ok' : 'warn', fontTermuat() ? 'Termuat' : 'Diblokir atau lambat. Aplikasi akan memakai Segoe UI (tetap berfungsi).');
+  }
+  document.getElementById('gfont').addEventListener('error', cekFont);
+  if (document.fonts && document.fonts.load) {
+    document.fonts.load('16px "Plus Jakarta Sans"').then(function () { if (fontTermuat()) cekFont(); }, function () {});
+  }
+  setTimeout(cekFont, 6000);
 
-  var ua = navigator.userAgent, m = ua.match(/(Edg|Chrome|Firefox|Safari)\\/([\\d.]+)/);
-  set('browser', 'ok', (m ? m[1].replace('Edg', 'Edge') + ' ' + m[2] : ua) + ' · transisi tema ' + (document.startViewTransition ? 'didukung' : 'tidak didukung (tema tetap bisa diganti)'));
+  // 5. Browser
+  var ua = navigator.userAgent, m = ua.match(/(Edg|OPR|Chrome|Firefox|Safari)\\/([\\d.]+)/);
+  set('browser', 'ok', (m ? m[1].replace('Edg', 'Edge').replace('OPR', 'Opera') + ' ' + m[2] : ua) +
+      ' · transisi tema ' + (document.startViewTransition ? 'didukung' : 'tidak didukung (tema tetap bisa diganti)'));
 
+  // Salin hasil
   document.getElementById('copy').onclick = function () {
-    var txt = 'Hasil uji F0 SKM\\n' + ITEMS.map(function (it) { return '- ' + it[1] + ': ' + (hasil[it[0]] || 'belum selesai'); }).join('\\n');
+    var txt = 'Hasil uji F0 SKM (v{{VERSI}}): ' + (hasil._kesimpulan || '-') + '\\n' +
+      ITEMS.map(function (it) { return '- ' + it[1] + ': ' + (hasil[it[0]] || 'belum selesai'); }).join('\\n');
     var out = document.getElementById('out'); out.textContent = txt; out.hidden = false;
-    var done = function () { document.getElementById('msg').textContent = 'Tersalin. Tempel di chat.'; };
-    var fallback = function () { var r = document.createRange(); r.selectNodeContents(out); getSelection().removeAllRanges(); getSelection().addRange(r); document.getElementById('msg').textContent = 'Teks sudah dipilih, tekan Ctrl+C.'; };
-    try { navigator.clipboard.writeText(txt).then(done, fallback); } catch (e) { fallback(); }
+    var msg = document.getElementById('msg');
+    var pilih = function () { var r = document.createRange(); r.selectNodeContents(out); getSelection().removeAllRanges(); getSelection().addRange(r); msg.textContent = 'Teks sudah dipilih, tekan Ctrl+C.'; };
+    try { navigator.clipboard.writeText(txt).then(function () { msg.textContent = 'Tersalin. Tempel di chat.'; }, pilih); } catch (e) { pilih(); }
   };
+})();
 </script>
 `;

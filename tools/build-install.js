@@ -9,6 +9,7 @@ const root = path.join(__dirname, '..');
 const src = path.join(root, phase);
 const code = fs.readFileSync(path.join(src, 'Code.gs'), 'utf8');
 const manifest = fs.readFileSync(path.join(src, 'appsscript.json'), 'utf8');
+const versi = (code.match(/F0_VERSI = '([^']+)'/) || [])[1] || '-';
 const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 const STEPS = [
@@ -57,7 +58,7 @@ pre{font-variant-ligatures:none;margin:0;max-height:260px;overflow:auto;backgrou
 @media (max-width:620px){.checks{grid-template-columns:minmax(0,1fr)}}
 </style>
 <div class="wrap">
- <div><div class="eyebrow">Status Kontrak Manager · Fase F0</div><h1>Pasang web app uji</h1>
+ <div><div class="eyebrow">Status Kontrak Manager · Fase F0 · v${versi}</div><h1>Pasang web app uji</h1>
   <p class="muted">F0 hanya memastikan aplikasi bisa dibuka dari jaringan kantor sebelum fitur dibangun. Butuh sekitar 10 menit. Setelah lulus, file ini diganti dengan aplikasi lengkap di F1 dengan cara yang sama.</p></div>
  <div class="card"><h2>Yang dicek halaman uji</h2><div class="checks">
   <div><i></i><span>Halaman Google Apps Script terbuka dari jaringan kantor</span></div>
@@ -68,7 +69,7 @@ pre{font-variant-ligatures:none;margin:0;max-height:260px;overflow:auto;backgrou
  ${[['appsscript.json', manifest, 'Pengaturan project: zona Asia/Jakarta, izin, dan mode Web app.'], ['Code.gs', code, 'Kode server + halaman uji.']].map(([n, c, d], i) => `
  <div class="card file"><div class="fh"><h2 class="mono" style="font-family:var(--mono)">${n}</h2><span class="muted" style="font-size:13px">${d}</span><span class="sp"></span><span class="ok" id="ok${i}" hidden>Tersalin</span><button class="btn" data-i="${i}">Salin ${n}</button></div>
  <pre id="f${i}">${esc(c)}</pre></div>`).join('')}
- <p class="muted" style="font-size:13px">Kalau ada langkah yang berbeda dari layar Anda, kirim screenshot-nya di chat.</p>
+ <div class="card"><h2>Setelah hasil keluar</h2><p class="muted" style="margin-top:8px">Klik <b>Salin hasil</b> dan tempel di chat, apa pun hasilnya. Arti setiap hasil dan langkah berikutnya ada di tabel <a href="https://claude.ai/artifact/1FfXMRSWQ9Taa9f54uACLn" target="_blank" rel="noopener">Kalau hasilnya… di mockup F0</a>. Kalau ada langkah yang berbeda dari layar Anda, kirim screenshot-nya.</p></div>
 </div>
 <script>
 document.querySelectorAll('[data-i]').forEach(function(b){b.addEventListener('click',function(){

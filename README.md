@@ -9,6 +9,13 @@ Aplikasi Apps Script untuk Unit Fulfillment: status BAST diperbarui di satu temp
 | `f0/` | Fase F0: web app uji koneksi dari jaringan kantor. |
 | `install/` | Halaman instalasi bertombol Salin, dibuat oleh `tools/build-install.js`. |
 | `tools/` | Skrip build. |
+| `test/` | Unit test (`npm test`). Layanan Apps Script ditiru; halaman diuji di Chromium headless. |
+
+Menjalankan test:
+
+```bash
+npm test
+```
 
 Membuat ulang halaman instalasi:
 

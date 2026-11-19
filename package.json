@@ -1,0 +1,9 @@
+{
+  "name": "status-kontrak-manager",
+  "private": true,
+  "description": "Status Kontrak Manager (Apps Script). Paket ini hanya untuk test dan build, tidak dipasang di Apps Script.",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "build:install": "node tools/build-install.js f0"
+  }
+}
