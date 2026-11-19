@@ -440,7 +440,7 @@ const RULES=[
  {k:'BELUM_ADA_BAST',v:'BELUM DIPROSES',aktif:true},
 ];
 const DOKTAGIH=[{kode:'BAST',label:'BAST',ket:'Berita Acara Serah Terima'},{kode:'BAA',label:'BAA',ket:'Berita Acara Aktivasi, dipakai sebagai dokumen tagih'}];
-const CONFIG=[['APP_NAMA','Status Kontrak Manager'],['SYNC_INTERVAL_MENIT','15'],['TAHAP_REOPEN','DRAFTING'],['AGING_BATAS','7,14,30'],['KENDALA_BATAS_HARI','14'],['DOKTAGIH_DEFAULT_DIRECT','BAA'],['DOKTAGIH_DEFAULT_INDIRECT','BAST'],['KONFIRMASI_TAB_BARU','TRUE'],['BACKUP_SIMPAN','8'],['SKEMA_VERSI','1']];
+const CONFIG=[['APP_NAMA','Status Kontrak Manager'],['SYNC_INTERVAL_MENIT','15'],['TAHAP_REOPEN','DRAFTING'],['AGING_BATAS','7,14,30'],['KENDALA_BATAS_HARI','14'],['FIELD_WAJIB','EndCustomer,NilaiKontrak,Segment,Populasi,OrderInternal'],['DOKTAGIH_DEFAULT_DIRECT','BAA'],['DOKTAGIH_DEFAULT_INDIRECT','BAST'],['KONFIRMASI_TAB_BARU','TRUE'],['BACKUP_SIMPAN','8'],['SKEMA_VERSI','1']];
 const AGING=[7,14,30]; const KBATAS=14;
 const PERMS=['dashboard.lihat','kontrak.lihat','export','kontrak.update','kontrak.daftar','kontrak.arsip','pic.atur','sinkron.jalankan','target.kelola','pengaturan.kelola','user.kelola','log.semua'];
 const ROLES={ADMIN:PERMS.slice(),STAFF:PERMS.slice(0,5),VIEWER:PERMS.slice(0,3)};
@@ -636,6 +636,8 @@ function perhatianItems(){
     activeKend(k).forEach(x=>{if(x.hari>KBATAS)it.push({g:'kend',k,txt:`${esc(KREF.find(r=>r.kode===x.j).label)} aktif ${x.hari} hari: ${esc(x.ket)}`});});
     if(!k.pic&&statusK(k).st==='OPEN')it.push({g:'pic',k,txt:'Kontrak OPEN tanpa PIC'});
     if(k.verif)it.push({g:'verif',k,txt:'Data hasil import belum diverifikasi'});});
+  K.forEach(k=>{const m=missingFields(k);if(m.length&&statusK(k).st==='OPEN')it.push({g:'lengkap',k,txt:'Belum diisi: '+m.map(x=>x[1]).join(', ')});
+    unitDiffs(k).filter(d=>d.kind==='beda').forEach(d=>it.push({g:'beda',k,txt:`${FLD[d.f]} di SKM berbeda dengan ${esc(d.u.t.nama)}: <b>${esc(d.f==='nilai'?rp(d.val):d.val)}</b>`}));});
   if(TARGETS[0].baru)it.push({g:'sync',t:TARGETS[0],txt:'Tab baru "DES 2026" terdeteksi. Target berjalan mode Cek saja sampai dikonfirmasi.'});
   it.push({g:'sync',k:K.find(k=>k.id==='K-000005'),txt:'Sel KENDALA UMUM di Billcom baris 120 diubah di luar SKM ("SIRKULIR DOKUMEN" → "BAST DONE") oleh rina.billcom@gmail.com, 08:52. Tidak ditimpa.'});
   return it;
@@ -839,9 +841,9 @@ function renderDrawer(opening,swap){
        <h2>${esc(custName(k))}</h2><div class="muted">${esc(k.judul)}${jenisCust(k)==='INDIRECT'?` · customer: ${esc(k.pel)}`:''}</div>
        <div class="row" style="margin-top:10px">${statusPill(k)} ${tahapPill(tahapK(k))} ${kuChip(p)} ${custPill(k)} ${k.verif?'<span class="pill p-info">Hasil import · perlu verifikasi</span>':''}</div></div>
       <label class="of" style="min-width:210px;margin-top:8px"><span>PIC</span><select class="inp" id="picSel"><option value="">— Tanpa PIC —</option>${PICS.map(x=>`<option ${x===k.pic?'selected':''}>${x}</option>`).join('')}</select><small>Siapa pun boleh update; non-PIC dicatat "bantu".</small></label></div>
-     <div class="dtabs" role="tablist">${[['proses','Proses'],['data','Data kontrak'],['riwayat','Riwayat']].map(([v,l])=>`<button role="tab" data-dtab="${v}" class="${S.dtab===v?'on':''}">${l}</button>`).join('')}</div>
+     <div class="dtabs" role="tablist">${[['proses','Proses'],['data','Data kontrak'],['unit','Sheet unit'],['riwayat','Riwayat']].map(([v,l])=>`<button role="tab" data-dtab="${v}" class="${S.dtab===v?'on':''}">${l}</button>`).join('')}</div>
     </div>
-    <div class="dbody ${swap?'swap':''}" id="dbody">${S.dtab==='proses'?dProses(k,p):S.dtab==='data'?dData(k):dRiwayat(k,p)}</div>
+    <div class="dbody ${swap?'swap':''}" id="dbody">${S.dtab==='proses'?dProses(k,p):S.dtab==='data'?dData(k):S.dtab==='unit'?dUnit(k):dRiwayat(k,p)}</div>
    </aside></div>`;
   if(!swap&&!opening)root.querySelector('.dbody').scrollTop=prevScroll;
   bindDrawer(k);
@@ -880,7 +882,11 @@ function dProses(k,p){
    </div></div>`;
 }
 function dData(k){
+  const miss=missingFields(k),tot=FIELD_WAJIB.length,ok=tot-miss.length,sug=unitDiffs(k).filter(d=>d.kind==='kosong');
   return `<div class="grid g2">
+   <div class="card" style="grid-column:1/-1"><h2>Kelengkapan data <small>${ok}/${tot} field wajib terisi</small><span class="sp"></span>${miss.length?`<span class="pill p-warn">${miss.length} belum lengkap</span>`:'<span class="pill p-ok">lengkap</span>'}</h2>
+    <div class="agebar" style="height:8px;margin-bottom:12px"><i style="flex:${ok};background:var(--ok)"></i>${miss.length?`<i style="flex:${miss.length};background:transparent"></i>`:''}</div>
+    ${miss.length?`<div class="row">${miss.map(m=>`<span class="pill p-warn">${m[1]}</span>`).join('')}<span class="sp"></span>${sug.length?`<button class="btn sm ton" data-gounit="1">${ic('sync','s')}${sug.length} saran dari sheet unit</button>`:''}</div>`:'<div class="muted" style="font-size:13px">Semua field wajib sudah terisi. Daftar field wajib diatur di Config (FIELD_WAJIB).</div>'}</div>
    <div class="card"><h2>Data kontrak <span class="sp"></span><button class="btn sm">Ubah</button></h2>
     <dl class="kv"><dt>ID</dt><dd class="mono">${k.id}</dd><dt>No. kontrak</dt><dd class="mono" style="font-size:12px">${esc(k.no)}</dd><dt>Jenis dok</dt><dd>${esc(k.jenis)}</dd><dt>Tahun project</dt><dd>${k.tahun}</dd><dt>Populasi</dt><dd>${esc(k.pop)}</dd><dt>Segment</dt><dd>${esc(k.seg)}</dd><dt>Nilai</dt><dd class="tnum">${rp(k.nilai)}</dd><dt>Jumlah lokasi</dt><dd>${k.lok??'<span class="muted">tidak diisi</span>'}</dd><dt>Sumber</dt><dd>${esc(k.sumber)}</dd><dt>Alias</dt><dd class="mono" style="font-size:12px">${k.id==='K-000001'?'TEL 0317-0016/P8/LG.270/DES-A2027000/2017':'<span class="muted">—</span>'}</dd></dl></div>
    <div class="card"><h2>Customer</h2>
@@ -889,6 +895,46 @@ function dData(k){
    <div class="card" style="grid-column:1/-1"><h2>SO / MI <small>order internal</small><span class="sp"></span><button class="btn sm">${ic('add','s')}Tambah</button></h2>
     <div class="tbl-wrap"><table class="t"><thead><tr><th>Jenis</th><th>No. order</th><th>Layanan</th><th>Pekerjaan</th><th class="num">Lokasi</th></tr></thead><tbody>
     ${k.orders.map(o=>`<tr><td><span class="pill p-dim">${o.j}</span></td><td class="no">${esc(o.no)}</td><td>${esc(o.lay)}</td><td>${esc(o.pek)}</td><td class="num">${o.lok}</td></tr>`).join('')||'<tr><td colspan="5" class="muted">Belum ada SO/MI.</td></tr>'}</tbody></table></div></div></div>`;
+}
+/* ---- Data dari sheet unit (BACA) & kelengkapan ---- */
+const COLS={'NO KONTRAK':'B','NAMA CUSTOMER':'C','END CUSTOMER':'D','NAMA LAYANAN':'E','NILAI KONTRAK':'F','PERIODE TAGIH':'G','AM':'H','SEGMENT':'I','STATUS BAST FF':'R','KETERANGAN FF':'S','TGL UPDATE FF':'T','PELANGGAN':'C','KENDALA UMUM':'M','KENDALA DETIL':'N','PROGRESS BAST':'O'};
+const colOf=h=>COLS[h]||'?';
+const FLD={pel:'Customer',end:'End customer',judul:'Judul',nilai:'Nilai kontrak',seg:'Segment'};
+const FIELD_WAJIB=[['end','End customer',k=>!!k.end],['nilai','Nilai kontrak',k=>k.nilai!=null],['seg','Segment',k=>!!k.seg],['pop','Populasi',k=>!!k.pop],['orders','SO/MI',k=>k.orders.length>0]];
+const missingFields=k=>FIELD_WAJIB.filter(f=>!f[2](k));
+function unitData(k){            // snapshot hasil cek terakhir (tab DataUnit)
+  if(k.id==='K-000010')return [];
+  const n=parseInt(k.id.slice(-2)),p=evalPush(k);
+  const v={pel:k.pel,end:k.end||k.pel,judul:k.judul,nilai:k.nilai,seg:k.seg};
+  if(k.id==='K-000001'){v.pel='PT Telkom Indonesia (Persero) Tbk';v.end='BANK PERMATA';}
+  if(k.id==='K-000002')v.nilai=29700000000;
+  const out=[{t:TARGETS[0],tab:'NOV 2026',rows:k.id==='K-000002'?[118,119]:[100+n*3],
+    baca:[['NAMA CUSTOMER','pel',v.pel],['END CUSTOMER','end',v.end],['NAMA LAYANAN','judul',v.judul],['NILAI KONTRAK','nilai',v.nilai],['SEGMENT','seg',v.seg]],
+    info:[['Periode tagih','PERIODE TAGIH',k.id==='K-000002'?'OKT 2026 · NOV 2026':'NOV 2026'],['AM','AM',['Andi S.','Rudi H.','Sari P.','Dewi K.'][n%4]]],
+    tulis:[['STATUS BAST FF',k.id==='K-000005'?'BAST DONE':p.umum,p.umum],['KETERANGAN FF',p.detil,p.detil],['TGL UPDATE FF','14-Nov-2026','15-Nov-2026']]}];
+  if(['K-000001','K-000003','K-000006','K-000009'].includes(k.id))out.push({t:TARGETS[1],tab:'DATA TELKOMSAT',rows:[{'K-000001':14,'K-000003':15,'K-000006':16,'K-000009':17}[k.id]],
+    baca:[['PELANGGAN','pel',v.pel]],info:[],tulis:[['KENDALA UMUM',k.id==='K-000001'?'BAST REVISI':p.umum,p.umum],['KENDALA DETIL',p.detil,p.detil],['PROGRESS BAST',tahLabel(tahapK(k)),tahLabel(tahapK(k))]]});
+  return out;
+}
+const sameVal=(a,b)=>String(a??'').trim().toUpperCase()===String(b??'').trim().toUpperCase();
+function unitDiffs(k){const d=[];unitData(k).forEach(u=>u.baca.forEach(([h,f,val])=>{if(val==null||val==='')return;const mine=k[f];if(mine==null||mine===''){d.push({u,h,f,val,kind:'kosong'});}else if(!sameVal(mine,val))d.push({u,h,f,val,kind:'beda'});}));return d;}
+function dUnit(k){
+  const U=unitData(k);
+  if(!U.length)return `<div class="note warn">${ic('warn','s')}<span class="tx">Nomor kontrak ini belum ditemukan di sheet unit mana pun pada cek terakhir. Periksa penulisan nomor, atau tambahkan alias bila di sheet unit ditulis berbeda.</span></div>`;
+  const fmt=(f,x)=>f==='nilai'&&x!=null?rp(x):esc(x??'');
+  return `<div class="note info">${ic('sync','s')}<span class="tx">Data di bawah dibaca dari sheet unit pada cek terakhir (15 Nov 09:00). SKM <b>tidak pernah menulis</b> kolom BACA; bila berbeda, Anda yang memilih nilai mana yang dipakai di SKM.</span></div>
+  ${U.map(u=>`<div class="card"><h2>${esc(u.t.nama)}<small>tab ${esc(u.tab)} · baris ${u.rows.join(', ')}${u.rows.length>1?' (kontrak muncul berulang karena periode tagih)':''}</small></h2>
+   <div class="eyebrow" style="margin-bottom:6px">Info dari sheet (BACA)</div>
+   <div class="tbl-wrap"><table class="t"><thead><tr><th>Kolom di sheet</th><th>Field SKM</th><th>Nilai di sheet</th><th>Nilai di SKM</th><th></th></tr></thead><tbody>
+   ${u.baca.map(([h,f,val])=>{const mine=k[f],emptyMine=mine==null||mine==='',same=sameVal(mine,val);
+     return `<tr><td><span class="mono dim">${colOf(h)}</span> ${esc(h)}</td><td>${FLD[f]}</td><td>${fmt(f,val)}</td><td>${emptyMine?'<span class="muted">kosong</span>':fmt(f,mine)}</td>
+      <td style="text-align:right;white-space:nowrap">${same?'<span class="pill p-ok">sama</span>':`<span class="pill ${emptyMine?'p-info':'p-warn'}">${emptyMine?'bisa melengkapi':'beda'}</span> <button class="btn sm ton" data-ambil="${f}" data-val="${esc(String(val))}">Pakai nilai sheet</button>`}</td></tr>`;}).join('')}
+   ${u.info.map(([l,h,val])=>`<tr><td><span class="mono dim">${colOf(h)}</span> ${esc(h)}</td><td><span class="pill p-dim">Info tambahan</span> ${esc(l)}</td><td>${esc(val)}</td><td class="muted">—</td><td></td></tr>`).join('')}
+   </tbody></table></div>
+   <div class="eyebrow" style="margin:14px 0 6px">Kolom milik FF (TULIS)</div>
+   <div class="tbl-wrap"><table class="t"><thead><tr><th>Kolom di sheet</th><th>Isi sekarang</th><th>Nilai dari SKM</th></tr></thead><tbody>
+   ${u.tulis.map(([h,now,next])=>`<tr><td><span class="mono dim">${colOf(h)}</span> ${esc(h)}</td><td class="mono" style="font-size:11.5px">${sameVal(now,next)?esc(now):`<span class="diff-old">${esc(now)}</span>`}</td><td class="mono" style="font-size:11.5px">${sameVal(now,next)?'<span class="pill p-ok">sudah sama</span>':`<span class="diff-new">${esc(next)}</span>`}</td></tr>`).join('')}
+   </tbody></table></div></div>`).join('')}`;
 }
 function defaultHist(k){const b=k.bast[0];return [['15 Nov 08:51',`<b>${esc(k.pic||'omPik')}</b> memindahkan B1 ke tahap <b>${esc(b?tahLabel(b.t):'—')}</b>`],['14 Nov 16:20',`<b>omPik</b> mengatur PIC menjadi <b>${esc(k.pic||'—')}</b>`],['14 Nov 10:05',`Kontrak dibuat dari <b>${k.sumber==='IMPORT'?'import sheet FF lama':'Antrian (Billcom)'}</b>`]];}
 function dRiwayat(k,p){
@@ -909,6 +955,10 @@ function bindDrawer(k){
   $('#verif')&&($('#verif').onclick=()=>{k.verif=false;toast('Ditandai sudah diverifikasi.');refresh();});
   $('#arsip').onclick=()=>modal('Arsipkan kontrak?','<div class="muted">Kontrak yang diarsipkan tidak tampil di daftar dan tidak disinkron. Data tetap tersimpan dan bisa dikembalikan. Hanya admin (izin <span class="mono">kontrak.arsip</span>).</div>',[{l:'Batal'},{l:'Arsipkan',pri:true,fn:()=>toast('(Mockup) Kontrak diarsipkan.')}]);
   $$('.ost').forEach(btn=>btn.onclick=()=>moveTahap(k,+btn.dataset.b,btn.dataset.t));
+  $$('[data-gounit]').forEach(b=>b.onclick=()=>{S.dtab='unit';renderDrawer(false,true);});
+  $$('[data-ambil]').forEach(b=>b.onclick=()=>{const f=b.dataset.ambil,raw=b.dataset.val,val=f==='nilai'?Number(raw):raw,old=k[f],jc=jenisCust(k);
+    log('ompik','PAKAI_DATA_UNIT','Kontrak',k.id,FLD[f],old??'',val);k[f]=val;hist(k,`<b>omPik</b> memakai ${FLD[f]} dari sheet unit: <b>${esc(f==='nilai'?rp(val):val)}</b>`);
+    const jc2=jenisCust(k);toast(jc!==jc2?`${FLD[f]} diperbarui. Jenis customer berubah: ${jc} → ${jc2}.`:`${FLD[f]} diperbarui dari sheet unit.`);refresh();});
   $$('[data-doc]').forEach(sl=>sl.onchange=()=>{const b=k.bast.find(x=>x.n===+sl.dataset.doc);log('ompik','UBAH_DOK_TAGIH','BAST',k.id+'-B'+b.n,'DokTagih',b.doc,sl.value);b.doc=sl.value;hist(k,`<b>omPik</b> mengubah dokumen tagih B${b.n} menjadi <b>${b.doc}</b>`);toast(`B${b.n} sekarang ${b.doc}. BAA maupun BAST bisa menutup kontrak.`);refresh();});
   $('#addBast')&&($('#addBast').onclick=()=>modal('Tambah BAST/BAA parsial',`<div class="grid g2"><label class="of"><span>Dokumen tagih</span><select class="inp" id="mDoc">${DOKTAGIH.map(d=>`<option value="${d.kode}" ${d.kode===dokDefault(k)?'selected':''}>${d.label}</option>`).join('')}</select><small>Usulan ${dokDefault(k)} karena customer ${jenisCust(k)}</small></label><label class="of"><span>Jumlah lokasi</span><input class="inp" id="mLok" type="number" value="${k.lok?Math.max(0,k.lok-statusK(k).cak):''}"></label></div><label class="of"><span>Cakupan order</span><select class="inp">${k.orders.map(o=>`<option>${o.no}</option>`).join('')||'<option>(belum ada SO/MI)</option>'}</select></label><label class="of"><span>Daftar lokasi (opsional)</span><textarea class="inp" placeholder="Satu lokasi per baris"></textarea></label><label class="of"><span>Keterangan</span><input class="inp" id="mKet" value="BAST lanjutan"></label><div class="muted" style="font-size:12px">Dokumen baru dimulai di tahap ${tahLabel(TAHAP.find(t=>t.urut===1).kode)} dengan ID ${k.id}-B${k.bast.length+1}.</div>`,
     [{l:'Batal'},{l:'Tambah',pri:true,fn:d=>{const n=k.bast.length+1;k.bast.push({n,doc:d.querySelector('#mDoc').value,t:'KOMPULIR',s:1,cak:+d.querySelector('#mLok').value||null,order:k.orders[0]?.no||'',hari:0,ket:d.querySelector('#mKet').value,dok:''});hist(k,`<b>omPik</b> menambah dokumen <b>${k.id}-B${n}</b>`);log('ompik','TAMBAH_BAST','BAST',k.id+'-B'+n,'','','KOMPULIR');toast('Dokumen ditambahkan. Pratinjau sheet unit diperbarui.');refresh();}}]));
@@ -939,7 +989,7 @@ function moveTahap(k,bn,to){
 /* ================= Perlu Perhatian ================= */
 function viewPerhatian(){
   const it=perhatianItems();
-  const G=[['aging','BAST melewati batas aging tahap','var(--stale)'],['kend',`Kendala aktif lebih dari ${KBATAS} hari`,'var(--crit)'],['pic','Kontrak tanpa PIC','var(--warn)'],['verif','Data import belum diverifikasi','var(--info)'],['sync','Target error / sel diubah di luar aplikasi','var(--violet)']];
+  const G=[['aging','BAST melewati batas aging tahap','var(--stale)'],['kend',`Kendala aktif lebih dari ${KBATAS} hari`,'var(--crit)'],['pic','Kontrak tanpa PIC','var(--warn)'],['verif','Data import belum diverifikasi','var(--info)'],['lengkap','Data kontrak belum lengkap','var(--warn)'],['beda','Beda data dengan sheet unit','var(--stale)'],['sync','Target error / sel diubah di luar aplikasi','var(--violet)']];
   return `<div class="note info">${ic('warn','s')}<span class="tx">Aging tidak pernah berhenti: hari terus bertambah selama BAST belum pindah tahap. Batas (per tahap, dan ${KBATAS} hari untuk kendala) hanya menentukan kapan kontrak muncul di halaman ini.</span></div>
   <div class="grid g2">${G.map(([g,l,c])=>{const xs=it.filter(x=>x.g===g);return `<div class="card"><h2><span style="width:10px;height:10px;border-radius:50%;background:${c};box-shadow:0 0 10px ${c}"></span>${l}<span class="sp"></span><span class="pill p-dim tnum">${xs.length}</span></h2>
    <div style="display:flex;flex-direction:column;gap:8px">${xs.map(x=>`<div class="attn" ${x.k?`data-open="${x.k.id}"`:'data-go="gsheet"'} tabindex="0" role="button"><span class="bar" style="background:${c}"></span><div style="min-width:0;flex:1">${x.k?`<span class="mono" style="font-size:11.5px;color:var(--muted)">${esc(x.k.no)}</span><div style="font-weight:700">${esc(custName(x.k))}${x.k.pic?` <span class="muted" style="font-weight:500">· PIC ${esc(x.k.pic)}</span>`:''}</div>`:`<b>${esc(x.t.nama)}</b>`}<div style="margin-top:3px;font-size:13px">${x.txt}</div></div>${ic('chevR','s')}</div>`).join('')||'<span class="muted">Tidak ada. Bagus.</span>'}</div></div>`;}).join('')}</div>`;
@@ -980,7 +1030,7 @@ function viewGsheet(){
    <div class="grid g3" style="gap:12px 24px">
     <dl class="kv"><dt>Mode tab</dt><dd>${t.mode==='TERBARU'?`TERBARU · pola <span class="mono">${t.pola}</span>`:'FIXED'}</dd><dt>Tab dipakai</dt><dd class="mono">${esc(t.tab)}</dd><dt>Ukuran</dt><dd>${t.size}${parseInt(t.size)>10?' · baca per kolom':''}</dd></dl>
     <dl class="kv"><dt>Cek terakhir</dt><dd class="tnum">${t.cek}</dd><dt>Update terakhir</dt><dd class="tnum">${t.upd}</dd><dt>Pemilik</dt><dd>${esc(t.owner)}</dd><dt>Script</dt><dd>v${t.ver} · terbaru · pencatat edit aktif</dd></dl>
-    <dl class="kv">${t.kolom.map(([f,a,h])=>`<dt class="mono" style="font-size:11px">${f}</dt><dd><span class="pill ${a==='TULIS'?'p-acc':'p-dim'}" style="font-size:10.5px">${a}</span> ${esc(h)}</dd>`).join('')}</dl></div>
+    <dl class="kv">${t.kolom.map(([f,a,h])=>`<dt class="mono" style="font-size:11px">${f}</dt><dd><span class="pill ${a==='TULIS'?'p-acc':'p-dim'}" style="font-size:10.5px">${a}</span> ${esc(h)} <span class="mono dim" style="font-size:11px">· kolom ${colOf(h)}</span></dd>`).join('')}</dl></div>
    ${t.baru?`<div class="note warn" style="margin-top:14px">${ic('warn','s')}<span class="tx" style="flex:1"><b>Tab berganti</b> · Tab baru <b class="mono">${t.baru}</b> terdeteksi (sebelumnya <span class="mono">${t.tab}</span>). Nilai yang sudah ada di tab baru dianggap titik awal, tanpa notifikasi.</span><button class="btn sm pri" data-tabbaru="${t.id}">Pakai tab baru</button></div>`:''}
    ${res?`<div style="margin-top:16px;display:flex;flex-direction:column;gap:10px;animation:rise .45s var(--ease) both">
      <div class="row"><b>Hasil Cek saja</b><span class="muted">· tidak ada yang ditulis</span><span class="sp"></span><span class="pill p-acc">${res.out.filter(x=>x.act==='TULIS').length} akan ditulis</span><span class="pill p-warn">${res.alarms.length} alarm</span><span class="pill p-info">${res.antri.length} ke Antrian</span></div>
@@ -1022,6 +1072,17 @@ function pasang() {
 // Mencatat {tab, baris, kolom, lama, baru, oleh, waktu} untuk kolom milik FF saja.
 function catatEdit(e) { /* ... */ }
 // info(), baca(), tulis(), ambilEdit(), out() ...`;
+const WHDR=[['A','NO',['1','2','3']],['B','NO KONTRAK',['TEL.0719-0488/…','TEL.0521-0102/…','SPK.0088/…']],['C','NAMA CUSTOMER',['PT Telkom Indonesia','PT Mitra Energi Persada','PT Sinar Logistik']],['D','END CUSTOMER',['BANK DANAMON','PT Mitra Energi Persada','PT Sinar Logistik']],['E','NAMA LAYANAN',['Komunikasi Data Satelit','VSAT Remote Wellsite','Relokasi Terminal']],['F','NILAI KONTRAK',['29.700.000.000','1.840.500.000','268.000.000']],['G','PERIODE TAGIH',['NOV 2026','NOV 2026','OKT 2026']],['H','AM',['Andi S.','Rudi H.','Sari P.']],['I','SEGMENT',['GOS','ENS','LBCS']],['R','STATUS BAST FF',['BAST ON REVIEW','SIRKULIR DOKUMEN','BAST TAKEOUT/SERTIM AR']],['S','KETERANGAN FF',['REVIEW ADMIN PRM','Menunggu TTD GM','Diserahkan ke AR']],['T','TGL UPDATE FF',['14-Nov-2026','14-Nov-2026','03-Nov-2026']]];
+const WFIELDS=[['KUNCI','KUNCI','No. kontrak (kunci)'],['KENDALA_UMUM','TULIS','Kendala Umum'],['KENDALA_DETIL','TULIS','Kendala Detil'],['TGL_UPDATE','TULIS','Tanggal update'],['TAHAP','TULIS','Tahap'],['PIC','TULIS','PIC'],['DOK_TAGIH','TULIS','Dokumen tagih (BAST/BAA)'],['PARSIAL','TULIS','Info parsial'],['PELANGGAN','BACA','Customer'],['END_CUSTOMER','BACA','End customer'],['JUDUL','BACA','Judul'],['NILAI','BACA','Nilai kontrak'],['SEGMENT','BACA','Segment'],['POPULASI','BACA','Populasi']];
+S.map={KUNCI:'NO KONTRAK',KENDALA_UMUM:'STATUS BAST FF',KENDALA_DETIL:'KETERANGAN FF',TGL_UPDATE:'TGL UPDATE FF',PELANGGAN:'NAMA CUSTOMER',END_CUSTOMER:'END CUSTOMER',JUDUL:'NAMA LAYANAN',NILAI:'NILAI KONTRAK',SEGMENT:'SEGMENT'};
+S.info=[['Periode tagih','PERIODE TAGIH'],['AM','AM']];
+function wizErrors(){const e=[],w=WFIELDS.filter(f=>f[1]!=='BACA'),lbl=f=>WFIELDS.find(x=>x[0]===f)[2];
+  if(!S.map.KUNCI)e.push('Kolom kunci (no. kontrak) wajib dipilih.');
+  if(!['KENDALA_UMUM','KENDALA_DETIL','TGL_UPDATE','TAHAP','PIC','DOK_TAGIH','PARSIAL'].some(f=>S.map[f]))e.push('Pilih minimal satu kolom TULIS.');
+  const by={};w.forEach(([f])=>{const h=S.map[f];if(h)(by[h]=by[h]||[]).push(lbl(f));});
+  Object.entries(by).forEach(([h,fs])=>{if(fs.length>1)e.push(`Header <b>${esc(h)}</b> dipakai oleh lebih dari satu field (${fs.join(', ')}). Satu kolom hanya boleh untuk satu field.`);});
+  WFIELDS.filter(f=>f[1]==='BACA').forEach(([f])=>{const h=S.map[f];if(h&&by[h]&&f)e.push(`Header <b>${esc(h)}</b> dipakai untuk TULIS sekaligus BACA (${lbl(f)}). Pilih kolom lain.`);});
+  return e;}
 function viewWizard(){
   const st=S.wiz,L=['Sheet & koneksi','Tab','Petakan header','Cek saja','Aktifkan'];
   const hdrs=['NO','NO KONTRAK','NAMA CUSTOMER','END CUSTOMER','NAMA LAYANAN','NILAI KONTRAK','PERIODE TAGIH','STATUS BAST FF','KETERANGAN FF','TGL UPDATE FF','AM','SEGMENT'];
@@ -1048,10 +1109,19 @@ function viewWizard(){
    ${S.wizMode==='TERBARU'?`<div class="grid g2"><label class="of"><span>Pola nama tab</span><input class="inp mono" value="MMM YYYY"></label><label class="of"><span>Cara menentukan terbaru</span><select class="inp"><option>Baca bulan dari nama tab</option><option>Tab paling kanan</option></select></label></div>
    <div><div class="muted" style="font-size:12px;margin-bottom:8px">Pratinjau tab yang cocok (12 dari 15 tab)</div><div class="row">${['JAN 2026','FEB 2026','…','SEP 2026','OKT 2026'].map(x=>`<span class="pill p-dim mono">${x}</span>`).join('')}<span class="pill p-acc mono">NOV 2026 · terbaru</span></div>
    <div class="muted" style="font-size:12px;margin-top:8px">Tidak cocok: <span class="mono">REKAP</span>, <span class="mono">REF</span>, <span class="mono">PIVOT</span></div></div>`:`<label class="of"><span>Pilih tab</span><select class="inp"><option>DATA TELKOMSAT</option><option>REKAP</option></select></label>`}`;
-  if(st===3)body=`<div class="muted" style="font-size:13px">Header terdeteksi di <b>baris 3</b> tab <span class="mono">NOV 2026</span>. Pilih header untuk setiap field; kosongkan yang tidak dipakai. Kolom dicari berdasarkan judul, jadi aman bila pemilik menyisipkan kolom.</div>
-   <div class="tbl-wrap"><table class="t"><thead><tr><th>Field SKM</th><th>Arah</th><th>Header di sheet</th></tr></thead><tbody>
-   ${fields.map(([f,a,h])=>`<tr><td class="mono" style="font-size:12px">${f}</td><td><span class="pill ${a==='TULIS'?'p-acc':a==='KUNCI'?'p-warn':'p-dim'}">${a}</span></td><td><select class="inp" style="min-width:200px" aria-label="Header untuk ${f}"><option value="">— tidak dipakai —</option>${hdrs.map(x=>`<option ${x===h?'selected':''}>${x}</option>`).join('')}</select></td></tr>`).join('')}</tbody></table></div>
-   <div class="grid g2"><label class="of"><span>Alias header kunci (pisah koma)</span><input class="inp" value="NO KONTRAK, NO KL, NOMOR KONTRAK"></label><label class="of"><span>Format tanggal</span><input class="inp mono" value="dd-MMM-yyyy"></label></div>`;
+  if(st===3){const err=wizErrors(),used=h=>Object.entries(S.map).filter(([f,v])=>v===h).map(([f])=>f);
+   const sel=(attr,val)=>`<select class="inp" ${attr} style="min-width:190px"><option value="">— tidak dipakai —</option>${WHDR.map(([c,h])=>`<option value="${h}" ${h===val?'selected':''}>${c} · ${h}</option>`).join('')}</select>`;
+   const sample=h=>{const x=WHDR.find(r=>r[1]===h);return x?x[2].slice(0,2).map(esc).join(' · '):''};
+   body=`<div class="muted" style="font-size:13px">Header terdeteksi di <b>baris 3</b> tab <span class="mono">NOV 2026</span> (${WHDR.length} kolom terisi). Kolom dikenali dari <b>judul header</b>, bukan dari hurufnya, jadi tetap benar walau pemilik sheet menyisipkan kolom.</div>
+   <div class="tbl-wrap"><table class="t"><thead><tr><th>Field SKM</th><th>Arah</th><th>Header di sheet</th><th>Kolom</th><th>Contoh isi</th></tr></thead><tbody>
+   ${WFIELDS.map(([f,a,lbl])=>{const h=S.map[f]||'',dup=h&&a!=='BACA'&&used(h).filter(x=>WFIELDS.find(w=>w[0]===x)[1]!=='BACA').length>1;
+     return `<tr style="${dup?'background:var(--crit-bg)':''}"><td><b style="font-size:13px">${lbl}</b><div class="mono dim" style="font-size:11px">${f}</div></td><td><span class="pill ${a==='TULIS'?'p-acc':a==='KUNCI'?'p-warn':'p-dim'}">${a}</span></td><td>${sel(`data-map="${f}" aria-label="Header untuk ${lbl}"`,h)}</td><td class="mono">${h?colOf(h):'<span class="dim">—</span>'}</td><td class="muted" style="font-size:12px;max-width:260px">${sample(h)}</td></tr>`;}).join('')}
+   </tbody></table></div>
+   <div><div class="row"><div><div class="eyebrow">Info tambahan (BACA bebas)</div><div class="muted" style="font-size:12.5px">Kolom apa pun dari sheet ini yang ingin ikut tampil di detail kontrak. Tidak pernah ditulis SKM.</div></div><span class="sp"></span><button class="btn sm ton" id="addInfo">${ic('add','s')}Tambah kolom info</button></div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">${S.info.map(([l,h],i)=>`<div class="row" style="flex-wrap:nowrap"><label class="of" style="flex:1"><span>Label di SKM</span><input class="inp" data-info-l="${i}" value="${esc(l)}"></label>${sel(`data-info-h="${i}" aria-label="Header info ${i+1}"`,h)}<button class="iconbtn" data-info-x="${i}" aria-label="Hapus">${ic('x','s')}</button></div>`).join('')}</div></div>
+   ${err.length?err.map(e=>`<div class="note crit">${ic('warn','s')}<span class="tx">${e}</span></div>`).join(''):`<div class="note ok">${ic('check','s')}<span class="tx">Pemetaan valid. Setiap kolom TULIS menunjuk ke satu header yang berbeda.</span></div>`}
+   <div class="note info">${ic('link','s')}<span class="tx"><b>Pengaman saat menulis:</b> setiap permintaan tulis membawa judul header yang diharapkan untuk tiap kolom. Script penerima membaca ulang baris header dan kolom kunci; kalau judulnya berubah, hilang, atau baris bergeser, seluruh penulisan tab itu dibatalkan dan muncul alarm <b>KOLOM_BERUBAH</b>.</span></div>
+   <div class="grid g2"><label class="of"><span>Alias header kunci (pisah koma)</span><input class="inp" value="NO KONTRAK, NO KL, NOMOR KONTRAK"></label><label class="of"><span>Format tanggal</span><input class="inp mono" value="dd-MMM-yyyy"></label></div>`;}
   if(st===4)body=`<div class="note info">${ic('eye','s')}<span class="tx">Cek saja membaca sheet dan menunjukkan apa yang akan ditulis, <b>tanpa menulis apa pun</b>.</span></div>
    <div class="row"><span class="pill p-dim">212 baris dibaca</span><span class="pill p-ok">188 cocok</span><span class="pill p-acc">96 sel akan ditulis</span><span class="pill p-warn">3 alarm</span><span class="pill p-info">21 ke Antrian</span></div>
    <div class="note crit">${ic('warn','s')}<span class="tx"><b>FORMULA</b> · 2 sel tujuan berisi formula, tidak akan ditimpa.</span></div>
@@ -1062,7 +1132,7 @@ function viewWizard(){
   return `<div class="card" style="display:flex;flex-direction:column;gap:18px;max-width:920px">
    <div class="wiz-steps">${L.map((l,i)=>`<span class="${i+1===st?'on':i+1<st?'done':''}"><i>${i+1<st?'✓':i+1}</i>${l}</span>`).join('')}</div>
    <div style="display:flex;flex-direction:column;gap:18px;${S.wizAnim?'animation:rise .4s var(--ease) both':''}">${body}</div>
-   <div class="row"><a class="btn" href="#gsheet">Batal</a><span class="sp"></span>${st>1?'<button class="btn" id="wprev">Kembali</button>':''}<button class="btn pri" id="wnext" ${st===1&&!S.tested?'disabled title="Tes koneksi dulu"':''}>${st===5?'Aktifkan target':'Lanjut'}</button></div></div>`;
+   <div class="row"><a class="btn" href="#gsheet">Batal</a><span class="sp"></span>${st>1?'<button class="btn" id="wprev">Kembali</button>':''}<button class="btn pri" id="wnext" ${(st===1&&!S.tested)||(st===3&&wizErrors().length)?'disabled':''}>${st===5?'Aktifkan target':'Lanjut'}</button></div></div>`;
 }
 
 /* ================= Pengaturan ================= */
@@ -1091,7 +1161,7 @@ function viewSet(){
     ${PERMS.map(p=>`<tr><td class="mono" style="font-size:12px">${p}</td>${Object.keys(ROLES).map(r=>`<td><input type="checkbox" class="chk" aria-label="${r} ${p}" ${ROLES[r].includes(p)?'checked':''} ${r==='ADMIN'&&p==='user.kelola'?'disabled title="Minimal harus ada satu admin dengan user.kelola"':''}></td>`).join('')}</tr>`).join('')}</tbody></table></div></div>`;
   if(tab==='users')b=`<div class="card"><h2>Users<span class="sp"></span><button class="btn sm pri">${ic('add','s')}Tambah user</button></h2><div class="tbl-wrap"><table class="t"><thead><tr><th>User</th><th>Alias PIC</th><th>Role</th><th>Status</th><th>Login terakhir</th><th></th></tr></thead><tbody>
     ${USERS.map(u=>`<tr><td><div class="row" style="flex-wrap:nowrap">${avatar(u.nama,1)}<div><b>${esc(u.nama)}</b><div class="mono dim" style="font-size:11px">${u.u}</div></div></div></td><td>${esc(u.alias)||'<span class="dim">—</span>'}</td><td><span class="pill ${u.role==='ADMIN'?'p-acc':'p-dim'}">${u.role}</span></td><td>${u.ganti?'<span class="pill p-warn">Wajib ganti password</span>':'<span class="pill p-ok">Aktif</span>'}</td><td class="tnum muted">${u.last}</td><td><button class="btn sm">Reset password</button></td></tr>`).join('')}</tbody></table></div></div>`;
-  if(tab==='config')b=`<div class="card"><h2>Config</h2><div class="tbl-wrap"><table class="t"><thead><tr><th>Key</th><th>Nilai</th><th>Arti</th></tr></thead><tbody>${CONFIG.map(([k,v])=>`<tr><td class="mono" style="font-size:12px">${k}</td><td><input class="inp" value="${esc(v)}" aria-label="${k}" ${k==='SKEMA_VERSI'?'disabled':''}></td><td class="muted" style="font-size:12.5px">${{APP_NAMA:'Nama aplikasi',SYNC_INTERVAL_MENIT:'Jeda sinkron terjadwal',TAHAP_REOPEN:'Tahap default saat reopen',AGING_BATAS:'Batas Fresh / Warm / Stale (hari)',KENDALA_BATAS_HARI:'Kendala aktif lebih lama dari ini masuk Perlu Perhatian (aging tetap jalan)',KONFIRMASI_TAB_BARU:'Tab bulan baru perlu dikonfirmasi admin',DOKTAGIH_DEFAULT_DIRECT:'Usulan dokumen tagih untuk BAST baru bila customer DIRECT',DOKTAGIH_DEFAULT_INDIRECT:'Usulan dokumen tagih untuk BAST baru bila customer INDIRECT',BACKUP_SIMPAN:'Jumlah salinan backup yang disimpan',SKEMA_VERSI:'Diatur otomatis oleh migrasi'}[k]}</td></tr>`).join('')}</tbody></table></div></div>`;
+  if(tab==='config')b=`<div class="card"><h2>Config</h2><div class="tbl-wrap"><table class="t"><thead><tr><th>Key</th><th>Nilai</th><th>Arti</th></tr></thead><tbody>${CONFIG.map(([k,v])=>`<tr><td class="mono" style="font-size:12px">${k}</td><td><input class="inp" value="${esc(v)}" aria-label="${k}" ${k==='SKEMA_VERSI'?'disabled':''}></td><td class="muted" style="font-size:12.5px">${{APP_NAMA:'Nama aplikasi',SYNC_INTERVAL_MENIT:'Jeda sinkron terjadwal',TAHAP_REOPEN:'Tahap default saat reopen',AGING_BATAS:'Batas Fresh / Warm / Stale (hari)',FIELD_WAJIB:'Field yang harus terisi; yang kosong muncul di Perlu Perhatian',KENDALA_BATAS_HARI:'Kendala aktif lebih lama dari ini masuk Perlu Perhatian (aging tetap jalan)',KONFIRMASI_TAB_BARU:'Tab bulan baru perlu dikonfirmasi admin',DOKTAGIH_DEFAULT_DIRECT:'Usulan dokumen tagih untuk BAST baru bila customer DIRECT',DOKTAGIH_DEFAULT_INDIRECT:'Usulan dokumen tagih untuk BAST baru bila customer INDIRECT',BACKUP_SIMPAN:'Jumlah salinan backup yang disimpan',SKEMA_VERSI:'Diatur otomatis oleh migrasi'}[k]}</td></tr>`).join('')}</tbody></table></div></div>`;
   if(tab==='import'){const rows=[['TEL.0317-0016/…/2017','BANK PERMATA','Edo','BAST PARSIAL','BAST REVISI','KOMPULIR · parsial · kendala REV_DOKUMEN','REVISI DOKUMEN'],['TEL.0719-0488/…/2020','BANK DANAMON INDONESIA Tbk','Unggul','KOMPULIR EVIDENCE','BAST ON REVIEW','REVIEW_CUST','DRAFT REVIEW CUSTOMER'],['TEL.0219-0003/…/2019','PT HEXINDO ADI PERKASA','Baim','KOMPULIR EVIDENCE','KOMPULIR EVIDEN','KOMPULIR','KOMPULIR EVIDEN'],['TEL.0418-0152/…/2018','PT Wananugraha Bima Lestari','Alif','KOMPULIR EVIDENCE','BAST DONE','BAST_DONE (paling maju)','BAST DONE']];
     b=`<div class="card" style="display:flex;flex-direction:column;gap:16px"><h2>Import data FF lama</h2>
     <div class="wiz-steps">${['Unggah xlsx','Petakan kolom','Pratinjau & validasi','Simpan'].map((l,i)=>`<span class="${i===2?'on':i<2?'done':''}"><i>${i<2?'✓':i+1}</i>${l}</span>`).join('')}</div>
@@ -1211,6 +1281,11 @@ function bindView(base){
     $('#wnext').onclick=()=>{if(S.wiz===5){S.wiz=1;S.tested=false;location.hash='#gsheet';toast('(Mockup) Target diaktifkan.');return;}S.wiz++;S.wizAnim=true;renderPage(false);S.wizAnim=false;};
     $('#wprev')&&($('#wprev').onclick=()=>{S.wiz--;S.wizAnim=true;renderPage(false);S.wizAnim=false;});
     $$('input[name=wm]').forEach(x=>x.onchange=()=>{S.wizMode=x.value;renderPage(false);});
+    $$('[data-map]').forEach(x=>x.onchange=()=>{S.map[x.dataset.map]=x.value;renderPage(false);});
+    $$('[data-info-h]').forEach(x=>x.onchange=()=>{S.info[+x.dataset.infoH][1]=x.value;renderPage(false);});
+    $$('[data-info-l]').forEach(x=>x.onchange=()=>{S.info[+x.dataset.infoL][0]=x.value;});
+    $$('[data-info-x]').forEach(x=>x.onclick=()=>{S.info.splice(+x.dataset.infoX,1);renderPage(false);});
+    $('#addInfo')&&($('#addInfo').onclick=()=>{S.info.push(['Kolom baru','']);renderPage(false);});
     $$('input[name=kon]').forEach(x=>x.onchange=()=>{S.koneksi=x.value;renderPage(false);});
     $('#cpScript')&&($('#cpScript').onclick=()=>{const fb=()=>{const rng=document.createRange();rng.selectNodeContents($('#rcode'));getSelection().removeAllRanges();getSelection().addRange(rng);toast('Teks script dipilih, tekan Ctrl+C.');};try{navigator.clipboard.writeText(RECEIVER_SCRIPT).then(()=>toast('Apps Script disalin.'),fb);}catch(err){fb();}});
     $('#testKon')&&($('#testKon').onclick=()=>{S.tested=true;renderPage(false);toast('Koneksi berhasil.');});

@@ -1,7 +1,11 @@
 # SPEC — Status Kontrak Manager
 
-Versi 1.5 · 19 Nov 2026 · Pemilik: omPik (Unit Fulfillment)
+Versi 1.6 · 19 Nov 2026 · Pemilik: omPik (Unit Fulfillment)
 Referensi konsep: BAA.flow (BAA Generator). Mockup UI yang disetujui: `mockup/mockup.html` (desain "Orbit").
+
+**Perubahan v1.6**
+- **Info selengkap mungkin:** SKM membaca kolom-kolom info dari setiap sheet unit (standar + kolom bebas) dan menampilkannya per kontrak di tab "Sheet unit". Beda data dan data kontrak yang belum lengkap masuk Perlu Perhatian (§8.7, §5.6).
+- **Pengaman kolom:** setiap penulisan membawa judul header yang diharapkan; script penerima menolak bila judul kolom tujuan berubah (§8.4, §8.6).
 
 **Perubahan v1.5**
 - Jenis customer dihitung dari **Customer vs End customer** (bukan dari Populasi). Dokumen tagih usulan: BAA untuk DIRECT, BAST untuk INDIRECT, bisa diganti per BAST (§5.7).
@@ -204,6 +208,8 @@ Isi awal (**sudah disetujui FF**). Teks, urutan, dan jumlah aturan tetap bisa di
   - Kendala aktif lebih lama dari `Config.KENDALA_BATAS_HARI` (default 14).
   - Kontrak tanpa PIC.
   - Data hasil import yang belum diverifikasi.
+  - Data kontrak belum lengkap: field di `Config.FIELD_WAJIB` masih kosong (kontrak OPEN).
+  - Beda data dengan sheet unit (§8.7).
   - Target dengan error, atau sel yang diubah di luar aplikasi (§8.5).
 
 ### 5.7 Jenis customer dan dokumen tagih
@@ -257,13 +263,14 @@ Aturan umum: baris 1 berisi header. ID dibuat server dan tidak pernah berubah. T
 | `Ref_Tahap`, `Ref_Kendala`, `Ref_NilaiPush` | §5 |
 | `Ref_JenisDok`, `Ref_Populasi`, `Ref_Segment`, `Ref_DokTagih` | Kode, Label, Aktif |
 | `Target` | TargetID, Nama, ModeKoneksi (`RECEIVER`; `LANGSUNG` disiapkan untuk nanti), WebAppUrl, VersiScript, SpreadsheetID (diisi dari info script), ModeTab (`FIXED`/`TERBARU`), TabNama atau pola, CaraTerbaru (`TANGGAL_DI_NAMA`/`POSISI_TERAKHIR`), TabTerakhirDipakai, AliasHeaderKunci, FormatTanggal, Aktif, TerakhirCek, TerakhirUpdate, StatusTerakhir, PesanTerakhir *(kode rahasia disimpan di Script Properties, tidak di DB)* |
-| `TargetKolom` | TargetID, Field, Arah (`TULIS`/`BACA`), AliasHeader |
+| `TargetKolom` | TargetID, Field (standar atau `INFO:<label>`), Arah (`KUNCI`/`TULIS`/`BACA`), JudulHeader, AliasHeader, KolomTerakhir (huruf, catatan saja) |
+| `DataUnit` | TargetID, Tab, Baris, KontrakID, Field (field BACA standar atau `INFO:<label>`), Nilai, DiambilPada *(snapshot hasil cek terakhir; ditimpa setiap cek, bukan riwayat)* |
 | `JejakSel` | TargetID, Tab, NoKontrakNorm, Field, NilaiDitulis, WaktuTulis *(nilai terakhir yang ditulis SKM, §8.5)* |
 | `RiwayatPush` | Waktu, Oleh (user/`trigger`), Jenis (`TULIS`/`DIUBAH_LUAR`), TargetID, Tab, Baris, NoKontrak, Field, NilaiLama, NilaiBaru, Pelaku, WaktuKejadian *(hanya ditambah; Pelaku dan WaktuKejadian dari pencatat edit script penerima)* |
 | `SyncLog` | Waktu, Oleh, Jenis (`CEK`/`UPDATE`), TargetID, Tab, BarisCocok, SelDitulis, Gagal, Alarm, Detail |
 | `Notifikasi` | NotifID, Untuk (username), Jenis (`DIUBAH_LUAR`/`SINKRON_ERROR`/`TAB_BERGANTI`/`ANTRIAN_BARU`/`PIC_DITUGASKAN`), Pesan, KontrakID, TargetID, Dibaca, Waktu |
 | `Antrian` | AntrianID, TargetID, Tab, Baris, NoKontrakAsli, NoKontrakNorm, Prefill, Status (`BARU`/`DIDAFTARKAN`/`DIALIASKAN`/`DIABAIKAN`), DiprosesOleh, DiprosesPada |
-| `Config` | key–value: APP_NAMA = "Status Kontrak Manager", SYNC_INTERVAL_MENIT = 15, TAHAP_REOPEN = DRAFTING, AGING_BATAS = 7,14,30, KENDALA_BATAS_HARI = 14, DOKTAGIH_DEFAULT_DIRECT = BAA, DOKTAGIH_DEFAULT_INDIRECT = BAST, KONFIRMASI_TAB_BARU = TRUE, BACKUP_SIMPAN = 8, SKEMA_VERSI |
+| `Config` | key–value: APP_NAMA = "Status Kontrak Manager", SYNC_INTERVAL_MENIT = 15, TAHAP_REOPEN = DRAFTING, AGING_BATAS = 7,14,30, KENDALA_BATAS_HARI = 14, FIELD_WAJIB = EndCustomer,NilaiKontrak,Segment,Populasi,OrderInternal, DOKTAGIH_DEFAULT_DIRECT = BAA, DOKTAGIH_DEFAULT_INDIRECT = BAST, KONFIRMASI_TAB_BARU = TRUE, BACKUP_SIMPAN = 8, SKEMA_VERSI |
 
 ---
 
@@ -278,7 +285,7 @@ Aturan umum: baris 1 berisi header. ID dibuat server dan tidak pernah berubah. T
   |---|---|
   | `info` | versi script, nama file, daftar tab, waktu ubah terakhir, status pencatat edit |
   | `baca` | 15 baris teratas (untuk deteksi header) + kolom yang diminta saja |
-  | `tulis` | daftar sel `{baris, kolom, nilai}` + nilai kolom kunci yang diharapkan. Script mengunci (`LockService`), membaca ulang kolom kunci, menolak bila urutan berubah, lalu menulis dalam satu batch. Sel berformula tidak ditimpa |
+  | `tulis` | daftar sel `{baris, kolom, nilai}` + **judul header yang diharapkan untuk setiap kolom** + nilai kolom kunci yang diharapkan per baris. Script mengunci (`LockService`), membaca ulang baris header dan kolom kunci, menolak seluruh tab bila ada judul yang berubah/hilang atau urutan baris bergeser, lalu menulis dalam satu batch. Sel berformula tidak ditimpa |
   | `edit` | edit manual yang tercatat di kolom milik FF sejak waktu tertentu |
 - **Pencatat edit manual:** pemilik menjalankan fungsi `pasang()` sekali untuk memasang trigger `onEdit` (installable). Trigger mencatat setiap edit pada kolom yang dipetakan sebagai TULIS: tab, baris, kolom, nilai lama, nilai baru, waktu, dan email pelaku. Catatan disimpan di Script Properties milik script penerima (dibatasi N catatan terakhir) dan diambil SKM setiap cek. Email pelaku bisa kosong untuk sebagian akun Gmail biasa; dalam hal itu yang tampil hanya waktunya.
 - Script penerima punya `VERSI`. Bila versi di sheet lebih lama dari versi yang disediakan SKM, target ditandai "Script perlu diperbarui" dan tetap berjalan selama masih kompatibel.
@@ -308,10 +315,22 @@ normKey(s) = String(s ?? '').normalize('NFKC').toUpperCase()
   - Hanya tab bulan terbaru yang di-update. Tab bulan lalu tidak, karena datanya sudah terbawa ke tab baru.
   - Saat tab baru terdeteksi, muncul alarm `TAB_BERGANTI`. Bila `KONFIRMASI_TAB_BARU`, target itu hanya berjalan dalam mode Cek saja sampai admin menekan "Pakai tab baru".
 
-### 8.4 Field yang bisa dipetakan
-- **TULIS**: `KENDALA_UMUM`, `KENDALA_DETIL`, `TAHAP`, `TGL_UPDATE`, `TGL_TAHAP:<kode>` (mis. tanggal BAST Done), `PIC`, `NO_BAST`, `DOK_TAGIH` (BAST/BAA), `PARSIAL` (contoh isi: "2/3 BAST · 40/60 lokasi").
-- **BACA** (untuk prefill Antrian): `PELANGGAN`, `END_CUSTOMER`, `JUDUL`, `NILAI`, `TAHUN`, `POPULASI`, `SEGMENT`.
-- Nilainya sama untuk semua target. Per target, admin hanya memetakan header mana yang menerima field mana.
+### 8.4 Pemetaan kolom per target
+Setiap target punya pemetaannya sendiri (`TargetKolom`), dibuat di wizard dari dropdown header yang terdeteksi. Wizard menampilkan huruf kolom dan contoh isinya supaya admin yakin memilih kolom yang benar.
+
+| Jenis | Field | Dipakai untuk |
+|---|---|---|
+| KUNCI | nomor kontrak | Mencocokkan baris dengan kontrak (§8.2). Wajib |
+| TULIS | `KENDALA_UMUM`, `KENDALA_DETIL`, `TAHAP`, `TGL_UPDATE`, `TGL_TAHAP:<kode>` (mis. tanggal BAST Done), `PIC`, `NO_BAST`, `DOK_TAGIH` (BAST/BAA), `PARSIAL` (contoh: "2/3 BAST · 40/60 lokasi") | Kolom milik FF yang diisi SKM. Nilainya sama untuk semua target |
+| BACA standar | `PELANGGAN`, `END_CUSTOMER`, `JUDUL`, `NILAI`, `TAHUN`, `POPULASI`, `SEGMENT`, `NO_ORDER` (SO/MI), `JUMLAH_LOKASI` | Prefill Antrian, melengkapi data kontrak, dan cek beda data (§8.7) |
+| BACA bebas | `INFO:<label>` untuk kolom apa pun (mis. Periode tagih, AM, Status penagihan) | Ditampilkan di detail kontrak sebagai info tambahan |
+
+Aturan validasi (wizard menolak simpan bila dilanggar):
+- Satu header hanya boleh dipakai oleh satu field KUNCI/TULIS.
+- Kolom TULIS tidak boleh sama dengan kolom KUNCI atau kolom BACA mana pun.
+- Minimal ada kolom KUNCI dan satu kolom TULIS.
+- Pemetaan disimpan sebagai **judul header** (plus alias), dengan huruf kolom terakhir sebagai catatan. Saat sheet berubah, SKM mengikuti judulnya, bukan hurufnya.
+- SKM **tidak pernah menulis** kolom BACA atau kolom yang tidak dipetakan.
 
 ### 8.5 Jejak perubahan sel (jawaban pertanyaan no. 5)
 **Fakta teknis:** Google Sheets **tidak menyediakan** tanggal atau pelaku terakhir per sel lewat API. Riwayat edit per sel ("Show edit history") hanya ada di tampilan web. Yang tersedia lewat API hanya level file: waktu ubah terakhir file dan siapa yang mengubahnya.
@@ -334,9 +353,20 @@ Dengan script penerima (§8.0), edit manual di kolom milik FF **bisa** dicatat p
 4. Ketika tab pertama kali dipakai, termasuk tab bulan baru Billcom, nilai yang ada dianggap titik awal, sehingga tidak muncul notifikasi.
 
 ### 8.6 Keamanan penulisan
+- Setiap permintaan tulis membawa judul header yang diharapkan untuk tiap kolom tujuan. Script penerima membaca ulang baris header; bila ada judul yang berubah, hilang, atau ganda, seluruh tab dibatalkan dengan alarm `KOLOM_BERUBAH` dan notifikasi `SINKRON_ERROR` ke admin.
 - Sebelum menulis, script penerima membaca ulang kolom kunci di dalam `LockService`. Kalau urutan baris berubah sejak dibaca (karena pemilik sheet menyisipkan atau mengurutkan), tab itu dibatalkan dan dicoba lagi di siklus berikutnya.
 - Semua perubahan pada satu tab ditulis dalam satu panggilan batch.
 - Hanya kolom yang dibutuhkan yang dibaca dan dikirim balik ke SKM.
+
+### 8.7 Data dari sheet unit (info selengkap mungkin)
+- Setiap cek, nilai kolom BACA (standar dan bebas) untuk setiap baris yang cocok disimpan ke `DataUnit` sebagai snapshot terbaru.
+- Detail kontrak punya tab **Sheet unit**: per target ditampilkan tab dan nomor baris (bisa lebih dari satu karena periode tagih), nilai kolom BACA dibandingkan dengan data di SKM, info tambahan, serta isi kolom milik FF saat ini vs nilai yang akan ditulis SKM.
+- Perbandingan dengan data SKM:
+  - SKM kosong, sheet terisi → **saran melengkapi** (tombol "Pakai nilai sheet").
+  - Keduanya terisi tapi berbeda → **beda data**, masuk Perlu Perhatian. Tidak ada yang ditimpa otomatis; user memilih nilai mana yang dipakai, dan pilihan itu dicatat di Log.
+  - Bila dua sheet unit memberi nilai berbeda untuk field yang sama, keduanya ditampilkan.
+- Perubahan Customer/End customer dari sini otomatis menghitung ulang jenis customer (§5.7).
+- Kontrak yang tidak ditemukan di sheet unit mana pun diberi keterangan "belum ditemukan di sheet unit" (biasanya penulisan nomor berbeda → alias).
 
 ---
 
@@ -361,7 +391,7 @@ Tampilan mengikuti mockup `mockup/mockup.html` (desain "Orbit"): **tema terang d
    - Status sinkron per target.
 3. **Kontrak**
    - Tabel dengan filter (tahap, Kendala Umum, PIC, populasi, segment, pelanggan, status) dan pencarian.
-   - **Detail** dibuka sebagai panel geser dari kanan (daftar tetap terlihat; pindah kontrak dengan panah atau J/K; Esc menutup) dengan tab Proses · Data kontrak · Riwayat. Isinya: data kontrak, SO/MI, daftar BAST (tambah BAST parsial, ubah tahap, cakupan), kendala (buka/tutup), pratinjau nilai yang akan muncul di sheet unit, riwayat perubahan, dan riwayat di sheet unit.
+   - **Detail** dibuka sebagai panel geser dari kanan (daftar tetap terlihat; pindah kontrak dengan panah atau J/K; Esc menutup) dengan tab Proses · Data kontrak · Sheet unit · Riwayat. Isinya: data kontrak beserta kelengkapannya, SO/MI, daftar BAST (tambah BAST parsial, ubah tahap, cakupan), kendala (buka/tutup), pratinjau nilai yang akan muncul di sheet unit, data dari setiap sheet unit (§8.7), riwayat perubahan, dan riwayat di sheet unit.
    - Aksi massal: atur PIC.
    - Pencarian cepat **Ctrl+K** dari halaman mana pun.
 4. **Perlu Perhatian** (§5.6).
@@ -464,7 +494,7 @@ status-kontrak-manager/
 | F1 | Setup, Repo + migrasi skema, login, Users, Role & izin, Log | Izin ditolak di server, semua aksi tercatat |
 | F2 | Kontrak, SO/MI, BAST, tahap fleksibel, kendala, reopen, parsial, Nilai Push | Semua aturan §5 lulus unit test, termasuk tambah/urut ulang/nonaktifkan tahap |
 | F3 | Dashboard, Perlu Perhatian, atur PIC | Angka cocok dengan hitungan manual |
-| F4 | Google Sheet: script penerima + pencatat edit, wizard, header & tab TERBARU, Cek saja, Update, jejak sel, notifikasi, Antrian | Uji dengan sheet tiruan lulus: kolom disisipkan, header hilang, sel berformula, kontrak berulang, tab bulan baru, baris diurutkan ulang · sel kontrak OPEN diubah manual → notifikasi + tidak ditimpa, lalu ditulis lagi setelah status di SKM berubah · kontrak CLOSE tidak ditulis lagi dan perubahan luar tanpa notifikasi · saat kontrak close, notifikasinya yang belum dibaca hilang dari lonceng · reopen → ditulis lagi |
+| F4 | Google Sheet: script penerima + pencatat edit, wizard + validasi pemetaan, pengaman kolom, data sheet unit (§8.7), header & tab TERBARU, Cek saja, Update, jejak sel, notifikasi, Antrian | Uji dengan sheet tiruan lulus: kolom disisipkan, header hilang, sel berformula, kontrak berulang, tab bulan baru, baris diurutkan ulang, judul kolom tujuan diganti → penulisan ditolak, header dipakai ganda → wizard menolak · sel kontrak OPEN diubah manual → notifikasi + tidak ditimpa, lalu ditulis lagi setelah status di SKM berubah · kontrak CLOSE tidak ditulis lagi dan perubahan luar tanpa notifikasi · saat kontrak close, notifikasinya yang belum dibaca hilang dari lonceng · reopen → ditulis lagi |
 | F5 | Import data lama, Export, Backup | 4 baris contoh (Lampiran A) ter-import sesuai §11 |
 
 ---
