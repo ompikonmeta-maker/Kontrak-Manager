@@ -1,7 +1,10 @@
 # SPEC — Status Kontrak Manager
 
-Versi 1.8 · 19 Nov 2026 · Pemilik: omPik (Unit Fulfillment)
+Versi 1.9 · 19 Nov 2026 · Pemilik: omPik (Unit Fulfillment)
 Referensi konsep: BAA.flow (BAA Generator). Mockup UI yang disetujui: `mockup/mockup.html` (desain "Orbit").
+
+**Perubahan v1.9**
+- Aturan akun (§6.1): username bebas (NIK, nama, dll.), password diketik admin atau dibuat acak lalu wajib diganti, hapus user hanya bila belum ada aktivitas.
 
 **Perubahan v1.8**
 - Fase menjadi 7: F0, F1, F2, F3 (import dimajukan), F4a, F4b, F5 (§14).
@@ -251,6 +254,16 @@ Daftar izin: `dashboard.lihat`, `kontrak.lihat`, `kontrak.update`, `kontrak.daft
 | kontrak.arsip, pic.atur, sinkron.jalankan, target.kelola, pengaturan.kelola, user.kelola, log.semua | ✓ | | |
 
 - Sistem menolak perubahan yang membuat tidak ada lagi admin dengan `user.kelola`.
+
+### 6.1 Akun (pola mirip BAA.flow)
+- Akun milik aplikasi, bukan akun Google. **Username bebas**: NIK, nama, atau apa pun; 3–32 karakter (huruf, angka, titik, garis bawah, strip), disimpan huruf kecil, dan menjadi ID tetap yang tidak bisa diganti.
+- `setup()` membuat admin awal `admin` dengan password sementara yang tampil sekali di Execution log. Admin awal boleh dinonaktifkan setelah ada admin lain.
+- **Password baru atau reset**: admin memilih **buat acak** (ditampilkan sekali setelah disimpan) atau **ketik sendiri**. Keduanya membuat user **wajib mengganti password** saat login berikutnya. Syarat: minimal `Config.PASSWORD_MIN` (8) karakter, berisi huruf dan angka, berbeda dari password lama. Reset mengakhiri sesi aktif user itu.
+- Lupa password diselesaikan dengan reset oleh admin; tidak ada reset lewat email.
+- Salah password `Config.LOGIN_GAGAL_MAKS` (5) kali → akun terkunci `Config.KUNCI_MENIT` (15) menit. Admin bisa membuka kunci lebih cepat.
+- **Hapus user hanya bila user itu belum pernah beraktivitas** (belum pernah login dan tidak punya entri Log sebagai pelaku). User yang sudah punya riwayat hanya bisa **dinonaktifkan**, supaya Log tetap utuh.
+- User tanpa `log.semua` hanya melihat "Log saya".
+- Tampilan: daftar user dengan filter status/role dan menu ⋮ per baris; form tambah/ubah berupa panel geser dengan kartu role yang menampilkan izin yang didapat.
 - Semua pengecekan izin dilakukan di server.
 
 ---
@@ -268,7 +281,7 @@ Aturan umum: baris 1 berisi header. ID dibuat server dan tidak pernah berubah. T
 | `RiwayatTahap` | BASTID, Siklus, KodeTahap, Masuk, Keluar, Oleh, Keterangan |
 | `Kendala` | KendalaID, BASTID, KontrakID, Jenis, Keterangan, Status, Mulai, DibuatOleh, Selesai, DiselesaikanOleh |
 | `Log` | Timestamp, Username, Aksi, Entitas, EntitasID, Field, NilaiLama, NilaiBaru, Catatan *(hanya ditambah)* |
-| `Users` | Username, Nama, AliasPIC, Role, PasswordHash, Salt, Aktif, WajibGantiPassword, GagalLogin, TerkunciSampai, LoginTerakhir |
+| `Users` | Username, Nama, AliasPIC, Role, PasswordHash, Salt, Aktif, WajibGantiPassword, GagalLogin, TerkunciSampai, LoginTerakhir, PunyaAktivitas, CreatedAt/By, UpdatedAt/By |
 | `Ref_Role` | Role, Izin (dipisah koma) |
 | `Ref_Tahap`, `Ref_Kendala`, `Ref_NilaiPush` | §5 |
 | `Ref_JenisDok`, `Ref_Populasi`, `Ref_Segment`, `Ref_DokTagih` | Kode, Label, Aktif |
@@ -280,7 +293,7 @@ Aturan umum: baris 1 berisi header. ID dibuat server dan tidak pernah berubah. T
 | `SyncLog` | Waktu, Oleh, Jenis (`CEK`/`UPDATE`), TargetID, Tab, BarisCocok, SelDitulis, Gagal, Alarm, Detail |
 | `Notifikasi` | NotifID, Untuk (username), Jenis (`DIUBAH_LUAR`/`SINKRON_ERROR`/`TAB_BERGANTI`/`ANTRIAN_BARU`/`PIC_DITUGASKAN`), Pesan, KontrakID, TargetID, Dibaca, Waktu |
 | `Antrian` | AntrianID, TargetID, Tab, Baris, NoKontrakAsli, NoKontrakNorm, Prefill, Status (`BARU`/`DIDAFTARKAN`/`DIALIASKAN`/`DIABAIKAN`), DiprosesOleh, DiprosesPada |
-| `Config` | key–value: APP_NAMA = "Status Kontrak Manager", SYNC_INTERVAL_MENIT = 15, TAHAP_REOPEN = DRAFTING, AGING_BATAS = 7,14,30, KENDALA_BATAS_HARI = 14, FIELD_WAJIB = Customer,EndCustomer,NilaiKontrak,Segment,Populasi,OrderInternal, DOKTAGIH_DEFAULT_DIRECT = BAA, DOKTAGIH_DEFAULT_INDIRECT = BAST, DOKTAGIH_DEFAULT_BELUM = BAST, KONFIRMASI_TAB_BARU = TRUE, BACKUP_SIMPAN = 8, SKEMA_VERSI |
+| `Config` | key–value: APP_NAMA = "Status Kontrak Manager", SESI_JAM = 6, LOGIN_GAGAL_MAKS = 5, KUNCI_MENIT = 15, PASSWORD_MIN = 8, SYNC_INTERVAL_MENIT = 15, TAHAP_REOPEN = DRAFTING, AGING_BATAS = 7,14,30, KENDALA_BATAS_HARI = 14, FIELD_WAJIB = Customer,EndCustomer,NilaiKontrak,Segment,Populasi,OrderInternal, DOKTAGIH_DEFAULT_DIRECT = BAA, DOKTAGIH_DEFAULT_INDIRECT = BAST, DOKTAGIH_DEFAULT_BELUM = BAST, KONFIRMASI_TAB_BARU = TRUE, BACKUP_SIMPAN = 8, SKEMA_VERSI |
 
 ---
 

@@ -400,10 +400,49 @@ dl.kv dt{color:var(--muted)} dl.kv dd{margin:0;min-width:0;overflow-wrap:anywher
 .check:last-child{border-bottom:0}
 .check .d{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:800;flex:none}
 .check .d.y{background:var(--ok);color:var(--on-accent)} .check .d.n{background:var(--surface3);color:var(--muted)}
+/* Users: avatar status, menu ⋮, panel user */
+.ava{--s:34px;width:var(--s);height:var(--s);border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:calc(var(--s)*.36);color:var(--on-accent);background:linear-gradient(135deg,var(--accent),var(--violet));box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--ring,transparent);flex:none;letter-spacing:.02em}
+.ava.on{--ring:var(--ok)} .ava.pw{--ring:var(--warn)} .ava.lock{--ring:var(--crit)} .ava.off{--ring:var(--line2);filter:grayscale(1);opacity:.55}
+.rbadge{display:inline-flex;gap:6px;align-items:center;font-size:12px;font-weight:700;padding:3px 10px 3px 7px;border-radius:999px;background:var(--surface2);box-shadow:inset 0 0 0 1px var(--line)}
+.rbadge svg{width:15px;height:15px;fill:currentColor}
+.rbadge.ADMIN{background:var(--accent-bg);color:var(--accent);box-shadow:none} .rbadge.VIEWER{color:var(--muted)}
+.menu{position:fixed;z-index:65;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-lg);padding:6px;width:250px;animation:pop .25s var(--spring) both}
+.menu button{display:flex;gap:10px;align-items:flex-start;width:100%;border:0;background:none;padding:9px 12px;border-radius:10px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;color:var(--fg);text-align:left}
+.menu button:hover:not([disabled]){background:var(--surface2)} .menu button.danger{color:var(--crit)} .menu button[disabled]{opacity:.5;cursor:not-allowed}
+.menu button svg{width:18px;height:18px;fill:currentColor;flex:none;margin-top:1px}
+.menu small{display:block;color:var(--muted);font-size:11.5px;font-weight:500}
+.menu hr{border:0;border-top:1px solid var(--line);margin:4px 6px}
+.idcard{position:relative;overflow:hidden;border-radius:20px;padding:20px;background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 15%,var(--surface)),color-mix(in srgb,var(--violet) 13%,var(--surface)));border:1px solid var(--line);display:flex;gap:16px;align-items:center;min-height:118px}
+.idcard::before,.idcard::after{content:"";position:absolute;border-radius:50%;border:1.5px dashed color-mix(in srgb,var(--accent) 35%,transparent);pointer-events:none}
+.idcard::before{width:240px;height:240px;right:-90px;top:-110px} .idcard::after{width:150px;height:150px;right:-30px;top:-55px;border-style:solid;border-color:color-mix(in srgb,var(--violet) 25%,transparent)}
+.idcard .who{min-width:0;position:relative;z-index:1}
+.idcard .who b{display:block;font-size:19px;font-weight:800;letter-spacing:-.02em;overflow-wrap:anywhere}
+.idcard .who .mono{color:var(--muted)}
+.rcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.rcard{border:1.5px solid var(--line2);border-radius:14px;padding:12px;background:var(--surface);cursor:pointer;text-align:left;font:inherit;color:var(--fg);display:flex;flex-direction:column;gap:3px;transition:border-color .2s,background .2s,box-shadow .2s,transform .15s}
+.rcard:hover{transform:translateY(-1px)}
+.rcard.on{border-color:var(--accent);background:var(--accent-bg);box-shadow:0 0 0 4px var(--accent-bg)}
+.rcard svg{width:22px;height:22px;fill:var(--accent);margin-bottom:4px}
+.rcard b{font-size:14px} .rcard small{color:var(--muted);font-size:11.5px;line-height:1.35}
+.perms{display:flex;flex-wrap:wrap;gap:6px}
+.perms span{font-size:11.5px;padding:3px 9px;border-radius:999px;background:var(--surface2);border:1px solid var(--line)}
+.perms.anim span:not(.no){animation:rise .3s var(--ease) both;animation-delay:calc(var(--i)*22ms)}
+.perms span.no{opacity:.4;text-decoration:line-through;animation:none}
+.strength{height:6px;border-radius:3px;background:var(--surface3);overflow:hidden;margin-top:8px}
+.strength i{display:block;height:100%;border-radius:3px;transition:width .3s,background .3s}
+.sect{display:flex;flex-direction:column;gap:12px}
+.sect>.eyebrow{margin-bottom:-2px}
+.swrow{display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:14px;background:var(--surface2);border:1px solid var(--line)}
+.swrow b{display:block;font-size:13.5px} .swrow small{color:var(--muted);font-size:12px}
+.danger-zone{border:1px solid color-mix(in srgb,var(--crit) 35%,transparent);border-radius:14px;padding:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.btn.danger{border-color:var(--crit);color:var(--crit);background:transparent}
+.sfoot{display:flex;gap:8px;justify-content:flex-end;padding-block:14px;padding-left:24px;padding-right:max(24px,env(safe-area-inset-right,0px));border-top:1px solid var(--line);background:var(--surface)}
+.ussheet .dbody{display:flex;flex-direction:column;gap:22px}
 </style>
 
 <div class="sky" aria-hidden="true"></div>
 <div id="root"></div>
+<div id="sheet-root"></div>
 <div id="overlay-root"></div>
 <details class="mpanel" id="mpanel" open>
  <summary>⚙ Panel mockup <span style="margin-left:auto;font-weight:600;text-transform:none;letter-spacing:0;color:var(--muted)">tidak ada di aplikasi</span></summary>
@@ -411,7 +450,7 @@ dl.kv dt{color:var(--muted)} dl.kv dd{margin:0;min-width:0;overflow-wrap:anywher
   <div><div class="lbl">Lompat ke layar</div><div class="chips" id="jump"></div></div>
   <div><div class="lbl">Login sebagai</div><div class="chips" id="asRole"></div></div>
   <div><div class="lbl">Simulasi</div><div class="chips">
-   <button id="simFail">Password salah 5×</button><button id="simDeny">STAFF buka #users</button><button id="simExpire">Sesi habis</button></div></div>
+   <button id="simFail">Password salah 5×</button><button id="simDeny">STAFF buka #users</button><button id="simAdd">Tambah user</button><button id="simExpire">Sesi habis</button></div></div>
  </div>
 </details>
 
@@ -455,6 +494,10 @@ IC.lock="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 
 IC.users="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z";
 IC.shield="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z";
 IC.db="M12 3C7.58 3 4 4.79 4 7v10c0 2.21 3.59 4 8 4s8-1.79 8-4V7c0-2.21-3.58-4-8-4zm0 2c3.87 0 6 1.5 6 2s-2.13 2-6 2-6-1.5-6-2 2.13-2 6-2zm6 12c0 .5-2.13 2-6 2s-6-1.5-6-2v-2.23c1.61.78 3.72 1.23 6 1.23s4.39-.45 6-1.23V17zm0-4c0 .5-2.13 2-6 2s-6-1.5-6-2v-2.23c1.61.78 3.72 1.23 6 1.23s4.39-.45 6-1.23V13z";
+IC.more="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z";
+IC.trash="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z";
+IC.edit="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z";
+IC.block="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM4 12c0-4.42 3.58-8 8-8 1.85 0 3.55.63 4.9 1.69L5.69 16.9C4.63 15.55 4 13.85 4 12zm8 8c-1.85 0-3.55-.63-4.9-1.69L18.31 7.1C19.37 8.45 20 10.15 20 12c0 4.42-3.58 8-8 8z";
 IC.home="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z";
 IC.key="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z";
 
@@ -466,21 +509,24 @@ const IZIN=[
  ['target.kelola','Kelola target Google Sheet'],['pengaturan.kelola','Kelola tahap, kendala, nilai push, referensi, config'],
  ['user.kelola','Kelola user, role, dan izin'],['log.semua','Lihat log semua user']];
 let ROLES={ADMIN:IZIN.map(x=>x[0]),STAFF:IZIN.slice(0,5).map(x=>x[0]),VIEWER:IZIN.slice(0,3).map(x=>x[0])};
-let USERS=[
- {u:'admin',nama:'Admin awal',alias:'',role:'ADMIN',st:'AKTIF',ganti:true,gagal:0,kunci:null,last:'—',dibuat:'setup()'},
- {u:'ompik',nama:'omPik',alias:'omPik',role:'ADMIN',st:'AKTIF',ganti:false,gagal:0,kunci:null,last:'19 Nov 09:41',dibuat:'admin'},
- {u:'edo',nama:'Edo Pratama',alias:'Edo',role:'STAFF',st:'AKTIF',ganti:false,gagal:0,kunci:null,last:'19 Nov 09:20',dibuat:'ompik'},
- {u:'unggul',nama:'Unggul Wicaksono',alias:'Unggul',role:'STAFF',st:'AKTIF',ganti:true,gagal:0,kunci:null,last:'—',dibuat:'ompik'},
- {u:'baim',nama:'Ibrahim',alias:'Baim',role:'STAFF',st:'AKTIF',ganti:false,gagal:5,kunci:'09:47',last:'18 Nov 16:02',dibuat:'ompik'},
- {u:'alif',nama:'Alif Ramadhan',alias:'Alif',role:'STAFF',st:'AKTIF',ganti:false,gagal:0,kunci:null,last:'19 Nov 08:58',dibuat:'ompik'},
- {u:'manajer',nama:'Manajer FF',alias:'',role:'VIEWER',st:'NONAKTIF',ganti:false,gagal:0,kunci:null,last:'12 Nov 10:03',dibuat:'ompik'}];
+let USERS=[   // username bebas: NIK, nama, atau apa pun
+ {u:'admin',nama:'Admin awal',alias:'',role:'ADMIN',st:'AKTIF',ganti:true,gagal:0,kunci:null,last:'—',dibuat:'setup()',act:true},
+ {u:'ompik',nama:'omPik',alias:'omPik',role:'ADMIN',st:'AKTIF',ganti:false,gagal:0,kunci:null,last:'19 Nov 09:41',dibuat:'admin',act:true},
+ {u:'95210101',nama:'Edo Pratama',alias:'Edo',role:'STAFF',st:'AKTIF',ganti:false,gagal:0,kunci:null,last:'19 Nov 09:20',dibuat:'ompik',act:true},
+ {u:'83240202',nama:'Unggul Wicaksono',alias:'Unggul',role:'STAFF',st:'AKTIF',ganti:true,gagal:0,kunci:null,last:'18 Nov 15:10',dibuat:'ompik',act:true},
+ {u:'93210303',nama:'Ibrahim',alias:'Baim',role:'STAFF',st:'AKTIF',ganti:false,gagal:5,kunci:'09:47',last:'18 Nov 16:02',dibuat:'ompik',act:true},
+ {u:'98240404',nama:'Alif Ramadhan',alias:'Alif',role:'STAFF',st:'AKTIF',ganti:false,gagal:0,kunci:null,last:'19 Nov 08:58',dibuat:'ompik',act:true},
+ {u:'99260505',nama:'Dina Lestari',alias:'',role:'STAFF',st:'AKTIF',ganti:true,gagal:0,kunci:null,last:'—',dibuat:'ompik',act:false},
+ {u:'manajer.ff',nama:'Manajer FF',alias:'',role:'VIEWER',st:'NONAKTIF',ganti:false,gagal:0,kunci:null,last:'12 Nov 10:03',dibuat:'ompik',act:true}];
 let LOG=[
+ ['19 Nov 09:45','ompik','BUAT_USER','Users','99260505','role STAFF · password acak','BERHASIL'],
  ['19 Nov 09:42','ompik','UBAH_IZIN','Ref_Role','STAFF','export: tidak → ya','BERHASIL'],
  ['19 Nov 09:41','ompik','LOGIN','Users','ompik','','BERHASIL'],
- ['19 Nov 09:32','baim','AKUN_TERKUNCI','Users','baim','5× gagal, terkunci sampai 09:47','BERHASIL'],
- ['19 Nov 09:32','baim','LOGIN','Users','baim','password salah (5/5)','GAGAL'],
- ['19 Nov 09:20','edo','IZIN_DITOLAK','Users','—','user.kelola dibutuhkan untuk "lihat daftar user"','DITOLAK'],
- ['19 Nov 09:05','ompik','BUAT_USER','Users','unggul','role STAFF, alias Unggul','BERHASIL'],
+ ['19 Nov 09:32','93210303','AKUN_TERKUNCI','Users','93210303','5× gagal, terkunci sampai 09:47','BERHASIL'],
+ ['19 Nov 09:32','93210303','LOGIN','Users','93210303','password salah (5/5)','GAGAL'],
+ ['19 Nov 09:20','95210101','IZIN_DITOLAK','Users','—','user.kelola dibutuhkan untuk "lihat daftar user"','DITOLAK'],
+ ['18 Nov 15:10','83240202','LOGIN','Users','83240202','','BERHASIL'],
+ ['18 Nov 15:05','ompik','BUAT_USER','Users','83240202','role STAFF, alias Unggul · password diketik admin','BERHASIL'],
  ['19 Nov 08:31','admin','BUAT_USER','Users','ompik','role ADMIN','BERHASIL'],
  ['19 Nov 08:30','admin','GANTI_PASSWORD','Users','admin','login pertama','BERHASIL'],
  ['19 Nov 08:29','sistem','MIGRASI_SKEMA','_Meta','v0 → v1','5 tab dibuat','BERHASIL'],
@@ -496,7 +542,7 @@ if(S.theme!=='system')applyTheme();
 const me=()=>USERS.find(u=>u.u===S.me);
 const can=p=>ROLES[me().role]?.includes(p);
 const now=()=>'19 Nov '+new Date().toTimeString().slice(0,5);
-function log(u,aksi,ent,id,det,res){LOG.unshift([now(),u,aksi,ent,id,det,res||'BERHASIL']);}
+function log(u,aksi,ent,id,det,res){LOG.unshift([now(),u,aksi,ent,id,det,res||'BERHASIL']);const x=USERS.find(v=>v.u===u);if(x)x.act=true;}   // ada aktivitas = tidak bisa dihapus
 const route=()=>(location.hash||'#beranda').slice(1);
 const SCREENS=[['setup','1 · Setup'],['login','2 · Login'],['ganti','3 · Ganti password'],['beranda','4 · Aplikasi']];
 
@@ -550,7 +596,7 @@ function shell(title,crumb,body,nav){
     <main class="content" id="content">${body}</main>
    </div></div>`;
 }
-const avatarOf=u=>`<span class="av">${esc((u.nama||u.u)[0].toUpperCase())}</span>`;
+const avatarOf=u=>`<span class="av">${esc(String(u.nama||u.u)[0].toUpperCase())}</span>`;
 function bindShell(){
   const g=id=>document.getElementById(id);
   g('burger').onclick=e=>{e.stopPropagation();g('side').classList.toggle('open');};
@@ -603,7 +649,7 @@ function viewLogin(){
    <label class="of"><span>Username</span><input class="inp" id="lu" value="${esc(e?.u||'admin')}" autocomplete="username"></label>
    <label class="of"><span>Password</span><input class="inp" id="lp" type="password" value="" placeholder="password sementara dari setup()" autocomplete="current-password"><small>Akun dikunci 15 menit setelah 5 kali salah. Lupa password? Minta admin mereset.</small></label>
    <button class="btn pri" type="submit" style="justify-content:center;padding:12px">Masuk</button>
-   <div class="muted" style="font-size:12px">Contoh mockup: <span class="mono">admin</span> / <span class="mono">K7m-Q2x-Pd9</span> → ganti password · <span class="mono">ompik</span>, <span class="mono">edo</span>, <span class="mono">alif</span> / apa saja · <span class="mono">baim</span> terkunci · <span class="mono">manajer</span> nonaktif</div>
+   <div class="muted" style="font-size:12px">Contoh mockup: <span class="mono">admin</span> / <span class="mono">K7m-Q2x-Pd9</span> → ganti password · <span class="mono">ompik</span>, <span class="mono">95210101</span>, <span class="mono">98240404</span> / apa saja · <span class="mono">93210303</span> terkunci · <span class="mono">manajer.ff</span> nonaktif</div>
   </form></div></div>`;
 }
 function bindLogin(){
@@ -658,50 +704,149 @@ function viewHome(){
 }
 
 /* ================= Users ================= */
-function stPill(u){if(u.st==='NONAKTIF')return '<span class="pill p-dim">Nonaktif</span>';if(u.kunci)return `<span class="pill p-crit">${ic('lock','s')}Terkunci s/d ${u.kunci}</span>`;if(u.ganti)return '<span class="pill p-warn">Wajib ganti password</span>';return '<span class="pill p-ok"><span class="dot"></span>Aktif</span>';}
+const ROLE_META={ADMIN:['shield','Akses penuh','Kelola user, izin, pengaturan, sinkron'],STAFF:['person','Isi & kelola','Update kontrak, BAST, kendala; daftarkan kontrak'],VIEWER:['eye','Hanya melihat','Lihat dashboard & kontrak, export']};
+const roleMeta=r=>ROLE_META[r]||['users','Role khusus',(ROLES[r]||[]).length+' izin'];
+const initials=n=>String(n||'').trim().split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('')||'?';
+function uState(u){if(u.st==='NONAKTIF')return ['off','Nonaktif'];if(u.kunci)return ['lock','Terkunci s/d '+u.kunci];if(u.ganti)return ['pw','Wajib ganti password'];return ['on','Aktif'];}
+const ava=(u,size)=>`<span class="ava ${uState(u)[0]}" ${size?`style="--s:${size}px"`:''} title="${uState(u)[1]}">${esc(initials(u.nama||u.u))}</span>`;
+const rbadge=r=>`<span class="rbadge ${r}">${ic(roleMeta(r)[0])}${r}</span>`;
+function stPill(u){const [k,l]=uState(u);return `<span class="pill ${{on:'p-ok',pw:'p-warn',lock:'p-crit',off:'p-dim'}[k]}">${k==='lock'?ic('lock','s'):'<span class="dot"></span>'}${l}</span>`;}
+const UF=[['','Semua',u=>true],['ADMIN','Admin',u=>u.role==='ADMIN'&&u.st==='AKTIF'],['STAFF','Staff',u=>u.role==='STAFF'&&u.st==='AKTIF'],['VIEWER','Viewer',u=>u.role==='VIEWER'&&u.st==='AKTIF'],['pw','Wajib ganti password',u=>u.ganti&&u.st==='AKTIF'],['lock','Terkunci',u=>!!u.kunci],['off','Nonaktif',u=>u.st==='NONAKTIF']];
 function viewUsers(){
+  const f=S.uf||'',fn=UF.find(x=>x[0]===f)[2],q=(S.uq||'').toLowerCase();
+  const rows=USERS.filter(fn).filter(u=>!q||(u.u+' '+u.nama+' '+u.alias).toLowerCase().includes(q));
   return `<div class="card" style="display:flex;flex-direction:column;gap:14px">
-   <div class="row"><div class="search">${ic('search','s')}<input id="uq" placeholder="Cari username, nama, alias PIC…" aria-label="Cari user"></div><span class="sp"></span><button class="btn pri" id="addUser">${ic('add','s')}Tambah user</button></div>
-   <div class="tbl-wrap"><table class="t"><thead><tr><th>User</th><th>Alias PIC</th><th>Role</th><th>Status</th><th>Login terakhir</th><th>Dibuat oleh</th><th></th></tr></thead><tbody id="ubody">
-   ${USERS.map(u=>`<tr data-row="${u.u}" style="${u.st==='NONAKTIF'?'opacity:.6':''}"><td><div class="row" style="flex-wrap:nowrap">${avatarOf(u)}<div><b>${esc(u.nama)}</b><div class="mono dim" style="font-size:11px">${u.u}</div></div></div></td>
-    <td>${esc(u.alias)||'<span class="dim">—</span>'}</td><td><span class="pill ${u.role==='ADMIN'?'p-acc':'p-dim'}">${u.role}</span></td><td>${stPill(u)}</td>
-    <td class="tnum muted">${u.last}</td><td class="mono dim" style="font-size:12px">${u.dibuat}</td>
-    <td><div class="row" style="flex-wrap:nowrap;justify-content:flex-end">${u.kunci?`<button class="btn sm ton" data-unlock="${u.u}">Buka kunci</button>`:''}<button class="btn sm" data-edit="${u.u}">Ubah</button><button class="btn sm" data-reset="${u.u}">Reset password</button></div></td></tr>`).join('')}
+   <div class="row"><div class="search">${ic('search','s')}<input id="uq" placeholder="Cari username, nama, alias PIC…" aria-label="Cari user" value="${esc(S.uq||'')}"></div><span class="sp"></span><button class="btn pri" id="addUser">${ic('add','s')}Tambah user</button></div>
+   <div class="row">${UF.map(([k,l,t])=>`<button class="chipf ${f===k?'on':''}" data-uf="${k}">${l} <b>${USERS.filter(t).length}</b></button>`).join('')}</div>
+   <div class="tbl-wrap"><table class="t"><thead><tr><th>User</th><th>Alias PIC</th><th>Role</th><th>Status</th><th>Login terakhir</th><th style="width:48px"></th></tr></thead><tbody>
+   ${rows.map(u=>`<tr class="click" data-row="${esc(u.u)}"><td><div class="row" style="flex-wrap:nowrap;gap:12px">${ava(u)}<div style="min-width:0"><b>${esc(u.nama)}</b><div class="mono dim" style="font-size:11.5px">${esc(u.u)}</div></div></div></td>
+    <td>${u.alias?`<span class="pill p-dim">${esc(u.alias)}</span>`:'<span class="dim">—</span>'}</td><td>${rbadge(u.role)}</td><td>${stPill(u)}</td>
+    <td class="tnum muted">${u.last}</td><td><button class="iconbtn" data-kebab="${esc(u.u)}" aria-label="Aksi untuk ${esc(u.nama)}">${ic('more')}</button></td></tr>`).join('')||'<tr><td colspan="6" class="muted" style="text-align:center;padding:28px">Tidak ada user yang cocok.</td></tr>'}
    </tbody></table></div>
-   <div class="muted" style="font-size:12px">Username adalah ID tetap dan tidak bisa diganti. Alias PIC dipakai untuk mencocokkan kolom PIC saat import (F3) dan untuk penugasan kontrak.</div></div>`;
+   <div class="muted" style="font-size:12px">Username bebas (NIK, nama, atau apa pun) dan menjadi ID tetap. Cincin di avatar menandai status: hijau aktif, kuning wajib ganti password, merah terkunci, abu-abu nonaktif.</div></div>`;
 }
 function genPw(){const c='abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';const p=()=>Array.from(crypto.getRandomValues(new Uint8Array(3)),x=>c[x%c.length]).join('');return p()+'-'+p()+'-'+p();}
-function showTempPw(u,pw,judul){modal(judul,`<div>Berikan password sementara ini ke <b>${esc(u.nama)}</b> (<span class="mono">${u.u}</span>). Password <b>tidak ditampilkan lagi</b> setelah jendela ini ditutup, dan wajib diganti saat login.</div>
+function activeAdmins(excl){return USERS.filter(u=>u.u!==excl&&u.st==='AKTIF'&&ROLES[u.role]?.includes('user.kelola'));}
+function pwScore(p){let s=0;if(p.length>=8)s++;if(p.length>=12)s++;if(/[a-z]/.test(p)&&/[A-Z]/.test(p))s++;if(/\d/.test(p))s++;if(/[^A-Za-z0-9]/.test(p))s++;return Math.min(4,s);}
+function showTempPw(u,pw,judul){modal(judul,`<div>Berikan password sementara ini ke <b>${esc(u.nama)}</b> (<span class="mono">${esc(u.u)}</span>). Password <b>tidak ditampilkan lagi</b> setelah jendela ini ditutup, dan wajib diganti saat login pertama.</div>
    <div class="secret"><span id="tpw" style="flex:1">${pw}</span><button class="btn sm ton" id="cpw">${ic('copy','s')}Salin</button></div>
    <div class="muted" style="font-size:12px">Yang disimpan di database hanya hash + salt, bukan passwordnya.</div>`,[{l:'Selesai',pri:true}]);
-  setTimeout(()=>{const b=document.getElementById('cpw');if(b)b.onclick=()=>{try{navigator.clipboard.writeText(pw).then(()=>toast('Password sementara disalin.'),()=>toast('Pilih teks lalu Ctrl+C.'));}catch(e){toast('Pilih teks lalu Ctrl+C.');}};},80);}
-function activeAdmins(excl){return USERS.filter(u=>u.u!==excl&&u.st==='AKTIF'&&ROLES[u.role]?.includes('user.kelola'));}
-function userForm(u){const isNew=!u;u=u||{u:'',nama:'',alias:'',role:'STAFF',st:'AKTIF'};
-  return `<div class="grid g2"><label class="of"><span>Username</span><input class="inp mono" id="fu" value="${esc(u.u)}" ${isNew?'':'disabled'} placeholder="huruf kecil, tanpa spasi"><small>${isNew?'ID tetap, tidak bisa diganti nanti':'Tidak bisa diganti'}</small></label>
-   <label class="of"><span>Nama</span><input class="inp" id="fn" value="${esc(u.nama)}"></label>
-   <label class="of"><span>Alias PIC</span><input class="inp" id="fa" value="${esc(u.alias)}" placeholder="mis. Edo"><small>Kosongkan bila bukan PIC kontrak</small></label>
-   <label class="of"><span>Role</span><select class="inp" id="fr">${Object.keys(ROLES).map(r=>`<option ${r===u.role?'selected':''}>${r}</option>`).join('')}</select></label></div>
-   ${isNew?'':`<label class="row" style="gap:10px;font-size:13px"><input type="checkbox" class="chk" id="fs" ${u.st==='AKTIF'?'checked':''}> Akun aktif <span class="muted">(akun nonaktif tidak bisa login; riwayatnya tetap ada)</span></label>`}
-   <div id="ferr"></div>`;}
+  setTimeout(()=>{const b=document.getElementById('cpw');if(b)b.onclick=()=>copyText(pw,'Password sementara disalin.');},80);}
+function copyText(t,msg){try{navigator.clipboard.writeText(t).then(()=>toast(msg),()=>toast('Pilih teks lalu tekan Ctrl+C.'));}catch(e){toast('Pilih teks lalu tekan Ctrl+C.');}}
+
+/* --- menu ⋮ --- */
+function closeMenu(){document.querySelector('.menu')?.remove();}
+function openMenu(btn,u){
+  closeMenu();const r=btn.getBoundingClientRect(),m=document.createElement('div');m.className='menu';m.setAttribute('role','menu');
+  const items=[['edit','Ubah data & role','',()=>openUserSheet(u)],['key','Reset password','Password sementara baru, wajib diganti',()=>openUserSheet(u,{reset:true})]];
+  if(u.kunci)items.push(['lock','Buka kunci','Terkunci sampai '+u.kunci,()=>{u.kunci=null;u.gagal=0;log(S.me,'BUKA_KUNCI','Users',u.u,'');render();toast(`Kunci akun ${u.u} dibuka.`);}]);
+  items.push(['block',u.st==='AKTIF'?'Nonaktifkan':'Aktifkan lagi',u.st==='AKTIF'?'Tidak bisa login; riwayat tetap ada':'',()=>toggleActive(u)]);
+  m.innerHTML=items.map((it,i)=>`<button data-mi="${i}" role="menuitem">${ic(it[0])}<span>${it[1]}${it[2]?`<small>${it[2]}</small>`:''}</span></button>`).join('')+
+    `<hr><button class="danger" data-mi="del" role="menuitem" ${u.act?'disabled':''}>${ic('trash')}<span>Hapus user<small>${u.act?'Sudah punya riwayat. Nonaktifkan saja.':'Belum pernah beraktivitas'}</small></span></button>`;
+  document.getElementById('overlay-root').appendChild(m);
+  const top=Math.min(r.bottom+6,innerHeight-m.offsetHeight-12);m.style.top=top+'px';m.style.left=Math.max(12,r.right-m.offsetWidth)+'px';
+  m.addEventListener('click',e=>{e.stopPropagation();const b=e.target.closest('[data-mi]');if(!b||b.disabled)return;closeMenu();b.dataset.mi==='del'?confirmDelete(u):items[+b.dataset.mi][3]();});
+  m.querySelector('button')?.focus();
+}
+function toggleActive(u){
+  if(u.st==='AKTIF'&&ROLES[u.role].includes('user.kelola')&&!activeAdmins(u.u).length){log(S.me,'NONAKTIFKAN_USER','Users',u.u,'akan menghapus admin terakhir','DITOLAK');return modal('Ditolak server',`<div class="note crit">${ic('shield','s')}<span class="tx">Harus ada minimal satu admin aktif dengan izin <span class="mono">user.kelola</span>.</span></div>`,[{l:'Mengerti',pri:true}]);}
+  u.st=u.st==='AKTIF'?'NONAKTIF':'AKTIF';log(S.me,u.st==='AKTIF'?'AKTIFKAN_USER':'NONAKTIFKAN_USER','Users',u.u,u.st==='NONAKTIF'?'sesi aktif diakhiri':'');render();toast(u.st==='AKTIF'?`${u.nama} bisa login lagi.`:`${u.nama} dinonaktifkan. Riwayatnya tetap tersimpan.`);
+}
+function confirmDelete(u){
+  modal('Hapus user?',`<div class="row" style="flex-wrap:nowrap;gap:14px">${ava(u,44)}<div><b>${esc(u.nama)}</b><div class="mono dim">${esc(u.u)}</div></div></div><div class="muted">User ini belum pernah login atau melakukan aksi apa pun, jadi aman dihapus. Pembuatan dan penghapusannya tetap tercatat di Log.</div>`,
+   [{l:'Batal'},{l:'Hapus',pri:true,fn:()=>{if(u.act){toast('Ditolak: user sudah punya riwayat.');return;}USERS=USERS.filter(x=>x!==u);log(S.me,'HAPUS_USER','Users',u.u,'tanpa aktivitas');closeSheet(true);render();toast(`User ${u.u} dihapus.`);}}]);
+}
+
+/* --- panel tambah/ubah user --- */
+function openUserSheet(u,opt={}){
+  const isNew=!u;
+  S.form=isNew?{u:'',nama:'',alias:'',role:'STAFF',st:'AKTIF',pwOn:true,pwMode:'acak',pw:genPw(),pwShow:false}
+              :{u:u.u,nama:u.nama,alias:u.alias,role:u.role,st:u.st,pwOn:!!opt.reset,pwMode:'acak',pw:genPw(),pwShow:false};
+  S.formOrig=u||null;S.formErr='';renderSheet(true);
+  setTimeout(()=>document.querySelector(opt.reset?'#sheet-root [data-pwmode="acak"]':isNew?'#fu':'#fn')?.focus(),80);
+}
+function closeSheet(instant){const r=document.getElementById('sheet-root');if(!r.firstChild)return;if(instant||REDUCED){r.innerHTML='';return;}r.firstElementChild.classList.add('closing');setTimeout(()=>r.innerHTML='',300);}
+function idcardHtml(){const F=S.form,fake={nama:F.nama||'Nama user',u:F.u,st:F.st,ganti:F.pwOn||S.formOrig?.ganti,kunci:S.formOrig?.kunci};
+  return `${ava(fake,64)}<div class="who"><b>${esc(F.nama||'Nama user')}</b><div class="mono" style="font-size:12.5px">${esc(F.u||'username')}</div>
+   <div class="row" style="margin-top:8px;gap:6px">${rbadge(F.role)}${F.alias?`<span class="pill p-dim">PIC: ${esc(F.alias)}</span>`:''}${stPill(fake)}</div></div>`;}
+function permsHtml(){const R=ROLES[S.form.role]||[];return IZIN.map(([p,d],i)=>`<span class="${R.includes(p)?'':'no'}" style="--i:${i}" title="${p}">${d}</span>`).join('');}
+function renderSheet(opening){
+  const F=S.form,isNew=!S.formOrig,root=document.getElementById('sheet-root'),sc=root.querySelector('.dbody')?.scrollTop||0;
+  const score=pwScore(F.pw),SC=[['var(--crit)','lemah'],['var(--crit)','lemah'],['var(--warn)','cukup'],['var(--ok)','kuat'],['var(--ok)','sangat kuat']][score];
+  root.innerHTML=`<div><div class="dscrim" id="sscrim" style="${opening?'':'animation:none'}"></div>
+  <aside class="drawer ussheet" role="dialog" aria-modal="true" aria-label="${isNew?'Tambah user':'Ubah user'}" style="width:min(580px,100vw);${opening?'':'animation:none'}">
+   <div class="dhead" style="padding-bottom:14px"><div class="dtop"><button class="iconbtn" id="sclose" aria-label="Tutup">${ic('x')}</button><div><div class="eyebrow">${isNew?'User baru':'Ubah user'}</div><div style="font-weight:800;font-size:18px">${isNew?'Tambah anggota tim':esc(S.formOrig.nama)}</div></div></div></div>
+   <div class="dbody">
+    <div class="idcard" id="idcard">${idcardHtml()}</div>
+    <div class="sect"><div class="eyebrow">Identitas</div>
+     <label class="of"><span>Username</span><input class="inp mono" id="fu" value="${esc(F.u)}" ${isNew?'':'disabled'} autocomplete="off" placeholder="mis. 95210101 atau dina.lestari"><small>${isNew?'NIK, nama, atau apa pun · 3–32 karakter: huruf, angka, titik, garis bawah, strip. Menjadi ID tetap.':'ID tetap, tidak bisa diganti.'}</small></label>
+     <div class="grid g2" style="gap:14px"><label class="of"><span>Nama lengkap</span><input class="inp" id="fn" value="${esc(F.nama)}" autocomplete="off"></label>
+      <label class="of"><span>Alias PIC</span><input class="inp" id="fa" value="${esc(F.alias)}" autocomplete="off" placeholder="mis. Dina"><small>Nama di kolom PIC sheet lama. Kosongkan bila bukan PIC.</small></label></div></div>
+    <div class="sect"><div class="eyebrow">Role & akses</div>
+     <div class="rcards" role="radiogroup" aria-label="Role">${Object.keys(ROLES).map(r=>{const m=roleMeta(r);return `<button type="button" class="rcard ${F.role===r?'on':''}" data-role="${r}" role="radio" aria-checked="${F.role===r}">${ic(m[0])}<b>${r}</b><small>${m[1]} · ${ROLES[r].length} izin</small></button>`;}).join('')}</div>
+     <div><div class="muted" style="font-size:12px;margin-bottom:8px">User ini bisa:</div><div class="perms ${S.permAnim?'anim':''}" id="perms">${permsHtml()}</div></div></div>
+    <div class="sect"><div class="eyebrow">Password</div>
+     ${isNew?'':`<div class="swrow"><div style="flex:1"><b>Reset password</b><small>Kosongkan bila password tidak diganti</small></div><button type="button" class="toggle ${F.pwOn?'on':''}" id="pwOn" aria-label="Reset password" aria-pressed="${F.pwOn}"></button></div>`}
+     ${F.pwOn?`<div class="seg" role="group" aria-label="Cara membuat password"><button type="button" data-pwmode="acak" class="${F.pwMode==='acak'?'on':''}">Buat acak</button><button type="button" data-pwmode="ketik" class="${F.pwMode==='ketik'?'on':''}">Ketik sendiri</button></div>
+      ${F.pwMode==='acak'?`<div class="secret"><span style="flex:1">${F.pw}</span><button type="button" class="iconbtn" id="regen" aria-label="Buat ulang" title="Buat ulang">${ic('sync','s')}</button><button type="button" class="btn sm ton" id="cpw2">${ic('copy','s')}Salin</button></div>`
+      :`<div><label class="of"><span>Password</span><div style="position:relative"><input class="inp mono" id="fpw" type="${F.pwShow?'text':'password'}" value="${esc(F.pwTyped||'')}" autocomplete="new-password" style="width:100%;padding:12px 44px 10px 12px"><button type="button" class="iconbtn" id="pwEye" aria-label="${F.pwShow?'Sembunyikan':'Tampilkan'} password" style="position:absolute;right:2px;top:2px">${ic('eye','s')}</button></div></label>
+        <div class="strength"><i id="pwBar" style="width:${(pwScore(F.pwTyped||'')/4)*100}%;background:${[['var(--crit)'],['var(--crit)'],['var(--warn)'],['var(--ok)'],['var(--ok)']][pwScore(F.pwTyped||'')]}"></i></div>
+        <div class="muted" style="font-size:12px;margin-top:6px" id="pwHint">Minimal 8 karakter, berisi huruf dan angka.</div></div>`}
+      <div class="note info">${ic('key','s')}<span class="tx">User <b>wajib mengganti</b> password ini saat login pertama. ${F.pwMode==='acak'?'Password acak ditampilkan sekali lagi setelah disimpan.':'Sampaikan password ini langsung ke user.'}</span></div>`:''}
+    </div>
+    ${isNew?'':`<div class="sect"><div class="eyebrow">Status</div><div class="swrow"><div style="flex:1"><b>Akun aktif</b><small>User bisa login selama akun aktif</small></div><button type="button" class="toggle ${F.st==='AKTIF'?'on':''}" id="stOn" aria-label="Akun aktif" aria-pressed="${F.st==='AKTIF'}"></button></div>
+      <div class="danger-zone"><div style="flex:1;min-width:200px"><b style="color:var(--crit)">Hapus user</b><div class="muted" style="font-size:12px">${S.formOrig.act?'Tidak tersedia: user ini sudah punya riwayat. Nonaktifkan saja supaya Log tetap utuh.':'Tersedia karena user ini belum pernah login atau melakukan aksi.'}</div></div><button type="button" class="btn sm danger" id="delUser" ${S.formOrig.act?'disabled':''}>${ic('trash','s')}Hapus</button></div></div>`}
+    <div id="ferr">${S.formErr?`<div class="note crit">${ic('warn','s')}<span class="tx">${S.formErr}</span></div>`:''}</div>
+   </div>
+   <div class="sfoot"><button class="btn" id="scancel">Batal</button><button class="btn pri" id="ssave">${ic('check','s')}${isNew?'Buat user':'Simpan'}</button></div>
+  </aside></div>`;
+  root.querySelector('.dbody').scrollTop=sc;bindSheet();
+}
+function bindSheet(){
+  const $=s=>document.querySelector('#sheet-root '+s),F=S.form,refresh=()=>{$('#idcard').innerHTML=idcardHtml();};
+  $('#sclose').onclick=$('#scancel').onclick=$('#sscrim').onclick=()=>closeSheet();
+  $('#fu').oninput=e=>{F.u=e.target.value.trim().toLowerCase();refresh();};
+  $('#fn').oninput=e=>{F.nama=e.target.value;refresh();};
+  $('#fa').oninput=e=>{F.alias=e.target.value.trim();refresh();};
+  document.querySelectorAll('#sheet-root [data-role]').forEach(b=>b.onclick=()=>{F.role=b.dataset.role;S.permAnim=true;renderSheet(false);S.permAnim=false;});
+  $('#pwOn')&&($('#pwOn').onclick=()=>{F.pwOn=!F.pwOn;renderSheet(false);});
+  $('#stOn')&&($('#stOn').onclick=()=>{F.st=F.st==='AKTIF'?'NONAKTIF':'AKTIF';renderSheet(false);});
+  document.querySelectorAll('#sheet-root [data-pwmode]').forEach(b=>b.onclick=()=>{F.pwMode=b.dataset.pwmode;renderSheet(false);if(F.pwMode==='ketik')setTimeout(()=>$('#fpw')?.focus(),30);});
+  $('#regen')&&($('#regen').onclick=()=>{F.pw=genPw();renderSheet(false);});
+  $('#cpw2')&&($('#cpw2').onclick=()=>copyText(F.pw,'Password disalin.'));
+  $('#pwEye')&&($('#pwEye').onclick=()=>{F.pwShow=!F.pwShow;renderSheet(false);setTimeout(()=>{const i=$('#fpw');i.focus();i.setSelectionRange(i.value.length,i.value.length);},20);});
+  $('#fpw')&&($('#fpw').oninput=e=>{F.pwTyped=e.target.value;const sc=pwScore(F.pwTyped),c=['var(--crit)','var(--crit)','var(--warn)','var(--ok)','var(--ok)'][sc];$('#pwBar').style.width=sc*25+'%';$('#pwBar').style.background=c;
+    const ok=F.pwTyped.length>=8&&/[A-Za-z]/.test(F.pwTyped)&&/\d/.test(F.pwTyped);$('#pwHint').textContent=ok?'Memenuhi syarat · kekuatan: '+['lemah','lemah','cukup','kuat','sangat kuat'][sc]:'Minimal 8 karakter, berisi huruf dan angka.';$('#pwHint').style.color=ok?'var(--ok)':'';});
+  $('#delUser')&&($('#delUser').onclick=()=>confirmDelete(S.formOrig));
+  $('#ssave').onclick=saveUser;
+}
+function saveUser(){
+  const F=S.form,O=S.formOrig,isNew=!O,err=m=>{S.formErr=m;renderSheet(false);document.querySelector('#sheet-root .dbody').scrollTop=1e5;};
+  if(isNew){if(!/^[a-z0-9][a-z0-9._-]{2,31}$/.test(F.u))return err('Username 3–32 karakter: huruf, angka, titik, garis bawah, atau strip, dan diawali huruf/angka.');
+    if(USERS.some(x=>x.u===F.u))return err(`Username <b>${esc(F.u)}</b> sudah dipakai.`);}
+  if(!F.nama.trim())return err('Nama lengkap wajib diisi.');
+  if(F.pwOn&&F.pwMode==='ketik'){const t=F.pwTyped||'';if(!(t.length>=8&&/[A-Za-z]/.test(t)&&/\d/.test(t)))return err('Password minimal 8 karakter dan berisi huruf serta angka.');}
+  if(!isNew){const wasAdmin=ROLES[O.role].includes('user.kelola')&&O.st==='AKTIF',isAdmin=ROLES[F.role].includes('user.kelola')&&F.st==='AKTIF';
+    if(wasAdmin&&!isAdmin&&!activeAdmins(O.u).length){log(S.me,'UBAH_USER','Users',O.u,'akan menghapus admin terakhir','DITOLAK');return err('<b>Ditolak server.</b> Harus ada minimal satu admin aktif dengan izin <span class="mono">user.kelola</span>.');}}
+  const pwNote=F.pwOn?(F.pwMode==='acak'?'password acak':'password diketik admin'):'';
+  let target;
+  if(isNew){target={u:F.u,nama:F.nama.trim(),alias:F.alias,role:F.role,st:'AKTIF',ganti:true,gagal:0,kunci:null,last:'—',dibuat:S.me,act:false};USERS.push(target);
+    log(S.me,'BUAT_USER','Users',F.u,`role ${F.role}${F.alias?', alias '+F.alias:''} · ${pwNote}`);}
+  else{target=O;const ch=[];if(F.role!==O.role)ch.push(`role ${O.role} → ${F.role}`);if(F.st!==O.st)ch.push(F.st==='AKTIF'?'diaktifkan':'dinonaktifkan');if(F.nama.trim()!==O.nama)ch.push('nama');if(F.alias!==O.alias)ch.push(`alias ${O.alias||'—'} → ${F.alias||'—'}`);
+    Object.assign(O,{nama:F.nama.trim(),alias:F.alias,role:F.role,st:F.st});if(ch.length)log(S.me,'UBAH_USER','Users',O.u,ch.join(', '));
+    if(F.pwOn){O.ganti=true;O.kunci=null;O.gagal=0;log(S.me,'RESET_PASSWORD','Users',O.u,pwNote+' · sesi diakhiri');}}
+  closeSheet();render();
+  if(F.pwOn&&F.pwMode==='acak')setTimeout(()=>showTempPw(target,F.pw,isNew?'User dibuat':'Password direset'),320);
+  else toast(isNew?`User ${F.u} dibuat. Wajib ganti password saat login pertama.`:F.pwOn?'Disimpan. Password baru wajib diganti saat login.':'Perubahan disimpan dan dicatat di Log.');
+}
 function bindView(r){
   const $=s=>document.querySelector('#content '+s),$$=s=>document.querySelectorAll('#content '+s);
   if(r==='users'){
-    $('#uq').oninput=e=>{const q=e.target.value.toLowerCase();$$('tr[data-row]').forEach(tr=>{const u=USERS.find(x=>x.u===tr.dataset.row);tr.hidden=!(u.u+' '+u.nama+' '+u.alias).toLowerCase().includes(q);});};
-    $('#addUser').onclick=()=>modal('Tambah user',userForm(null),[{l:'Batal'},{l:'Buat user',pri:true,fn:d=>{
-      const u=d.querySelector('#fu').value.trim().toLowerCase(),n=d.querySelector('#fn').value.trim(),err=d.querySelector('#ferr');
-      const bad=!/^[a-z][a-z0-9._]{2,}$/.test(u)?'Username minimal 3 karakter: huruf kecil, angka, titik, atau garis bawah.':USERS.some(x=>x.u===u)?'Username sudah dipakai.':!n?'Nama wajib diisi.':'';
-      if(bad){err.innerHTML=`<div class="note crit">${ic('warn','s')}<span class="tx">${bad}</span></div>`;return false;}
-      const nu={u,nama:n,alias:d.querySelector('#fa').value.trim(),role:d.querySelector('#fr').value,st:'AKTIF',ganti:true,gagal:0,kunci:null,last:'—',dibuat:S.me};
-      USERS.push(nu);log(S.me,'BUAT_USER','Users',u,`role ${nu.role}${nu.alias?', alias '+nu.alias:''}`);render();setTimeout(()=>showTempPw(nu,genPw(),'User dibuat'),220);}}]);
-    $$('[data-edit]').forEach(b=>b.onclick=()=>{const u=USERS.find(x=>x.u===b.dataset.edit);modal('Ubah user',userForm(u),[{l:'Batal'},{l:'Simpan',pri:true,fn:d=>{
-      const role=d.querySelector('#fr').value,aktif=d.querySelector('#fs').checked,err=d.querySelector('#ferr');
-      const losesAdmin=ROLES[u.role].includes('user.kelola')&&u.st==='AKTIF'&&(!ROLES[role].includes('user.kelola')||!aktif);
-      if(losesAdmin&&!activeAdmins(u.u).length){log(S.me,'UBAH_USER','Users',u.u,'akan menghapus admin terakhir','DITOLAK');err.innerHTML=`<div class="note crit">${ic('shield','s')}<span class="tx"><b>Ditolak server.</b> Harus ada minimal satu admin aktif dengan izin <span class="mono">user.kelola</span>.</span></div>`;return false;}
-      const ch=[];if(role!==u.role)ch.push(`role ${u.role} → ${role}`);if(aktif!==(u.st==='AKTIF'))ch.push(aktif?'diaktifkan':'dinonaktifkan');
-      const n=d.querySelector('#fn').value.trim(),a=d.querySelector('#fa').value.trim();if(n!==u.nama)ch.push('nama');if(a!==u.alias)ch.push(`alias ${u.alias||'—'} → ${a||'—'}`);
-      Object.assign(u,{role,nama:n,alias:a,st:aktif?'AKTIF':'NONAKTIF'});if(ch.length)log(S.me,'UBAH_USER','Users',u.u,ch.join(', '));render();toast(ch.length?'Perubahan disimpan dan dicatat di Log.':'Tidak ada perubahan.');}}]);});
-    $$('[data-reset]').forEach(b=>b.onclick=()=>{const u=USERS.find(x=>x.u===b.dataset.reset);modal('Reset password?',`<div>Password <b>${esc(u.nama)}</b> diganti dengan password sementara baru. Sesi aktifnya diakhiri, dan password wajib diganti saat login berikutnya.</div>`,[{l:'Batal'},{l:'Reset',pri:true,fn:()=>{u.ganti=true;u.kunci=null;u.gagal=0;log(S.me,'RESET_PASSWORD','Users',u.u,'sesi diakhiri');render();setTimeout(()=>showTempPw(u,genPw(),'Password direset'),220);}}]);});
-    $$('[data-unlock]').forEach(b=>b.onclick=()=>{const u=USERS.find(x=>x.u===b.dataset.unlock);u.kunci=null;u.gagal=0;log(S.me,'BUKA_KUNCI','Users',u.u,'');render();toast(`Kunci akun ${u.u} dibuka.`);});
+    const q=$('#uq');q.oninput=()=>{S.uq=q.value;const pos=q.selectionStart;render();const n=document.querySelector('#uq');n.focus();n.setSelectionRange(pos,pos);};
+    $$('[data-uf]').forEach(b=>b.onclick=()=>{S.uf=b.dataset.uf;render();});
+    $('#addUser').onclick=()=>openUserSheet(null);
+    $$('[data-kebab]').forEach(b=>b.onclick=e=>{e.stopPropagation();openMenu(b,USERS.find(u=>u.u===b.dataset.kebab));});
+    $$('tr[data-row]').forEach(tr=>tr.onclick=e=>{if(e.target.closest('[data-kebab]'))return;openUserSheet(USERS.find(u=>u.u===tr.dataset.row));});
   }
   if(r==='role'){
     $$('[data-perm]').forEach(c=>c.onchange=()=>{const [role,p]=c.dataset.perm.split('|');S.roleDraft=S.roleDraft||JSON.parse(JSON.stringify(ROLES));
@@ -780,17 +925,20 @@ function modal(title,body,acts){
   setTimeout(()=>d.querySelector('input:not([disabled]),select')?.focus(),60);
 }
 let toastT;function toast(m){document.querySelector('.toast')?.remove();const t=document.createElement('div');t.className='toast';t.innerHTML=ic('check','s')+'<span>'+esc(m)+'</span>';document.body.appendChild(t);clearTimeout(toastT);toastT=setTimeout(()=>t.remove(),3400);}
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){const m=[...document.querySelectorAll('#overlay-root .scrim:not(.closing)')].pop();if(m)m._close();}});
+document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(document.querySelector('.menu')){closeMenu();return;}const m=[...document.querySelectorAll('#overlay-root .scrim:not(.closing)')].pop();if(m){m._close();return;}closeSheet();});
+document.addEventListener('click',closeMenu);
+window.addEventListener('resize',closeMenu);
 document.addEventListener('click',()=>document.getElementById('side')?.classList.remove('open'));
 
 /* ================= Panel mockup ================= */
 document.getElementById('jump').innerHTML=SCREENS.map(([h,l])=>`<button data-j="${h}">${l}</button>`).join('');
-document.getElementById('asRole').innerHTML=[['ompik','ompik · ADMIN'],['edo','edo · STAFF'],['admin','admin (awal)']].map(([u,l])=>`<button data-u="${u}">${l}</button>`).join('');
+document.getElementById('asRole').innerHTML=[['ompik','ompik · ADMIN'],['95210101','95210101 · STAFF'],['admin','admin (awal)']].map(([u,l])=>`<button data-u="${u}">${l}</button>`).join('');
 document.querySelectorAll('#jump button').forEach(b=>b.onclick=()=>{if(b.dataset.j==='ganti'){S.me='admin';S.firstLogin=true;}location.hash='#'+b.dataset.j;});
 document.querySelectorAll('#asRole button').forEach(b=>b.onclick=()=>{S.me=b.dataset.u;S.firstLogin=false;log(S.me,'LOGIN','Users',S.me,'(panel mockup)');location.hash='#beranda';render();});
-document.getElementById('simFail').onclick=()=>{const u=USERS.find(x=>x.u==='alif');u.kunci=null;u.gagal=4;S.loginErr={msg:'Username atau password salah. Sisa <b>1</b> percobaan sebelum akun dikunci 15 menit.',kind:'warn',u:'alif'};location.hash='#login';render();toast('Coba masuk sebagai alif dengan password kosong sekali lagi.');};
-document.getElementById('simDeny').onclick=()=>{S.me='edo';location.hash='#users';render();};
+document.getElementById('simFail').onclick=()=>{const u=USERS.find(x=>x.u==='98240404');u.kunci=null;u.gagal=4;S.loginErr={msg:'Username atau password salah. Sisa <b>1</b> percobaan sebelum akun dikunci 15 menit.',kind:'warn',u:'98240404'};location.hash='#login';render();toast('Klik Masuk sekali lagi dengan password kosong.');};
+document.getElementById('simDeny').onclick=()=>{S.me='95210101';location.hash='#users';render();};
 document.getElementById('simExpire').onclick=()=>{log(S.me,'SESI_HABIS','Users',S.me,'tidak aktif 6 jam');S.loginErr={msg:'Sesi Anda berakhir karena tidak ada aktivitas selama 6 jam. Silakan masuk lagi.',kind:'info',u:S.me};location.hash='#login';render();};
+document.getElementById('simAdd').onclick=()=>{S.me='ompik';location.hash='#users';render();setTimeout(()=>openUserSheet(null),200);};
 if(innerWidth<700)document.getElementById('mpanel').open=false;
 render();
 </script>
