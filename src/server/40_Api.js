@@ -41,6 +41,9 @@ function api(token, aksi, payload) {
     }
     return { ok: true, data: data };
   } catch (e) {
+    if (!e.kode && /required permissions|do not have permission|tidak memiliki izin/i.test(String(e.message))) {
+      e = Repo.galat('IZIN_GOOGLE', 'Izin Google untuk aplikasi belum lengkap. Admin: di editor Apps Script jalankan fungsi mintaIzin, centang semua izin (Select all), lalu muat ulang halaman.');
+    }
     if (!e.kode) console.error(aksi + ': ' + (e.stack || e.message));
     return { ok: false, kode: e.kode || 'ERROR', pesan: e.kode ? e.message : 'Terjadi kesalahan di server: ' + e.message };
   }

@@ -46,6 +46,15 @@ test('setup: membuat database, tab skema v1, isi awal, admin awal; Sheet1 bawaan
   assert.ok(g.db().getSheetByName('Users').frozen === 1);
 });
 
+test('izin Google: setup() memastikan izin dulu; error izin dari Google diterjemahkan jadi petunjuk mintaIzin', () => {
+  const { g } = siapkan();
+  assert.ok(g.logs.includes('requireAllScopes FULL'));
+  g.ctx.AKSI.status.fn = () => { throw new Error('You do not have permission to call SpreadsheetApp.openById. Required permissions: https://www.googleapis.com/auth/spreadsheets'); };
+  const r = g.api(null, 'status');
+  assert.equal(r.kode, 'IZIN_GOOGLE');
+  assert.match(r.pesan, /mintaIzin/);
+});
+
 test('setup: aman diulang — tidak membuat admin/tab baru dan tidak menyentuh data', () => {
   const { g } = siapkan();
   const sebelum = JSON.stringify(g.tab('Users'));

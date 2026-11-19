@@ -102,6 +102,7 @@ function createGas(opts = {}) {
           .replace('HH', fmt2(j.getUTCHours())).replace('mm', fmt2(j.getUTCMinutes())).replace('ss', fmt2(j.getUTCSeconds()));
       },
     },
+    ScriptApp: { AuthMode: { FULL: 'FULL' }, requireAllScopes(m) { logs.push('requireAllScopes ' + m); } },
     Session: { getEffectiveUser: () => ({ getEmail: () => owner }), getScriptTimeZone: () => 'Asia/Jakarta' },
     HtmlService: { createHtmlOutput(h) { const o = { html: h, title: '', meta: [], setTitle(t) { o.title = t; return o; }, addMetaTag(n, c) { o.meta.push([n, c]); return o; }, getContent: () => h }; return o; } },
     console: { log: (...a) => logs.push(a.join(' ')), error: (...a) => logs.push('ERROR ' + a.join(' ')), warn: (...a) => logs.push('WARN ' + a.join(' ')) },

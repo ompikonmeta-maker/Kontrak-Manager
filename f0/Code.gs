@@ -3,7 +3,7 @@
  * Halaman ini mengecek koneksi, lalu menampilkan hasil yang bisa disalin ke chat.
  * Di F1 file ini diganti dengan aplikasi lengkap.
  */
-var F0_VERSI = '1.1';
+var F0_VERSI = '1.2';
 
 function doGet() {
   return HtmlService.createHtmlOutput(PAGE_HTML.split('{{VERSI}}').join(F0_VERSI))
@@ -21,6 +21,15 @@ function ping() {
   };
 }
 
+/**
+ * Jalankan dari editor bila ada izin yang belum diberikan. Memunculkan layar izin Google
+ * untuk izin yang masih kurang (layar izin ber-kotak-centang tidak muncul otomatis lagi).
+ */
+function mintaIzin() {
+  ScriptApp.requireAllScopes(ScriptApp.AuthMode.FULL);
+  console.log('Semua izin sudah diberikan. Muat ulang halaman web app.');
+}
+
 /** Cek apakah server bisa memanggil Web App lain (syarat script penerima di F4a). */
 function cekFetch() {
   try {
@@ -30,7 +39,7 @@ function cekFetch() {
   } catch (err) {
     var pesan = String(err && err.message || err);
     if (/permission|external_request/i.test(pesan)) {
-      return { ok: false, status: 'Izin "terhubung ke layanan eksternal" belum diberikan. Di editor: pilih fungsi cekFetch → Run → centang semua izin (Select all) → Allow, lalu muat ulang halaman ini.' };
+      return { ok: false, status: 'Izin "terhubung ke layanan eksternal" belum diberikan. Di editor: pilih fungsi mintaIzin → Run → centang semua izin (Select all) → Allow, lalu muat ulang halaman ini.' };
     }
     return { ok: false, status: pesan };
   }

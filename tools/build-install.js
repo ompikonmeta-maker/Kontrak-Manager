@@ -33,7 +33,8 @@ const PHASES = {
       ['Izinkan akses', 'Klik <b>Authorize access</b> → pilih akun FF → <b>Advanced</b> → <b>Go to Status Kontrak Manager (unsafe)</b>. Bila muncul daftar izin dengan kotak centang, pilih <b>Select all</b> (semua izin harus tercentang) → <b>Allow</b>. Peringatan ini normal untuk script buatan sendiri.'],
       ['Uji dari PC kantor', 'Salin <b>Web app URL</b> (berakhiran <span class="mono">/exec</span>). Buka di Chrome atau Edge di PC kantor, memakai jaringan kantor. Tunggu semua baris selesai, klik <b>Salin hasil</b>, lalu tempel di chat.']] },
     fileDesc: ['Pengaturan project: zona Asia/Jakarta, izin, dan mode Web app.', 'Kode server + halaman uji.'],
-    post: `<div class="card"><h2>Setelah hasil keluar</h2><p class="muted" style="margin-top:8px">Klik <b>Salin hasil</b> dan tempel di chat, apa pun hasilnya. Arti setiap hasil dan langkah berikutnya ada di tabel <a href="${MOCK_F0}" target="_blank" rel="noopener">Kalau hasilnya… di mockup F0</a>. Kalau ada langkah yang berbeda dari layar Anda, kirim screenshot-nya.</p></div>`
+    post: `<div class="card"><h2>Bila baris "panggil Web App lain" merah karena izin</h2><p class="muted" style="margin-top:8px">Di editor pilih fungsi <span class="mono">mintaIzin</span> → <b>Run</b> → <b>Select all</b> → <b>Allow</b>, lalu muat ulang halaman uji. Bila layar izin tetap tidak muncul: buka <b>myaccount.google.com/connections</b>, pilih <b>Status Kontrak Manager</b> → hapus aksesnya, lalu ulangi.</p></div>
+    <div class="card"><h2>Setelah hasil keluar</h2><p class="muted" style="margin-top:8px">Klik <b>Salin hasil</b> dan tempel di chat, apa pun hasilnya. Arti setiap hasil dan langkah berikutnya ada di tabel <a href="${MOCK_F0}" target="_blank" rel="noopener">Kalau hasilnya… di mockup F0</a>. Kalau ada langkah yang berbeda dari layar Anda, kirim screenshot-nya.</p></div>`
   },
   f1: {
     dir: 'dist', judul: 'Instalasi SKM F1', h1: 'Pasang fondasi aplikasi',
@@ -59,6 +60,7 @@ const PHASES = {
       <div><i></i><span><b>Sistem → Jalankan</b> pemeriksaan kesehatan. Semua harus centang hijau.</span></div></div></div>
      <div class="card"><h2>Kalau ada masalah</h2><div class="checks one">
       <div><i></i><span>Halaman menulis <b>"Database belum dibuat"</b> → jalankan <span class="mono">setup</span> di editor (langkah setup()).</span></div>
+      <div><i></i><span>Halaman menulis <b>"Izin Google untuk aplikasi belum lengkap"</b> → di editor jalankan <span class="mono">mintaIzin</span> → <b>Select all</b> → <b>Allow</b>.</span></div>
       <div><i></i><span><b>Lupa password admin / semua admin terkunci</b> → di editor pilih fungsi <span class="mono">pulihkanAdmin</span> → Run. Password sementara baru muncul di Execution log.</span></div>
       <div><i></i><span>Ada error merah saat <b>Run</b> atau halaman tidak tampil → kirim screenshot-nya di chat.</span></div></div></div>`
   }

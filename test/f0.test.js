@@ -41,6 +41,12 @@ test('cekFetch: error izin/kuota dilaporkan sebagai gagal, bukan exception', () 
   assert.match(r.status, /Select all/, 'beri petunjuk cara memberi izin');
 });
 
+test('mintaIzin: meminta semua izin lewat ScriptApp.requireAllScopes(FULL)', () => {
+  const { ctx, calls } = loadGs('f0/Code.gs');
+  ctx.mintaIzin();
+  assert.deepEqual(calls, [{ requireAllScopes: 'FULL' }]);
+});
+
 test('cekFetch: status 5xx dianggap gagal', () => {
   const { ctx } = loadGs('f0/Code.gs', { UrlFetchApp: { fetch: () => ({ getResponseCode: () => 503 }) } });
   assert.equal(ctx.cekFetch().ok, false);
@@ -109,7 +115,7 @@ test('halaman: server menjawab, font diblokir → "Lulus dengan catatan"', { ski
   assert.deepEqual(r.errors, []);
   assert.deepEqual(r.status, { halaman: 'ok', server: 'ok', font: 'warn', fetch: 'ok', browser: 'ok' });
   assert.equal(r.verdict, 'Lulus dengan catatan');
-  assert.match(r.copied, /^Hasil uji F0 SKM \(v1\.1\): Lulus dengan catatan\n/);
+  assert.match(r.copied, /^Hasil uji F0 SKM \(v1\.2\): Lulus dengan catatan\n/);
   assert.equal(r.copied.split('\n').length, 6);
 });
 

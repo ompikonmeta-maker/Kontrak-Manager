@@ -42,7 +42,7 @@ pre{font-variant-ligatures:none;margin:0;max-height:260px;overflow:auto;backgrou
 @media (max-width:620px){.checks{grid-template-columns:minmax(0,1fr)}}
 </style>
 <div class="wrap">
- <div><div class="eyebrow">Status Kontrak Manager · Fase F0 · v1.1</div><h1>Pasang web app uji</h1>
+ <div><div class="eyebrow">Status Kontrak Manager · Fase F0 · v1.2</div><h1>Pasang web app uji</h1>
   <p class="muted">F0 hanya memastikan aplikasi bisa dibuka dari jaringan kantor sebelum fitur dibangun. Butuh sekitar 10 menit. Setelah lulus, file ini diganti dengan aplikasi lengkap di F1 dengan cara yang sama.</p></div>
  <div class="card"><h2>Yang dicek halaman uji</h2><div class="checks">
       <div><i></i><span>Halaman Google Apps Script terbuka dari jaringan kantor</span></div>
@@ -73,7 +73,7 @@ pre{font-variant-ligatures:none;margin:0;max-height:260px;overflow:auto;backgrou
  * Halaman ini mengecek koneksi, lalu menampilkan hasil yang bisa disalin ke chat.
  * Di F1 file ini diganti dengan aplikasi lengkap.
  */
-var F0_VERSI = '1.1';
+var F0_VERSI = '1.2';
 
 function doGet() {
   return HtmlService.createHtmlOutput(PAGE_HTML.split('{{VERSI}}').join(F0_VERSI))
@@ -91,6 +91,15 @@ function ping() {
   };
 }
 
+/**
+ * Jalankan dari editor bila ada izin yang belum diberikan. Memunculkan layar izin Google
+ * untuk izin yang masih kurang (layar izin ber-kotak-centang tidak muncul otomatis lagi).
+ */
+function mintaIzin() {
+  ScriptApp.requireAllScopes(ScriptApp.AuthMode.FULL);
+  console.log('Semua izin sudah diberikan. Muat ulang halaman web app.');
+}
+
 /** Cek apakah server bisa memanggil Web App lain (syarat script penerima di F4a). */
 function cekFetch() {
   try {
@@ -100,7 +109,7 @@ function cekFetch() {
   } catch (err) {
     var pesan = String(err &amp;&amp; err.message || err);
     if (/permission|external_request/i.test(pesan)) {
-      return { ok: false, status: 'Izin "terhubung ke layanan eksternal" belum diberikan. Di editor: pilih fungsi cekFetch → Run → centang semua izin (Select all) → Allow, lalu muat ulang halaman ini.' };
+      return { ok: false, status: 'Izin "terhubung ke layanan eksternal" belum diberikan. Di editor: pilih fungsi mintaIzin → Run → centang semua izin (Select all) → Allow, lalu muat ulang halaman ini.' };
     }
     return { ok: false, status: pesan };
   }
@@ -238,7 +247,8 @@ var PAGE_HTML = `
 &lt;/script&gt;
 `;
 </pre></div>
- <div class="card"><h2>Setelah hasil keluar</h2><p class="muted" style="margin-top:8px">Klik <b>Salin hasil</b> dan tempel di chat, apa pun hasilnya. Arti setiap hasil dan langkah berikutnya ada di tabel <a href="https://claude.ai/artifact/1FfXMRSWQ9Taa9f54uACLn" target="_blank" rel="noopener">Kalau hasilnya… di mockup F0</a>. Kalau ada langkah yang berbeda dari layar Anda, kirim screenshot-nya.</p></div>
+ <div class="card"><h2>Bila baris "panggil Web App lain" merah karena izin</h2><p class="muted" style="margin-top:8px">Di editor pilih fungsi <span class="mono">mintaIzin</span> → <b>Run</b> → <b>Select all</b> → <b>Allow</b>, lalu muat ulang halaman uji. Bila layar izin tetap tidak muncul: buka <b>myaccount.google.com/connections</b>, pilih <b>Status Kontrak Manager</b> → hapus aksesnya, lalu ulangi.</p></div>
+    <div class="card"><h2>Setelah hasil keluar</h2><p class="muted" style="margin-top:8px">Klik <b>Salin hasil</b> dan tempel di chat, apa pun hasilnya. Arti setiap hasil dan langkah berikutnya ada di tabel <a href="https://claude.ai/artifact/1FfXMRSWQ9Taa9f54uACLn" target="_blank" rel="noopener">Kalau hasilnya… di mockup F0</a>. Kalau ada langkah yang berbeda dari layar Anda, kirim screenshot-nya.</p></div>
 </div>
 <script>
 document.querySelectorAll('[data-i]').forEach(function(b){b.addEventListener('click',function(){

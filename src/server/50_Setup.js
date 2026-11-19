@@ -4,6 +4,7 @@
 
 /** Sekali saat pemasangan: membuat database, migrasi skema, isi awal, dan admin awal. Aman dijalankan ulang. */
 function setup() {
+  pastikanIzin_();
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(30000)) throw new Error('Ada proses lain yang sedang berjalan. Coba lagi sebentar.');
   try {
@@ -37,6 +38,7 @@ function setup() {
  * dan password sementara baru. Hanya bisa dijalankan pemilik script dari editor.
  */
 function pulihkanAdmin() {
+  pastikanIzin_();
   return Repo.kunci(function () {
     var peta = Domain.petaRole(Repo.semua('Ref_Role'));
     if (!peta.ADMIN || peta.ADMIN.indexOf('user.kelola') < 0) {
@@ -54,6 +56,17 @@ function pulihkanAdmin() {
     Repo.tulisLog({ user: 'sistem', aksi: 'PULIHKAN_ADMIN', entitas: 'Users', id: 'admin', catatan: 'dijalankan dari editor' });
     console.log('User "admin" aktif dengan password sementara: ' + pw + '  (wajib diganti saat login)');
   });
+}
+
+/** Jalankan dari editor bila aplikasi melapor izin Google belum lengkap. */
+function mintaIzin() {
+  pastikanIzin_();
+  console.log('Semua izin sudah diberikan. Muat ulang halaman web app.');
+}
+
+/** Memunculkan layar izin Google bila ada izin yang belum dicentang (layar ber-kotak-centang tidak muncul otomatis lagi). */
+function pastikanIzin_() {
+  if (typeof ScriptApp !== 'undefined' && ScriptApp.requireAllScopes) ScriptApp.requireAllScopes(ScriptApp.AuthMode.FULL);
 }
 
 function buatAdmin_(username, nama, oleh) {

@@ -8,7 +8,7 @@
 // Konstanta kode (bukan nilai bisnis). Nilai bisnis disimpan di database (§3).
 var APP = {
   NAMA: 'Status Kontrak Manager',
-  VERSI: '1.0.0',
+  VERSI: '1.0.1',
   FASE: 'F1',
   SKEMA: 1,                 // versi skema database yang dibutuhkan kode ini
   TZ: 'Asia/Jakarta',
@@ -516,6 +516,9 @@ function api(token, aksi, payload) {
     }
     return { ok: true, data: data };
   } catch (e) {
+    if (!e.kode && /required permissions|do not have permission|tidak memiliki izin/i.test(String(e.message))) {
+      e = Repo.galat('IZIN_GOOGLE', 'Izin Google untuk aplikasi belum lengkap. Admin: di editor Apps Script jalankan fungsi mintaIzin, centang semua izin (Select all), lalu muat ulang halaman.');
+    }
     if (!e.kode) console.error(aksi + ': ' + (e.stack || e.message));
     return { ok: false, kode: e.kode || 'ERROR', pesan: e.kode ? e.message : 'Terjadi kesalahan di server: ' + e.message };
   }
@@ -782,6 +785,7 @@ var AKSI = {
 
 /** Sekali saat pemasangan: membuat database, migrasi skema, isi awal, dan admin awal. Aman dijalankan ulang. */
 function setup() {
+  pastikanIzin_();
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(30000)) throw new Error('Ada proses lain yang sedang berjalan. Coba lagi sebentar.');
   try {
@@ -815,6 +819,7 @@ function setup() {
  * dan password sementara baru. Hanya bisa dijalankan pemilik script dari editor.
  */
 function pulihkanAdmin() {
+  pastikanIzin_();
   return Repo.kunci(function () {
     var peta = Domain.petaRole(Repo.semua('Ref_Role'));
     if (!peta.ADMIN || peta.ADMIN.indexOf('user.kelola') < 0) {
@@ -832,6 +837,17 @@ function pulihkanAdmin() {
     Repo.tulisLog({ user: 'sistem', aksi: 'PULIHKAN_ADMIN', entitas: 'Users', id: 'admin', catatan: 'dijalankan dari editor' });
     console.log('User "admin" aktif dengan password sementara: ' + pw + '  (wajib diganti saat login)');
   });
+}
+
+/** Jalankan dari editor bila aplikasi melapor izin Google belum lengkap. */
+function mintaIzin() {
+  pastikanIzin_();
+  console.log('Semua izin sudah diberikan. Muat ulang halaman web app.');
+}
+
+/** Memunculkan layar izin Google bila ada izin yang belum dicentang (layar ber-kotak-centang tidak muncul otomatis lagi). */
+function pastikanIzin_() {
+  if (typeof ScriptApp !== 'undefined' && ScriptApp.requireAllScopes) ScriptApp.requireAllScopes(ScriptApp.AuthMode.FULL);
 }
 
 function buatAdmin_(username, nama, oleh) {

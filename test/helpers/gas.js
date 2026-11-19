@@ -11,6 +11,7 @@ function loadGs(relPath, overrides = {}) {
     addMetaTag(n, c) { this.meta.push([n, c]); return this; },
   };
   const ctx = {
+    ScriptApp: { AuthMode: { FULL: 'FULL' }, requireAllScopes(m) { calls.push({ requireAllScopes: m }); } },
     HtmlService: { createHtmlOutput(html) { htmlOutput.content = html; return htmlOutput; } },
     Session: {
       getScriptTimeZone: () => 'Asia/Jakarta',
