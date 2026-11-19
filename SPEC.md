@@ -1,7 +1,11 @@
 # SPEC — Status Kontrak Manager
 
-Versi 1.7 · 19 Nov 2026 · Pemilik: omPik (Unit Fulfillment)
+Versi 1.8 · 19 Nov 2026 · Pemilik: omPik (Unit Fulfillment)
 Referensi konsep: BAA.flow (BAA Generator). Mockup UI yang disetujui: `mockup/mockup.html` (desain "Orbit").
+
+**Perubahan v1.8**
+- Fase menjadi 7: F0, F1, F2, F3 (import dimajukan), F4a, F4b, F5 (§14).
+- Cara kerja per fase: **mockup fase → disetujui → build hanya setelah pemilik bilang "build"** (§0).
 
 **Perubahan v1.7**
 - Jenis customer **BELUM TERDEFINISI** selama customer atau end customer masih kosong; kontrak masuk "data belum lengkap" (§5.7).
@@ -29,6 +33,8 @@ Referensi konsep: BAA.flow (BAA Generator). Mockup UI yang disetujui: `mockup/mo
 ## 0. Prompt pembuka untuk Claude Code
 
 > Baca `SPEC.md` sampai habis. Bangun **hanya cakupan v1** (§14), satu fase per sesi. Jangan membangun item di daftar "Nanti" (§15), tapi jangan juga menutup jalannya. Di akhir setiap fase, jalankan unit test dan tunjukkan checklist kriteria uji fase itu. Patuhi §3. Kalau ada hal yang bertentangan dengan spec, berhenti dan tanyakan.
+>
+> **Urutan kerja setiap fase:** (1) buat mockup fase itu, (2) tunggu persetujuan pemilik, (3) bangun kode **hanya setelah pemilik menulis "build"**, (4) jalankan unit test + checklist, (5) terbitkan halaman instalasi bertombol Salin.
 
 ---
 
@@ -492,16 +498,17 @@ status-kontrak-manager/
 
 ## 14. Cakupan v1 dan fase
 
-| Fase | Isi | Selesai bila |
-|---|---|---|
-| F0 | Web app "hello" dari jaringan kantor | Bisa dibuka, memanggil server, font Google & UrlFetch dicek. **Wajib lulus dulu** |
-| F1 | Setup, Repo + migrasi skema, login, Users, Role & izin, Log | Izin ditolak di server, semua aksi tercatat |
-| F2 | Kontrak, SO/MI, BAST, tahap fleksibel, kendala, reopen, parsial, Nilai Push | Semua aturan §5 lulus unit test, termasuk tambah/urut ulang/nonaktifkan tahap |
-| F3 | Dashboard, Perlu Perhatian, atur PIC | Angka cocok dengan hitungan manual |
-| F4 | Google Sheet: script penerima + pencatat edit, wizard + validasi pemetaan, pengaman kolom, data sheet unit (§8.7), header & tab TERBARU, Cek saja, Update, jejak sel, notifikasi, Antrian | Uji dengan sheet tiruan lulus: kolom disisipkan, header hilang, sel berformula, kontrak berulang, tab bulan baru, baris diurutkan ulang, judul kolom tujuan diganti → penulisan ditolak, header dipakai ganda → wizard menolak · sel kontrak OPEN diubah manual → notifikasi + tidak ditimpa, lalu ditulis lagi setelah status di SKM berubah · kontrak CLOSE tidak ditulis lagi dan perubahan luar tanpa notifikasi · saat kontrak close, notifikasinya yang belum dibaca hilang dari lonceng · reopen → ditulis lagi |
-| F5 | Import data lama, Export, Backup | 4 baris contoh (Lampiran A) ter-import sesuai §11 |
+Setiap fase: mockup → disetujui → **build** (atas perintah pemilik) → unit test + checklist → halaman instalasi. Update ke versi baru = salin ulang `Code.gs` + *New version*; data tetap aman karena migrasi hanya menambah.
 
----
+| Fase | Isi | Setelah fase ini | Selesai bila |
+|---|---|---|---|
+| F0 | Web app uji dari jaringan kantor | – | Halaman terbuka, server menjawab, font Google & UrlFetch dicek. **Wajib lulus dulu** |
+| F1 | Setup, Repo + migrasi skema, login + ganti password, Users, Role & izin, Log, kerangka UI (sidebar, tema terang/gelap) | Admin login dan membuat akun tim | Izin ditolak di server, semua aksi tercatat |
+| F2 | Kontrak, Customer/End customer, SO/MI, BAST/BAA, tahap fleksibel, kendala, reopen, parsial, Nilai Push, panel detail, Pengaturan (tahap, kendala, nilai push, referensi, config) | Tim input dan update status di SKM (belum sinkron) | Semua aturan §5 lulus unit test, termasuk tambah/urut ulang/nonaktifkan tahap |
+| F3 | **Import data lama** (§11), Dashboard, Perlu Perhatian, atur PIC massal, Ctrl+K | Data riil masuk; admin memantau | 4 baris Lampiran A ter-import sesuai §11 · angka dashboard cocok dengan hitungan manual |
+| F4a | Script penerima, wizard target (koneksi, tab TERBARU, pemetaan + validasi), Cek saja, Update, pengaman kolom | Status terkirim ke sheet unit dengan istilah seragam | Uji di **salinan** sheet lulus: kolom disisipkan, judul header diganti/hilang → ditolak, header dipakai ganda → wizard menolak, sel berformula, kontrak berulang, tab bulan baru, baris diurutkan ulang |
+| F4b | Pencatat edit manual, jejak sel, notifikasi lengkap + tutup otomatis, Antrian, tab Sheet unit (§8.7), beda data & kelengkapan, sinkron terjadwal | Sistem berjalan sendiri tiap 15 menit | Sel kontrak OPEN diubah manual → notifikasi (dengan pelaku bila ada) + tidak ditimpa, lalu ditulis lagi setelah status di SKM berubah · kontrak CLOSE tidak ditulis lagi dan perubahan luar tanpa notifikasi · saat kontrak close, notifikasinya yang belum dibaca hilang dari lonceng · reopen → ditulis lagi · nomor baru masuk Antrian sekali |
+| F5 | Export xlsx, Backup mingguan + manual | v1 lengkap | Export sesuai filter; backup tersimpan dan maksimal 8 salinan |
 
 ## 15. Nanti (sesuai kondisi lapangan, sengaja tidak dibangun di v1)
 - Export ke **template customer** (unggah template → petakan kolom → isi) beserta preset per customer.

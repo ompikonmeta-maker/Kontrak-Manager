@@ -1,0 +1,168 @@
+<title>Mockup F0 Uji Koneksi</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: satu kolom; atas = alur F0, tengah = halaman uji dalam bingkai browser dengan pemilih skenario, bawah = tabel keputusan. Token sama dengan mockup utama ("Orbit"). */
+:root{
+  --bg:#edf2f5;--surface:#fff;--surface2:#f3f7f9;--surface3:#e5edf1;--line:#d9e3e9;--line2:#c3d1d9;
+  --fg:#0c1a24;--muted:#4d606d;--dim:#7b8d99;--accent:#07857b;--on-accent:#fff;--accent-bg:rgba(7,133,123,.10);--violet:#5559e8;
+  --ok:#14905a;--ok-bg:rgba(20,144,90,.11);--warn:#9c6205;--warn-bg:rgba(214,150,30,.15);--crit:#cc3b3b;--crit-bg:rgba(204,59,59,.10);
+  --shadow:0 1px 2px rgba(12,26,36,.05),0 10px 30px rgba(12,26,36,.07);
+  --font:"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif;--mono:"JetBrains Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#060b14;--surface:#0d1522;--surface2:#121d2e;--surface3:#1a283e;--line:#1b293d;--line2:#2a3c57;
+  --fg:#e4edf6;--muted:#93a6bb;--dim:#617490;--accent:#37e2cb;--on-accent:#022320;--accent-bg:rgba(55,226,203,.12);--violet:#9ca2ff;
+  --ok:#4fd897;--ok-bg:rgba(79,216,151,.12);--warn:#f4c552;--warn-bg:rgba(244,197,82,.12);--crit:#ff7c78;--crit-bg:rgba(255,124,120,.12);
+  --shadow:0 12px 34px rgba(0,0,0,.38);color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#060b14;--surface:#0d1522;--surface2:#121d2e;--surface3:#1a283e;--line:#1b293d;--line2:#2a3c57;
+  --fg:#e4edf6;--muted:#93a6bb;--dim:#617490;--accent:#37e2cb;--on-accent:#022320;--accent-bg:rgba(55,226,203,.12);--violet:#9ca2ff;
+  --ok:#4fd897;--ok-bg:rgba(79,216,151,.12);--warn:#f4c552;--warn-bg:rgba(244,197,82,.12);--crit:#ff7c78;--crit-bg:rgba(255,124,120,.12);
+  --shadow:0 12px 34px rgba(0,0,0,.38);color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font);line-height:1.55;font-size:14px}
+.wrap{max-width:1040px;margin:0 auto;padding-block:36px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:22px}
+.eyebrow{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--accent)}
+h1{font-size:clamp(26px,4vw,38px);margin:4px 0 8px;font-weight:800;letter-spacing:-.03em;line-height:1.1;text-wrap:balance}
+h2{font-size:17px;margin:0 0 12px;font-weight:800;letter-spacing:-.01em}
+p{margin:0;max-width:70ch}
+.muted{color:var(--muted)} .mono{font-family:var(--mono);font-size:.92em;font-variant-ligatures:none}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:var(--shadow);min-width:0}
+.flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.fs{position:relative;padding:14px;border-radius:14px;background:var(--surface2);border:1px solid var(--line)}
+.fs .n{width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;font-weight:800;font-size:13px;margin-bottom:8px}
+.fs.end .n{background:var(--violet)}
+.fs b{display:block} .fs small{color:var(--muted);font-size:12.5px}
+.who{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:1px 8px;margin-top:6px;background:var(--accent-bg);color:var(--accent)}
+.seg{display:inline-flex;flex-wrap:wrap;background:var(--surface2);border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px}
+.seg button{font:inherit;border:0;background:none;padding:6px 14px;border-radius:999px;cursor:pointer;color:var(--muted);font-weight:600;font-size:12.5px;transition:background .25s,color .25s}
+.seg button.on{background:var(--surface);color:var(--fg);box-shadow:var(--shadow)}
+.stage{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:18px;align-items:start}
+.browser{border-radius:16px;overflow:hidden;border:1px solid var(--line2);background:var(--bg);box-shadow:var(--shadow)}
+.bar{display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--surface3);border-bottom:1px solid var(--line)}
+.dots{display:flex;gap:5px}.dots i{width:10px;height:10px;border-radius:50%;background:var(--line2);display:block}
+.url{flex:1;min-width:0;background:var(--surface);border-radius:999px;padding:4px 12px;font-family:var(--mono);font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.page{padding:24px 20px;display:flex;flex-direction:column;gap:14px;min-height:420px}
+.page h3{margin:0;font-size:21px;font-weight:800;letter-spacing:-.02em}
+.list{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:4px 16px}
+.row{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.ic{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-weight:800;flex:none;background:var(--surface3);color:var(--muted);font-size:13px;transition:background .3s,transform .4s cubic-bezier(.34,1.45,.64,1)}
+.ic.ok{background:var(--ok);color:var(--bg)} .ic.warn{background:var(--warn);color:var(--bg)} .ic.crit{background:var(--crit);color:var(--bg)}
+.ic.pop{transform:scale(1.18)}
+.ic.spin{border:2px solid var(--line2);border-top-color:var(--accent);background:transparent;animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.row b{display:block;font-size:13.5px} .row small{color:var(--muted);font-size:12px;overflow-wrap:anywhere}
+.btn{font:inherit;font-weight:700;font-size:13px;border:0;border-radius:999px;padding:9px 18px;background:var(--accent);color:var(--on-accent);cursor:pointer}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+pre{margin:0;white-space:pre-wrap;font:12px/1.6 var(--mono);font-variant-ligatures:none;background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:14px;color:var(--muted);overflow-wrap:anywhere}
+.verdict{border-radius:14px;padding:14px;display:flex;gap:10px;align-items:flex-start;font-size:13.5px}
+.verdict.ok{background:var(--ok-bg)} .verdict.warn{background:var(--warn-bg)} .verdict.crit{background:var(--crit-bg)} .verdict.wait{background:var(--surface2)}
+.verdict b{display:block}
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:11.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--dim);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line)}
+td{padding:11px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700;white-space:nowrap}
+.p-ok{background:var(--ok-bg);color:var(--ok)} .p-warn{background:var(--warn-bg);color:var(--warn)} .p-crit{background:var(--crit-bg);color:var(--crit)}
+.need{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.need div{padding:12px 14px;border-radius:14px;background:var(--surface2);border:1px solid var(--line);font-size:13px}
+.need b{display:block;font-size:14px}
+.mockbadge{display:inline-block;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;border:1px dashed var(--warn);color:var(--warn);padding:3px 8px;border-radius:7px;font-weight:700}
+@media (max-width:860px){.stage,.flow,.need{grid-template-columns:minmax(0,1fr)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+ <div>
+  <div class="row" style="border:0;padding:0;gap:10px;align-items:center"><span class="eyebrow">Status Kontrak Manager · Fase F0</span><span class="mockbadge">Mockup</span></div>
+  <h1>Uji koneksi dari jaringan kantor</h1>
+  <p class="muted">F0 memastikan aplikasi bisa dibuka dan berjalan dari PC kantor sebelum fitur apa pun dibangun. Halaman ini memperlihatkan apa yang akan Anda alami, termasuk kemungkinan hasilnya. Belum ada yang perlu dipasang sampai Anda bilang <b>build</b>.</p>
+ </div>
+
+ <div class="card"><h2>Alur F0</h2>
+  <div class="flow">
+   <div class="fs"><div class="n">1</div><b>Pasang web app uji</b><small>Salin 2 file ke script.google.com dengan akun Gmail FF, lalu deploy.</small><br><span class="who">Anda · ±10 menit</span></div>
+   <div class="fs"><div class="n">2</div><b>Buka dari PC kantor</b><small>Buka link web app di Chrome/Edge memakai jaringan kantor. Pemeriksaan berjalan otomatis.</small><br><span class="who">Anda · ±1 menit</span></div>
+   <div class="fs"><div class="n">3</div><b>Kirim hasil</b><small>Klik "Salin hasil", tempel di chat.</small><br><span class="who">Anda</span></div>
+   <div class="fs end"><div class="n">4</div><b>Keputusan</b><small>Lulus → lanjut mockup F1. Ada yang merah → kita bahas jalan keluarnya (tabel di bawah).</small><br><span class="who" style="background:rgba(85,89,232,.12);color:var(--violet)">Bersama</span></div>
+  </div>
+ </div>
+
+ <div class="card">
+  <div class="row" style="border:0;padding:0 0 14px;flex-wrap:wrap;align-items:center"><h2 style="margin:0;flex:1 1 220px">Halaman uji yang akan Anda lihat</h2>
+   <div class="seg" role="group" aria-label="Skenario"><button data-s="ok" class="on">Semua lulus</button><button data-s="font">Font diblokir</button><button data-s="server">Server tidak menjawab</button><button data-s="fetch">UrlFetch gagal</button></div></div>
+  <div class="stage">
+   <div class="browser" aria-label="Contoh tampilan halaman uji">
+    <div class="bar"><div class="dots"><i></i><i></i><i></i></div><div class="url">script.google.com/macros/s/AKfycb…/exec</div></div>
+    <div class="page">
+     <div><div class="muted" style="font-size:11.5px;font-weight:700;letter-spacing:.1em">STATUS KONTRAK MANAGER · F0</div><h3>Uji koneksi dari jaringan ini</h3>
+      <div class="muted" style="font-size:13px">Tunggu semua baris selesai, lalu klik <b>Salin hasil</b> dan tempel di chat.</div></div>
+     <div class="list" id="list"></div>
+     <div><button class="btn" id="copy" disabled>Salin hasil</button> <span class="muted" id="msg" style="font-size:12.5px"></span></div>
+    </div>
+   </div>
+   <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
+    <div class="verdict wait" id="verdict"><span>⏳</span><span><b>Memeriksa…</b>Pemeriksaan butuh beberapa detik.</span></div>
+    <div><div class="muted" style="font-size:12px;font-weight:700;margin-bottom:6px">Teks yang tersalin ke chat</div><pre id="out">…</pre></div>
+    <button class="btn" id="replay" style="align-self:flex-start;background:var(--surface3);color:var(--fg)">Putar ulang pemeriksaan</button>
+   </div>
+  </div>
+ </div>
+
+ <div class="card"><h2>Kalau hasilnya…</h2>
+  <div class="tbl"><table><thead><tr><th>Hasil</th><th>Artinya</th><th>Langkah berikutnya</th></tr></thead><tbody>
+   <tr><td><span class="pill p-ok">Semua hijau</span></td><td>Jaringan kantor mengizinkan Apps Script dan semua yang dibutuhkan SKM.</td><td>Lanjut ke mockup F1.</td></tr>
+   <tr><td><span class="pill p-warn">Font kuning</span></td><td>Google Fonts diblokir atau lambat. Fungsi aplikasi tidak terganggu.</td><td>Lanjut F1. Aplikasi otomatis memakai font Segoe UI; tampilan sedikit berbeda dari mockup.</td></tr>
+   <tr><td><span class="pill p-crit">Server merah</span></td><td>Halaman terbuka, tapi browser tidak bisa memanggil server. Biasanya jaringan memblokir domain <span class="mono">*.googleusercontent.com</span> yang dipakai Apps Script.</td><td>Coba sekali dari jaringan lain (mis. hotspot HP) untuk memastikan. Kalau di sana hijau, minta IT membuka domain itu.</td></tr>
+   <tr><td><span class="pill p-crit">UrlFetch merah</span></td><td>Server tidak bisa memanggil Web App lain. Ini masalah izin atau kuota akun, bukan jaringan kantor.</td><td>Kirim pesan errornya; saya perbaiki di kode. Syarat untuk script penerima di F4a.</td></tr>
+   <tr><td><span class="pill p-crit">Halaman tidak terbuka</span></td><td><span class="mono">script.google.com</span> diblokir dari jaringan kantor.</td><td>Bicarakan dengan IT. Kalau tidak bisa dibuka, kita pertimbangkan opsi B di SPEC §4.2 (server sendiri ala BAA.flow).</td></tr>
+  </tbody></table></div>
+ </div>
+
+ <div class="card"><h2>Yang perlu disiapkan</h2>
+  <div class="need">
+   <div><b>Akun Gmail khusus FF</b>Akun ini yang menjalankan aplikasi dan memiliki file database nanti.</div>
+   <div><b>PC kantor + Chrome/Edge</b>Tersambung ke jaringan kantor, bukan hotspot, supaya hasilnya mewakili kondisi sebenarnya.</div>
+   <div><b>±10 menit</b>Panduan pasang berisi 6 langkah dan 2 file dengan tombol Salin.</div>
+  </div>
+ </div>
+</div>
+
+<script>
+var ITEMS=[['halaman','Halaman terbuka dari jaringan ini'],['server','Server menjawab (google.script.run)'],['font','Font Google (Plus Jakarta Sans)'],['fetch','Server bisa memanggil Web App lain (untuk script penerima)'],['browser','Browser']];
+var BASE={halaman:['ok','Terbuka 19/11/2026 09.12'],server:['ok','412 ms · waktu server 19 Nov 2026 09:12:04 (Asia/Jakarta) · berjalan sebagai akun FF'],font:['ok','Termuat'],fetch:['ok','Status 302'],browser:['ok','Chrome 131.0 · transisi tema didukung']};
+var SC={ok:{},font:{font:['warn','Diblokir atau lambat. Aplikasi akan memakai Segoe UI (tetap berfungsi).']},server:{server:['crit','NetworkError: Connection failure due to HTTP 0']},fetch:{fetch:['crit','Exception: You do not have permission to call UrlFetchApp.fetch']}};
+var VER={ok:['ok','✓','Lulus','Semua pemeriksaan hijau. Lanjut ke mockup F1.'],font:['warn','!','Lulus dengan catatan','Font Google diblokir; aplikasi memakai font sistem. Lanjut ke mockup F1.'],server:['crit','✕','Belum lulus','Browser tidak bisa memanggil server dari jaringan ini. Lihat baris "Server merah" di tabel.'],fetch:['crit','✕','Belum lulus','Server belum bisa memanggil Web App lain. Kirim pesan errornya; perbaikannya di kode.']};
+var DELAY={halaman:150,browser:350,server:900,fetch:1400,font:2100};
+var cur='ok',timers=[];
+var list=document.getElementById('list'),out=document.getElementById('out'),verdict=document.getElementById('verdict'),copy=document.getElementById('copy');
+function esc(s){return String(s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});}
+function run(){
+  timers.forEach(clearTimeout);timers=[];copy.disabled=true;document.getElementById('msg').textContent='';
+  list.innerHTML=ITEMS.map(function(it){return '<div class="row" id="r-'+it[0]+'"><span class="ic spin"></span><div><b>'+it[1]+'</b><small>memeriksa…</small></div></div>';}).join('');
+  verdict.className='verdict wait';verdict.innerHTML='<span>⏳</span><span><b>Memeriksa…</b>Pemeriksaan butuh beberapa detik.</span>';out.textContent='…';
+  var res={};ITEMS.forEach(function(it){res[it[0]]=(SC[cur][it[0]]||BASE[it[0]]);});
+  var done=0,reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  ITEMS.forEach(function(it){timers.push(setTimeout(function(){
+    var r=res[it[0]],row=document.getElementById('r-'+it[0]),ic=row.querySelector('.ic');
+    ic.className='ic '+r[0]+' pop';ic.textContent=r[0]==='ok'?'✓':r[0]==='warn'?'!':'✕';setTimeout(function(){ic.classList.remove('pop');},300);
+    row.querySelector('small').textContent=r[1];
+    if(++done===ITEMS.length)finish(res);
+  },reduce?0:DELAY[it[0]]));});
+}
+function finish(res){
+  copy.disabled=false;var v=VER[cur];
+  verdict.className='verdict '+v[0];verdict.innerHTML='<span style="font-weight:800">'+v[1]+'</span><span><b>'+v[2]+'</b>'+esc(v[3])+'</span>';
+  out.textContent='Hasil uji F0 SKM\n'+ITEMS.map(function(it){var r=res[it[0]];return '- '+it[1]+': '+(r[0]==='ok'?'OK':r[0].toUpperCase())+' — '+r[1];}).join('\n');
+}
+document.querySelectorAll('[data-s]').forEach(function(b){b.addEventListener('click',function(){
+  document.querySelectorAll('[data-s]').forEach(function(x){x.classList.toggle('on',x===b);});cur=b.dataset.s;run();});});
+document.getElementById('replay').addEventListener('click',run);
+copy.addEventListener('click',function(){var m=document.getElementById('msg');
+  try{navigator.clipboard.writeText(out.textContent).then(function(){m.textContent='Tersalin. Tempel di chat.';},function(){m.textContent='(Di aplikasi asli teks ini tersalin.)';});}catch(e){m.textContent='(Di aplikasi asli teks ini tersalin.)';}});
+run();
+</script>
