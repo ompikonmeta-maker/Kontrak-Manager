@@ -13,7 +13,7 @@ const INSTALL_F0 = 'https://claude.ai/artifact/LLpsSLLDSBvuWoAjSsmk74';
 
 const S_BARU = ['Buka project baru', 'Login dengan <b>akun Gmail khusus FF</b>, buka <b>script.google.com</b> → <b>New project</b>. Ganti nama project (kiri atas) menjadi <b>Status Kontrak Manager</b>.'];
 const S_MANIFEST = ['Tampilkan file manifest', 'Klik ikon roda gigi <b>Project Settings</b> → centang <b>Show "appsscript.json" manifest file in editor</b>.'];
-const S_TEMPEL = ['Tempel 2 file', 'Kembali ke <b>Editor</b> (ikon &lt;&gt;). Buka <span class="mono">appsscript.json</span>, hapus semua isinya, tempel dari tombol <b>Salin</b> di bawah. Lakukan hal yang sama untuk <span class="mono">Code.gs</span>. Tekan <kbd>Ctrl</kbd> + <kbd>S</kbd>.'];
+const S_TEMPEL = ['Tempel ke 2 file terpisah', 'Kembali ke <b>Editor</b> (ikon &lt;&gt;). Di panel kiri ada dua file. Klik <span class="mono">appsscript.json</span> → <kbd>Ctrl</kbd>+<kbd>A</kbd> → hapus → tempel hasil <b>Salin appsscript.json</b>. Lalu klik <span class="mono">Code.gs</span> → <kbd>Ctrl</kbd>+<kbd>A</kbd> → hapus → tempel hasil <b>Salin Code.gs</b>. Simpan dengan <kbd>Ctrl</kbd>+<kbd>S</kbd>. <b>Jangan digabung dalam satu file.</b>'];
 const S_IZIN = 'Bila diminta: <b>Review permissions</b> → pilih akun FF → <b>Advanced</b> → <b>Go to Status Kontrak Manager (unsafe)</b> → <b>Allow</b>. Peringatan ini normal untuk script buatan sendiri.';
 const S_SETUP = ['Jalankan setup()', 'Di toolbar editor, pilih fungsi <span class="mono">setup</span> lalu klik <b>Run</b>. ' + S_IZIN];
 const S_CATAT = ['Catat password admin', 'Di <b>Execution log</b> muncul baris <span class="mono">username: admin &nbsp; password sementara: xxx-xxx-xxx</span>. Catat sekarang; password ini tidak ditampilkan lagi.'];
@@ -43,7 +43,7 @@ const PHASES = {
     steps: {
       'Sudah pasang F0': [
         ['Buka project yang sama', 'Login dengan <b>akun Gmail khusus FF</b>, buka <b>script.google.com</b> → project <b>Status Kontrak Manager</b> yang dipakai untuk F0.'],
-        ['Ganti 2 file', 'Buka <span class="mono">appsscript.json</span>, hapus semua isinya, tempel dari tombol <b>Salin</b> di bawah. Lakukan hal yang sama untuk <span class="mono">Code.gs</span>. Tekan <kbd>Ctrl</kbd> + <kbd>S</kbd>.'],
+        ['Ganti isi 2 file terpisah', 'Di panel kiri editor, klik <span class="mono">appsscript.json</span> → <kbd>Ctrl</kbd>+<kbd>A</kbd> → hapus → tempel hasil <b>Salin appsscript.json</b>. Lalu klik <span class="mono">Code.gs</span> → <kbd>Ctrl</kbd>+<kbd>A</kbd> → hapus → tempel hasil <b>Salin Code.gs</b>. Simpan dengan <kbd>Ctrl</kbd>+<kbd>S</kbd>. <b>Jangan digabung dalam satu file.</b>'],
         S_SETUP, S_CATAT,
         ['Perbarui deployment', '<b>Deploy › Manage deployments</b> → pilih deployment F0 → ikon pensil (<b>Edit</b>) → Version: <b>New version</b> → Description <span class="mono">F1</span> → <b>Deploy</b>. URL web app tetap sama.'],
         ['Login pertama', 'Buka Web app URL → masuk dengan <span class="mono">admin</span> + password sementara → buat password baru.']],
