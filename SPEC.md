@@ -566,6 +566,7 @@ Setiap fase: mockup → disetujui → **build** (atas perintah pemilik) → unit
 | D9 | Tampilan | ✔ Desain "Orbit" (mockup), tema terang + gelap, detail = panel geser |
 | D10 | Cara pasang | ✔ Salin 2 file dari halaman instalasi |
 | D11 | Cara login | ✔ Username + password SKM; akuntabilitas lewat Log & riwayat (§6.2) |
+| D12 | Akun pemilik | ✔ Gmail khusus FF menjadi pemilik project & `SKM_DB` (pasang baru); akses web app "Anyone with Google account" + login SKM |
 
 Sudah dikonfirmasi:
 - BAST ON REVIEW → tahap Draft Review Customer.

@@ -40,16 +40,16 @@ const PHASES = {
     dir: 'dist', judul: 'Instalasi SKM F1', h1: 'Pasang fondasi aplikasi',
     versi: code => (code.match(/VERSI: '([^']+)'/) || [])[1],
     intro: 'F1 memasang aplikasi sungguhan: database, login, Users, Role &amp; izin, Log, dan halaman Sistem. Butuh sekitar 15 menit. Data yang dibuat di F1 tetap dipakai di fase berikutnya.',
-    pre: `<div class="card warn"><h2>Sebelum mulai</h2><p class="muted" style="margin-top:8px">F1 menggantikan halaman uji F0 di project yang sama. Kalau F0 belum dites dari PC kantor, <a href="${INSTALL_F0}" target="_blank" rel="noopener">tes F0 dulu</a> (10 menit), supaya masalah jaringan ketahuan sebelum aplikasi dipakai.</p></div>`,
+    pre: `<div class="card warn"><h2>Sebelum mulai</h2><p class="muted" style="margin-top:8px">Pasang di <b>akun Gmail khusus FF</b>, karena akun yang menjalankan <span class="mono">setup()</span> menjadi pemilik database. Pilih <b>Akun ini belum punya project SKM</b> bila akun tersebut belum pernah dipasangi SKM (uji F0 tidak perlu diulang; hasil jaringan kantor tetap berlaku). Pilih <b>Update project yang sudah ada</b> untuk memperbarui ke versi baru.</p></div>`,
     steps: {
-      'Sudah pasang F0': [
+      'Akun ini belum punya project SKM': [S_BARU, S_MANIFEST, S_TEMPEL, S_SETUP, S_CATAT,
+        ['Deploy sebagai Web app', '<b>Deploy › New deployment</b> → ikon roda gigi → <b>Web app</b>. Description: <span class="mono">F1</span> · Execute as: <b>Me</b> · Who has access: <b>Anyone with Google account</b> → <b>Deploy</b> → salin <b>Web app URL</b>.'],
+        ['Login pertama', 'Buka Web app URL → masuk dengan <span class="mono">admin</span> + password sementara → buat password baru.']],
+      'Update project yang sudah ada': [
         ['Buka project yang sama', 'Login dengan <b>akun Gmail khusus FF</b>, buka <b>script.google.com</b> → project <b>Status Kontrak Manager</b> yang dipakai untuk F0.'],
         ['Ganti isi 2 file terpisah', 'Di panel kiri editor, klik <span class="mono">appsscript.json</span> → <kbd>Ctrl</kbd>+<kbd>A</kbd> → hapus → tempel hasil <b>Salin appsscript.json</b>. Lalu klik <span class="mono">Code.gs</span> → <kbd>Ctrl</kbd>+<kbd>A</kbd> → hapus → tempel hasil <b>Salin Code.gs</b>. Simpan dengan <kbd>Ctrl</kbd>+<kbd>S</kbd>. <b>Jangan digabung dalam satu file.</b>'],
         S_SETUP, S_CATAT,
         ['Perbarui deployment', '<b>Deploy › Manage deployments</b> → pilih deployment F0 → ikon pensil (<b>Edit</b>) → Version: <b>New version</b> → Description <span class="mono">F1</span> → <b>Deploy</b>. URL web app tetap sama.'],
-        ['Login pertama', 'Buka Web app URL → masuk dengan <span class="mono">admin</span> + password sementara → buat password baru.']],
-      'Belum pasang F0': [S_BARU, S_MANIFEST, S_TEMPEL, S_SETUP, S_CATAT,
-        ['Deploy sebagai Web app', '<b>Deploy › New deployment</b> → ikon roda gigi → <b>Web app</b>. Description: <span class="mono">F1</span> · Execute as: <b>Me</b> · Who has access: <b>Anyone with Google account</b> → <b>Deploy</b> → salin <b>Web app URL</b>.'],
         ['Login pertama', 'Buka Web app URL → masuk dengan <span class="mono">admin</span> + password sementara → buat password baru.']]
     },
     fileDesc: ['Pengaturan project: zona Asia/Jakarta dan mode Web app. Izin dideteksi otomatis oleh Google.', 'Seluruh aplikasi (server + tampilan) dalam satu file.'],
