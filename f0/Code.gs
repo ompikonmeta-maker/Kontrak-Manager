@@ -3,7 +3,7 @@
  * Halaman ini mengecek koneksi, lalu menampilkan hasil yang bisa disalin ke chat.
  * Di F1 file ini diganti dengan aplikasi lengkap.
  */
-var F0_VERSI = '1.0';
+var F0_VERSI = '1.1';
 
 function doGet() {
   return HtmlService.createHtmlOutput(PAGE_HTML.split('{{VERSI}}').join(F0_VERSI))
@@ -28,7 +28,11 @@ function cekFetch() {
     var code = r.getResponseCode();
     return { ok: code < 500, status: code };
   } catch (err) {
-    return { ok: false, status: String(err && err.message || err) };
+    var pesan = String(err && err.message || err);
+    if (/permission|external_request/i.test(pesan)) {
+      return { ok: false, status: 'Izin "terhubung ke layanan eksternal" belum diberikan. Di editor: pilih fungsi cekFetch → Run → centang semua izin (Select all) → Allow, lalu muat ulang halaman ini.' };
+    }
+    return { ok: false, status: pesan };
   }
 }
 

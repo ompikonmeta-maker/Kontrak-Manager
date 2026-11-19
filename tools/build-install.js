@@ -14,7 +14,7 @@ const INSTALL_F0 = 'https://claude.ai/artifact/LLpsSLLDSBvuWoAjSsmk74';
 const S_BARU = ['Buka project baru', 'Login dengan <b>akun Gmail khusus FF</b>, buka <b>script.google.com</b> → <b>New project</b>. Ganti nama project (kiri atas) menjadi <b>Status Kontrak Manager</b>.'];
 const S_MANIFEST = ['Tampilkan file manifest', 'Klik ikon roda gigi <b>Project Settings</b> → centang <b>Show "appsscript.json" manifest file in editor</b>.'];
 const S_TEMPEL = ['Tempel ke 2 file terpisah', 'Kembali ke <b>Editor</b> (ikon &lt;&gt;). Di panel kiri ada dua file. Klik <span class="mono">appsscript.json</span> → <kbd>Ctrl</kbd>+<kbd>A</kbd> → hapus → tempel hasil <b>Salin appsscript.json</b>. Lalu klik <span class="mono">Code.gs</span> → <kbd>Ctrl</kbd>+<kbd>A</kbd> → hapus → tempel hasil <b>Salin Code.gs</b>. Simpan dengan <kbd>Ctrl</kbd>+<kbd>S</kbd>. <b>Jangan digabung dalam satu file.</b>'];
-const S_IZIN = 'Bila diminta: <b>Review permissions</b> → pilih akun FF → <b>Advanced</b> → <b>Go to Status Kontrak Manager (unsafe)</b> → <b>Allow</b>. Peringatan ini normal untuk script buatan sendiri.';
+const S_IZIN = 'Bila diminta: <b>Review permissions</b> → pilih akun FF → <b>Advanced</b> → <b>Go to Status Kontrak Manager (unsafe)</b>. Bila muncul daftar izin dengan kotak centang, pilih <b>Select all</b> (semua izin harus tercentang) → <b>Allow</b>. Peringatan ini normal untuk script buatan sendiri.';
 const S_SETUP = ['Jalankan setup()', 'Di toolbar editor, pilih fungsi <span class="mono">setup</span> lalu klik <b>Run</b>. ' + S_IZIN];
 const S_CATAT = ['Catat password admin', 'Di <b>Execution log</b> muncul baris <span class="mono">username: admin &nbsp; password sementara: xxx-xxx-xxx</span>. Catat sekarang; password ini tidak ditampilkan lagi.'];
 
@@ -30,7 +30,7 @@ const PHASES = {
       <div><i></i><span>Server bisa memanggil Web App lain, syarat script penerima di F4</span></div></div></div>`,
     steps: { utama: [S_BARU, S_MANIFEST, S_TEMPEL,
       ['Deploy sebagai Web app', '<b>Deploy › New deployment</b> → ikon roda gigi → <b>Web app</b>. Description: <span class="mono">F0</span> · Execute as: <b>Me</b> · Who has access: <b>Anyone with Google account</b> → <b>Deploy</b>.'],
-      ['Izinkan akses', 'Klik <b>Authorize access</b> → pilih akun FF → <b>Advanced</b> → <b>Go to Status Kontrak Manager (unsafe)</b> → <b>Allow</b>. Peringatan ini normal untuk script buatan sendiri.'],
+      ['Izinkan akses', 'Klik <b>Authorize access</b> → pilih akun FF → <b>Advanced</b> → <b>Go to Status Kontrak Manager (unsafe)</b>. Bila muncul daftar izin dengan kotak centang, pilih <b>Select all</b> (semua izin harus tercentang) → <b>Allow</b>. Peringatan ini normal untuk script buatan sendiri.'],
       ['Uji dari PC kantor', 'Salin <b>Web app URL</b> (berakhiran <span class="mono">/exec</span>). Buka di Chrome atau Edge di PC kantor, memakai jaringan kantor. Tunggu semua baris selesai, klik <b>Salin hasil</b>, lalu tempel di chat.']] },
     fileDesc: ['Pengaturan project: zona Asia/Jakarta, izin, dan mode Web app.', 'Kode server + halaman uji.'],
     post: `<div class="card"><h2>Setelah hasil keluar</h2><p class="muted" style="margin-top:8px">Klik <b>Salin hasil</b> dan tempel di chat, apa pun hasilnya. Arti setiap hasil dan langkah berikutnya ada di tabel <a href="${MOCK_F0}" target="_blank" rel="noopener">Kalau hasilnya… di mockup F0</a>. Kalau ada langkah yang berbeda dari layar Anda, kirim screenshot-nya.</p></div>`
