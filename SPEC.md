@@ -1,7 +1,12 @@
 # SPEC — Status Kontrak Manager
 
-Versi 1.9 · 19 Nov 2026 · Pemilik: omPik (Unit Fulfillment)
+Versi 1.10 · 19 Nov 2026 · Pemilik: omPik (Unit Fulfillment)
 Referensi konsep: BAA.flow (BAA Generator). Mockup UI yang disetujui: `mockup/mockup.html` (desain "Orbit").
+
+**Perubahan v1.10** (build F1)
+- Tab `Log` menambah kolom `Hasil` (BERHASIL/GAGAL/DITOLAK); tab `Users` menambah `SesiVersi` (reset password, nonaktif, atau ganti role mengakhiri sesi aktif) dan `Version`; tab `_Meta` menyimpan versi skema dan riwayat migrasi.
+- Izin Google (OAuth scope) dideteksi otomatis dari kode; manifest tidak mendaftarkan scope manual.
+- Fungsi darurat `pulihkanAdmin()` dijalankan dari editor bila tidak ada admin yang bisa login.
 
 **Perubahan v1.9**
 - Aturan akun (§6.1): username bebas (NIK, nama, dll.), password diketik admin atau dibuat acak lalu wajib diganti, hapus user hanya bila belum ada aktivitas.
@@ -280,8 +285,9 @@ Aturan umum: baris 1 berisi header. ID dibuat server dan tidak pernah berubah. T
 | `BAST` | BASTID (`K-000001-B1`), KontrakID, Urutan, DokTagih (BAST/BAA), KodeTahap, Siklus, CakupanOrder, CakupanLokasi, DaftarLokasi, NoDokBAST, TglTahapMulai, Keterangan, Status (OPEN/CLOSE), Created/UpdatedAt/By, Version |
 | `RiwayatTahap` | BASTID, Siklus, KodeTahap, Masuk, Keluar, Oleh, Keterangan |
 | `Kendala` | KendalaID, BASTID, KontrakID, Jenis, Keterangan, Status, Mulai, DibuatOleh, Selesai, DiselesaikanOleh |
-| `Log` | Timestamp, Username, Aksi, Entitas, EntitasID, Field, NilaiLama, NilaiBaru, Catatan *(hanya ditambah)* |
-| `Users` | Username, Nama, AliasPIC, Role, PasswordHash, Salt, Aktif, WajibGantiPassword, GagalLogin, TerkunciSampai, LoginTerakhir, PunyaAktivitas, CreatedAt/By, UpdatedAt/By |
+| `Log` | Timestamp, Username, Aksi, Entitas, EntitasID, Field, NilaiLama, NilaiBaru, Catatan, Hasil (`BERHASIL`/`GAGAL`/`DITOLAK`) *(hanya ditambah)* |
+| `_Meta` | Key, Nilai *(SKEMA_VERSI, DB_DIBUAT, RIWAYAT_MIGRASI)* |
+| `Users` | Username, Nama, AliasPIC, Role, PasswordHash, Salt, Aktif, WajibGantiPassword, GagalLogin, TerkunciSampai, LoginTerakhir, PunyaAktivitas, SesiVersi, CreatedAt/By, UpdatedAt/By, Version *(PasswordHash = `sha256$<iterasi>$<hex>`)* |
 | `Ref_Role` | Role, Izin (dipisah koma) |
 | `Ref_Tahap`, `Ref_Kendala`, `Ref_NilaiPush` | §5 |
 | `Ref_JenisDok`, `Ref_Populasi`, `Ref_Segment`, `Ref_DokTagih` | Kode, Label, Aktif |
