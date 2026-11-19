@@ -281,8 +281,8 @@ var AKSI = {
     var keys = Repo.semua('Config').map(function (c) { return c.Key; });
     var kurang = CONFIG_AWAL.filter(function (c) { return keys.indexOf(c[0]) < 0; }).map(function (c) { return c[0]; });
     cek('Config lengkap', !kurang.length, kurang.length ? 'Kurang: ' + kurang.join(', ') : '');
-    var info = Repo.infoDatabase(), orang = info.editors.length + info.viewers.length;
-    cek('File database tidak dibagikan (maks. akun FF + 1 admin cadangan)', orang <= 2, orang + ' akun punya akses');
+    var info = Repo.infoDatabase(), orang = info.akses.length;
+    cek('File database tidak dibagikan (maks. akun FF + 1 admin cadangan)', orang <= 2, orang + ' akun punya akses: ' + info.akses.join(', '));
     catat_(ctx, 'CEK_SISTEM', '_Meta', '—', hasil.filter(function (h) { return h.ok; }).length + '/' + hasil.length + ' OK');
     return { hasil: hasil };
   } },

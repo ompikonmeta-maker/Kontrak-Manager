@@ -324,6 +324,8 @@ test('sistem: info & pemeriksaan kesehatan; file database dibagikan ke banyak or
   assert.equal(info.riwayat.length, 1);
   assert.equal(info.akunFF, 'ff.unit@gmail.com');
   assert.ok(g.api(t, 'sistem.cek').data.hasil.every(h => h.ok));
+  g.db().viewers.push('ff.unit@gmail.com');     // pemilik muncul di dua daftar → tetap dihitung 1
+  assert.match(g.api(t, 'sistem.cek').data.hasil.find(h => /dibagikan/.test(h.nama)).catatan, /^1 akun punya akses: ff\.unit@gmail\.com$/);
   g.db().editors.push('a@x.com', 'b@x.com');
   const cek = g.api(t, 'sistem.cek').data.hasil;
   assert.equal(cek.find(h => /dibagikan/.test(h.nama)).ok, false);

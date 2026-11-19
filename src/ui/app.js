@@ -468,9 +468,9 @@ function bindLog() {
 
 /* ---------------- sistem ---------------- */
 function viewSistem() {
-  const I = S.sistem, akses = I.db.editors.length + I.db.viewers.length;
+  const I = S.sistem, daftar = I.db.akses || [], akses = daftar.length;
   return `<div class="grid g2">
-   <div class="card"><h2>${ic('db', 's')} Database</h2><dl class="kv"><dt>File</dt><dd class="mono">${esc(I.db.nama)}</dd><dt>Pemilik</dt><dd>${esc(I.akunFF) || 'akun FF'}</dd><dt>Akses file</dt><dd>${akses <= 2 ? '<span class="pill p-ok">aman</span>' : '<span class="pill p-crit">terlalu banyak</span>'} <span class="muted" style="font-size:12px">${akses} akun</span></dd><dt>Versi aplikasi</dt><dd>${esc(I.app.versi)} (${esc(I.app.fase)})</dd><dt>Versi skema</dt><dd>v${esc(I.skemaDb)}</dd><dt>Dibuat</dt><dd>${esc(I.dibuat)}</dd></dl></div>
+   <div class="card"><h2>${ic('db', 's')} Database</h2><dl class="kv"><dt>File</dt><dd class="mono">${esc(I.db.nama)}</dd><dt>Pemilik</dt><dd>${esc(I.akunFF) || 'akun FF'}</dd><dt>Akses file</dt><dd>${akses <= 2 ? '<span class="pill p-ok">aman</span>' : '<span class="pill p-crit">terlalu banyak</span>'} <span class="muted" style="font-size:12px">${akses} akun</span><div class="mono dim" style="font-size:11.5px;margin-top:4px">${daftar.map(esc).join('<br>')}</div></dd><dt>Versi aplikasi</dt><dd>${esc(I.app.versi)} (${esc(I.app.fase)})</dd><dt>Versi skema</dt><dd>v${esc(I.skemaDb)}</dd><dt>Dibuat</dt><dd>${esc(I.dibuat)}</dd></dl></div>
    <div class="card"><h2>${ic('check', 's')} Pemeriksaan kesehatan<span class="sp"></span><button class="btn sm" id="health">Jalankan</button></h2><div id="hres"><div class="muted" style="font-size:13px">Klik <b>Jalankan</b> untuk memeriksa database, skema, admin, role, config, dan akses file.</div></div></div>
    <div class="card"><h2>Tab di database</h2><div class="tbl-wrap"><table class="t"><thead><tr><th>Tab</th><th class="num">Baris data</th></tr></thead><tbody>${I.db.tabs.map(t => `<tr><td class="mono">${esc(t.tab)}</td><td class="num">${t.baris}</td></tr>`).join('')}</tbody></table></div>
     <div class="muted" style="font-size:12px;margin-top:8px">Tab untuk kontrak, BAST, dan lainnya ditambahkan otomatis oleh migrasi di fase berikutnya.</div></div>

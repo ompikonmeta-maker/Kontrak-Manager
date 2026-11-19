@@ -204,7 +204,9 @@ var Repo = (function () {
     var f = ss(), tabs = f.getSheets().map(function (sh) { return { tab: sh.getName(), baris: Math.max(sh.getLastRow() - 1, 0) }; });
     var editors = [], viewers = [];
     try { editors = f.getEditors().map(function (u) { return u.getEmail(); }); viewers = f.getViewers().map(function (u) { return u.getEmail(); }); } catch (e) { /* tanpa izin: abaikan */ }
-    return { nama: f.getName(), tabs: tabs, editors: editors, viewers: viewers };
+    var akses = [];   // gabungan unik: pemilik bisa muncul di daftar editor dan viewer sekaligus
+    editors.concat(viewers).forEach(function (e) { e = String(e || '').toLowerCase(); if (e && akses.indexOf(e) < 0) akses.push(e); });
+    return { nama: f.getName(), tabs: tabs, editors: editors, viewers: viewers, akses: akses };
   }
 
   return {
