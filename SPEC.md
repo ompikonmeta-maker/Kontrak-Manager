@@ -1,12 +1,15 @@
 # SPEC — Status Kontrak Manager
 
-Versi 1.4 · 15 Nov 2026 · Pemilik: omPik (Unit Fulfillment)
+Versi 1.5 · 19 Nov 2026 · Pemilik: omPik (Unit Fulfillment)
 Referensi konsep: BAA.flow (BAA Generator). Mockup UI yang disetujui: `mockup/mockup.html` (desain "Orbit").
+
+**Perubahan v1.5**
+- Jenis customer dihitung dari **Customer vs End customer** (bukan dari Populasi). Dokumen tagih usulan: BAA untuk DIRECT, BAST untuk INDIRECT, bisa diganti per BAST (§5.7).
 
 **Perubahan v1.4** (hasil review mockup bersama FF)
 - Koneksi ke sheet unit memakai **script penerima** yang dipasang pemilik sheet (§4.1, §8.0). Mode "langsung" pindah ke daftar Nanti.
 - **BAA** bisa menjadi dokumen tagih, setara BAST (§2, §5.1). Teks Nilai Push tetap sama, misalnya tetap "BAST DONE".
-- **Jenis customer** (DIRECT/INDIRECT) diturunkan dari Populasi (§5.7).
+- **Jenis customer** DIRECT/INDIRECT (§5.7).
 - Kontrak tanpa BAST tidak pernah CLOSE (§5.4). Batas kendala menjadi Config, dan aging tidak pernah berhenti (§5.6).
 - Tema terang + gelap, detail kontrak sebagai panel geser, pencarian Ctrl+K (§10).
 - Instalasi cukup menyalin `Code.gs` + `appsscript.json` dari halaman instalasi bertombol Salin (§12).
@@ -45,7 +48,8 @@ Referensi konsep: BAA.flow (BAA Generator). Mockup UI yang disetujui: `mockup/mo
 | Order Internal | SO atau MI. Satu kontrak punya 1..N (dibagi per jenis layanan/pekerjaan). Dipakai untuk menentukan eviden dasar BAST. |
 | BAST | Dokumen tagih, berupa **BAST atau BAA**. Dibuat sekali di depan untuk OTC + MTC. Normalnya 1 per kontrak. |
 | Dokumen tagih | BAST atau BAA (`Ref_DokTagih`). Kontrak DIRECT umumnya selesai di BAA. Keduanya memakai tahapan dan teks Nilai Push yang sama. |
-| Jenis customer | DIRECT bila pelanggan = end customer, INDIRECT bila lewat channel (TREG/SDA/PRM). Mengikuti Populasi (§5.7). |
+| Customer / End customer | Customer (direct customer) = pihak yang berkontrak. End customer = pengguna akhir layanan. |
+| Jenis customer | DIRECT bila customer = end customer, INDIRECT bila berbeda (§5.7). |
 | Script penerima | Apps Script kecil buatan SKM yang dipasang pemilik di tiap sheet target. SKM membaca dan menulis sheet lewat script ini (§8.0). |
 | BAST parsial | Kontrak dengan beberapa BAST, karena penagihan dilakukan berangsur ketika sebagian node belum online. Ini **mekanisme biasa**, bukan status khusus. |
 | Periode tagih | Untuk BAPL unit lain, **tidak memengaruhi BAST**. Karena periode ini, satu kontrak bisa muncul berulang di sheet unit. |
@@ -202,10 +206,17 @@ Isi awal (**sudah disetujui FF**). Teks, urutan, dan jumlah aturan tetap bisa di
   - Data hasil import yang belum diverifikasi.
   - Target dengan error, atau sel yang diubah di luar aplikasi (§8.5).
 
-### 5.7 Jenis customer
-- `Ref_Populasi` punya kolom `JenisCustomer` (DIRECT/INDIRECT). Isi awal: DIRECT → DIRECT; TREG, SDA, PRM → INDIRECT.
-- Jenis customer kontrak = JenisCustomer dari populasinya. Nilainya turunan, tidak diisi manual. Populasi baru wajib dipetakan saat ditambahkan.
-- Dipakai untuk filter dan dashboard. Tidak memengaruhi tahapan maupun Nilai Push.
+### 5.7 Jenis customer dan dokumen tagih
+- Kontrak menyimpan dua nama: **Customer** (direct customer, pihak yang berkontrak) dan **End customer** (pengguna akhir layanan).
+- **Jenis customer** dihitung otomatis, tidak diisi manual:
+  - `DIRECT` bila customer = end customer. Perbandingan mengabaikan huruf besar/kecil, spasi, tanda baca, serta kata "PT", "Tbk", "Persero", "CV".
+  - `DIRECT` juga bila end customer dikosongkan (dianggap sama dengan customer).
+  - `INDIRECT` bila keduanya berbeda.
+- Alasannya: pada pelanggan DIRECT, BAA sering sudah berfungsi sebagai BAST, sehingga proses berhenti di BAA. Tidak selalu, jadi aplikasi tidak memaksakan.
+- **Dokumen tagih usulan** untuk BAST baru mengikuti jenis customer: `Config.DOKTAGIH_DEFAULT_DIRECT` = BAA, `Config.DOKTAGIH_DEFAULT_INDIRECT` = BAST.
+- Usulan ini bisa diganti per BAST kapan saja. BAA maupun BAST sama-sama bisa menutup kontrak (tahapan dan tahap penutup sama). Penggantian dicatat di Log.
+- Populasi tetap kolom referensi tersendiri dan tidak dipakai untuk menghitung jenis customer.
+- Jenis customer dipakai untuk filter dan dashboard. Tidak memengaruhi tahapan maupun Nilai Push.
 
 ---
 
@@ -234,7 +245,7 @@ Aturan umum: baris 1 berisi header. ID dibuat server dan tidak pernah berubah. T
 
 | Tab | Kolom |
 |---|---|
-| `Kontrak` | KontrakID, NoKontrak, NoKontrakNorm, JenisDok, TahunProject, Populasi, NamaPelanggan, JudulKontrak, Segment, NilaiKontrak, JumlahLokasi, PIC, **turunan:** JenisCustomer, TahapKontrak, StatusKontrak, SisaLokasi, KendalaUmum, KendalaDetil, TglStatusBerubah · PerluVerifikasi, Arsip, SumberAwal, Created/UpdatedAt/By, Version |
+| `Kontrak` | KontrakID, NoKontrak, NoKontrakNorm, JenisDok, TahunProject, Populasi, NamaPelanggan (customer), EndCustomer, JudulKontrak, Segment, NilaiKontrak, JumlahLokasi, PIC, **turunan:** JenisCustomer, TahapKontrak, StatusKontrak, SisaLokasi, KendalaUmum, KendalaDetil, TglStatusBerubah · PerluVerifikasi, Arsip, SumberAwal, Created/UpdatedAt/By, Version |
 | `KontrakAlias` | AliasNorm, KontrakID, Sumber, CreatedAt/By |
 | `OrderInternal` | OrderID, KontrakID, JenisOrder (SO/MI), NoOrder, NoOrderNorm, JenisLayanan, JenisPekerjaan, JumlahLokasi, Keterangan, Created/UpdatedAt/By, Version |
 | `BAST` | BASTID (`K-000001-B1`), KontrakID, Urutan, DokTagih (BAST/BAA), KodeTahap, Siklus, CakupanOrder, CakupanLokasi, DaftarLokasi, NoDokBAST, TglTahapMulai, Keterangan, Status (OPEN/CLOSE), Created/UpdatedAt/By, Version |
@@ -244,8 +255,7 @@ Aturan umum: baris 1 berisi header. ID dibuat server dan tidak pernah berubah. T
 | `Users` | Username, Nama, AliasPIC, Role, PasswordHash, Salt, Aktif, WajibGantiPassword, GagalLogin, TerkunciSampai, LoginTerakhir |
 | `Ref_Role` | Role, Izin (dipisah koma) |
 | `Ref_Tahap`, `Ref_Kendala`, `Ref_NilaiPush` | §5 |
-| `Ref_JenisDok`, `Ref_Segment`, `Ref_DokTagih` | Kode, Label, Aktif |
-| `Ref_Populasi` | Kode, Label, JenisCustomer (DIRECT/INDIRECT), Aktif |
+| `Ref_JenisDok`, `Ref_Populasi`, `Ref_Segment`, `Ref_DokTagih` | Kode, Label, Aktif |
 | `Target` | TargetID, Nama, ModeKoneksi (`RECEIVER`; `LANGSUNG` disiapkan untuk nanti), WebAppUrl, VersiScript, SpreadsheetID (diisi dari info script), ModeTab (`FIXED`/`TERBARU`), TabNama atau pola, CaraTerbaru (`TANGGAL_DI_NAMA`/`POSISI_TERAKHIR`), TabTerakhirDipakai, AliasHeaderKunci, FormatTanggal, Aktif, TerakhirCek, TerakhirUpdate, StatusTerakhir, PesanTerakhir *(kode rahasia disimpan di Script Properties, tidak di DB)* |
 | `TargetKolom` | TargetID, Field, Arah (`TULIS`/`BACA`), AliasHeader |
 | `JejakSel` | TargetID, Tab, NoKontrakNorm, Field, NilaiDitulis, WaktuTulis *(nilai terakhir yang ditulis SKM, §8.5)* |
@@ -253,7 +263,7 @@ Aturan umum: baris 1 berisi header. ID dibuat server dan tidak pernah berubah. T
 | `SyncLog` | Waktu, Oleh, Jenis (`CEK`/`UPDATE`), TargetID, Tab, BarisCocok, SelDitulis, Gagal, Alarm, Detail |
 | `Notifikasi` | NotifID, Untuk (username), Jenis (`DIUBAH_LUAR`/`SINKRON_ERROR`/`TAB_BERGANTI`/`ANTRIAN_BARU`/`PIC_DITUGASKAN`), Pesan, KontrakID, TargetID, Dibaca, Waktu |
 | `Antrian` | AntrianID, TargetID, Tab, Baris, NoKontrakAsli, NoKontrakNorm, Prefill, Status (`BARU`/`DIDAFTARKAN`/`DIALIASKAN`/`DIABAIKAN`), DiprosesOleh, DiprosesPada |
-| `Config` | key–value: APP_NAMA = "Status Kontrak Manager", SYNC_INTERVAL_MENIT = 15, TAHAP_REOPEN = DRAFTING, AGING_BATAS = 7,14,30, KENDALA_BATAS_HARI = 14, KONFIRMASI_TAB_BARU = TRUE, BACKUP_SIMPAN = 8, SKEMA_VERSI |
+| `Config` | key–value: APP_NAMA = "Status Kontrak Manager", SYNC_INTERVAL_MENIT = 15, TAHAP_REOPEN = DRAFTING, AGING_BATAS = 7,14,30, KENDALA_BATAS_HARI = 14, DOKTAGIH_DEFAULT_DIRECT = BAA, DOKTAGIH_DEFAULT_INDIRECT = BAST, KONFIRMASI_TAB_BARU = TRUE, BACKUP_SIMPAN = 8, SKEMA_VERSI |
 
 ---
 
@@ -300,7 +310,7 @@ normKey(s) = String(s ?? '').normalize('NFKC').toUpperCase()
 
 ### 8.4 Field yang bisa dipetakan
 - **TULIS**: `KENDALA_UMUM`, `KENDALA_DETIL`, `TAHAP`, `TGL_UPDATE`, `TGL_TAHAP:<kode>` (mis. tanggal BAST Done), `PIC`, `NO_BAST`, `DOK_TAGIH` (BAST/BAA), `PARSIAL` (contoh isi: "2/3 BAST · 40/60 lokasi").
-- **BACA** (untuk prefill Antrian): `PELANGGAN`, `JUDUL`, `NILAI`, `TAHUN`, `POPULASI`, `SEGMENT`.
+- **BACA** (untuk prefill Antrian): `PELANGGAN`, `END_CUSTOMER`, `JUDUL`, `NILAI`, `TAHUN`, `POPULASI`, `SEGMENT`.
 - Nilainya sama untuk semua target. Per target, admin hanya memetakan header mana yang menerima field mana.
 
 ### 8.5 Jejak perubahan sel (jawaban pertanyaan no. 5)
@@ -377,7 +387,7 @@ Alurnya: unggah sheet FF lama (xlsx) → pemetaan kolom → **pratinjau + valida
 | Kolom lama | Ke SKM |
 |---|---|
 | NO WO/SPK/KL | NoKontrak. JenisDok ditebak dari teksnya |
-| TAHUN PROJECT, POPULASI, NAMA PELANGGAN, JUDUL KONTRAK, SEGMENT TSAT | kolom sejenis. Nilai referensi baru otomatis ditambahkan (populasi baru wajib dipetakan ke DIRECT/INDIRECT di layar import) |
+| TAHUN PROJECT, POPULASI, NAMA PELANGGAN, JUDUL KONTRAK, SEGMENT TSAT | kolom sejenis. Nilai referensi baru otomatis ditambahkan. NAMA PELANGGAN dipetakan ke Customer atau End customer di layar pemetaan; end customer yang tidak diisi dianggap sama dengan customer |
 | NILAI KONTRAK | `"Rp 95,352,000.00"` → 95352000 |
 | PIC | dicocokkan dengan `Users.AliasPIC` |
 | STATUS AWAL + KENDALA UMUM + KENDALA DETIL | tabel pemetaan di bawah (bisa diedit di layar import) |
@@ -482,7 +492,7 @@ status-kontrak-manager/
 | D5 | Nama kolom milik FF di tiap sheet target | Dipetakan lewat wizard. Kalau kolomnya belum ada, pemilik sheet yang menambahkan |
 | D6 | Cara koneksi ke sheet unit | ✔ Script penerima (§8.0) |
 | D7 | BAA sebagai dokumen tagih | ✔ Setara BAST, teks Nilai Push tetap sama |
-| D8 | Jenis customer | ✔ Diturunkan dari Populasi (§5.7) |
+| D8 | Jenis customer & dokumen tagih | ✔ Customer vs End customer; usulan BAA untuk DIRECT, BAST untuk INDIRECT, bisa diganti per BAST (§5.7) |
 | D9 | Tampilan | ✔ Desain "Orbit" (mockup), tema terang + gelap, detail = panel geser |
 | D10 | Cara pasang | ✔ Salin 2 file dari halaman instalasi |
 
