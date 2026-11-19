@@ -1,7 +1,10 @@
 # SPEC — Status Kontrak Manager
 
-Versi 1.10 · 19 Nov 2026 · Pemilik: omPik (Unit Fulfillment)
+Versi 1.11 · 19 Nov 2026 · Pemilik: omPik (Unit Fulfillment)
 Referensi konsep: BAA.flow (BAA Generator). Mockup UI yang disetujui: `mockup/mockup.html` (desain "Orbit").
+
+**Perubahan v1.11**
+- Login tetap **username + password SKM** (tanpa login Google). Akuntabilitas dijamin lewat aturan di §6.2 (D11).
 
 **Perubahan v1.10** (build F1)
 - Tab `Log` menambah kolom `Hasil` (BERHASIL/GAGAL/DITOLAK); tab `Users` menambah `SesiVersi` (reset password, nonaktif, atau ganti role mengakhiri sesi aktif) dan `Version`; tab `_Meta` menyimpan versi skema dan riwayat migrasi.
@@ -269,6 +272,13 @@ Daftar izin: `dashboard.lihat`, `kontrak.lihat`, `kontrak.update`, `kontrak.daft
 - **Hapus user hanya bila user itu belum pernah beraktivitas** (belum pernah login dan tidak punya entri Log sebagai pelaku). User yang sudah punya riwayat hanya bisa **dinonaktifkan**, supaya Log tetap utuh.
 - User tanpa `log.semua` hanya melihat "Log saya".
 - Tampilan: daftar user dengan filter status/role dan menu ⋮ per baris; form tambah/ubah berupa panel geser dengan kartu role yang menampilkan izin yang didapat.
+
+### 6.2 Akuntabilitas (keputusan D11)
+- Login memakai username + password SKM. Login dengan akun Google tidak dipakai: untuk Gmail biasa, Google menyembunyikan email pengunjung web app yang berjalan sebagai akun FF.
+- **Satu orang satu akun**; akun tidak boleh dipinjamkan. Password sementara dari admin wajib diganti, jadi admin tidak mengetahui password akhir user. Reset password tercatat (`RESET_PASSWORD`) dan mengakhiri sesi user tersebut.
+- Setiap aksi yang mengubah data mencatat username, waktu (Asia/Jakarta), nilai lama → baru, dan keterangan di `Log` yang hanya bisa ditambah. Tidak ada fitur ubah/hapus Log, termasuk untuk admin. User yang punya riwayat tidak bisa dihapus.
+- Perpindahan tahap tercatat di `RiwayatTahap` (oleh siapa, kapan, keterangan; mundur wajib keterangan) dan tampil di tab Riwayat detail kontrak, termasuk penanda "bantu" bila dilakukan non-PIC (§6).
+- Risiko sisa: pemilik akun FF bisa mengedit `SKM_DB` langsung. Mitigasi: file tidak dibagikan (dicek di halaman Sistem), password akun FF dipegang maks. 2 orang, riwayat versi Google Drive, dan backup mingguan (F5).
 - Semua pengecekan izin dilakukan di server.
 
 ---
@@ -555,6 +565,7 @@ Setiap fase: mockup → disetujui → **build** (atas perintah pemilik) → unit
 | D8 | Jenis customer & dokumen tagih | ✔ Customer vs End customer (salah satu kosong = BELUM TERDEFINISI); usulan BAA untuk DIRECT, BAST untuk INDIRECT/belum terdefinisi, bisa diganti per BAST (§5.7) |
 | D9 | Tampilan | ✔ Desain "Orbit" (mockup), tema terang + gelap, detail = panel geser |
 | D10 | Cara pasang | ✔ Salin 2 file dari halaman instalasi |
+| D11 | Cara login | ✔ Username + password SKM; akuntabilitas lewat Log & riwayat (§6.2) |
 
 Sudah dikonfirmasi:
 - BAST ON REVIEW → tahap Draft Review Customer.
