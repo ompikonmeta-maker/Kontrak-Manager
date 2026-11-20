@@ -1,7 +1,12 @@
 # SPEC — Status Kontrak Manager
 
-Versi 1.11 · 19 Nov 2026 · Pemilik: omPik (Unit Fulfillment)
+Versi 1.12 · 20 Nov 2026 · Pemilik: omPik (Unit Fulfillment)
 Referensi konsep: BAA.flow (BAA Generator). Mockup UI yang disetujui: `mockup/mockup.html` (desain "Orbit").
+
+**Perubahan v1.12** (review mockup F2)
+- **Upload Excel** masuk F2 (§11.0, D13): template SKM (tab Kontrak + SO_MI, dropdown dari Referensi) → pratinjau & periksa per baris → simpan. Import sheet FF format lama tetap F3.
+- Kontrak tidak bisa dihapus, hanya diarsipkan dengan alasan; PIC sementara kontrak dari STAFF = staff itu; BAST-1 dibuat otomatis; koreksi nomor → nomor lama menjadi alias.
+- Nomor lama (alias) tidak tampil sebagai kolom, tetapi ikut dicari. Hasil yang cocok lewat nomor lama diberi keterangan "Ditemukan lewat nomor lama …" beserta asal (koreksi/antrian/upload), waktu, pelaku, dan alasan; panel detail menampilkan penjelasan yang sama di atas (D14).
 
 **Perubahan v1.11**
 - Login tetap **username + password SKM** (tanpa login Google). Akuntabilitas dijamin lewat aturan di §6.2 (D11).
@@ -290,7 +295,7 @@ Aturan umum: baris 1 berisi header. ID dibuat server dan tidak pernah berubah. T
 | Tab | Kolom |
 |---|---|
 | `Kontrak` | KontrakID, NoKontrak, NoKontrakNorm, JenisDok, TahunProject, Populasi, NamaPelanggan (customer), EndCustomer, JudulKontrak, Segment, NilaiKontrak, JumlahLokasi, PIC, **turunan:** JenisCustomer, TahapKontrak, StatusKontrak, SisaLokasi, KendalaUmum, KendalaDetil, TglStatusBerubah · PerluVerifikasi, Arsip, SumberAwal, Created/UpdatedAt/By, Version |
-| `KontrakAlias` | AliasNorm, KontrakID, Sumber, CreatedAt/By |
+| `KontrakAlias` | AliasNorm, NoAsli, KontrakID, Sumber (`KOREKSI`/`ANTRIAN`/`UPLOAD`), Catatan, CreatedAt/By |
 | `OrderInternal` | OrderID, KontrakID, JenisOrder (SO/MI), NoOrder, NoOrderNorm, JenisLayanan, JenisPekerjaan, JumlahLokasi, Keterangan, Created/UpdatedAt/By, Version |
 | `BAST` | BASTID (`K-000001-B1`), KontrakID, Urutan, DokTagih (BAST/BAA), KodeTahap, Siklus, CakupanOrder, CakupanLokasi, DaftarLokasi, NoDokBAST, TglTahapMulai, Keterangan, Status (OPEN/CLOSE), Created/UpdatedAt/By, Version |
 | `RiwayatTahap` | BASTID, Siklus, KodeTahap, Masuk, Keluar, Oleh, Keterangan |
@@ -451,6 +456,16 @@ Tampilan mengikuti mockup `mockup/mockup.html` (desain "Orbit"): **tema terang d
 ---
 
 ## 11. Import data awal
+
+### 11.0 Upload Excel dengan template SKM (F2, D13)
+- **Unduh template**: dibuat SKM saat diklik, berisi tab Petunjuk, `Kontrak` (satu baris = satu kontrak), `SO_MI` (satu baris = satu order, dihubungkan lewat No. Kontrak), dan `Referensi` (daftar dropdown sesuai Pengaturan saat itu). Kolom wajib: No. Kontrak, Judul Kontrak. Kolom opsional: Jenis Dok, Tahun, Populasi, Customer, End Customer, Segment, Nilai, Jumlah Lokasi, PIC, Dok Tagih BAST-1, Tahap Awal BAST-1, Tgl Masuk Tahap, Kendala, Keterangan Kendala, Catatan. Contoh: `mockup/Template_Upload_Kontrak_SKM.xlsx`.
+- **Baca**: kolom dikenali dari judul header; file dibaca di browser, lalu **server memeriksa ulang semuanya** sebelum menyimpan.
+- **Pratinjau** per baris: Baru, Baru dengan peringatan (tetap disimpan, mis. Customer kosong → BELUM TERDEFINISI, PIC tidak dikenal → tanpa PIC, referensi tidak dikenal → dikosongkan), Sudah ada (cocok lewat nomor atau nomor lama), Error (tidak disimpan: nomor/judul kosong, nomor dobel di file, nilai/lokasi/tanggal tidak terbaca, tanggal masa depan, tahap/kendala/dok tagih tidak dikenal, kendala tanpa keterangan). Baris SO_MI diperiksa juga (kontrak harus ada, jenis SO/MI, nomor order tidak dobel/terpakai).
+- **Nomor sudah ada**: pilihan *Lewati* (default) atau *Perbarui kolom yang diisi* (sel kosong tidak menghapus; tahap & kendala kontrak lama tidak diubah).
+- **Simpan**: bertahap per 50 baris di dalam kunci; upload ulang file yang sama aman (yang sudah tersimpan terbaca Sudah ada). Setiap kontrak baru mendapat BAST-1 (tahap & tanggal dari file, dok tagih dari file atau usulan otomatis), `SumberAwal = UPLOAD`, tidak diberi PerluVerifikasi. Log: `BUAT_KONTRAK`/`UBAH_KONTRAK` per baris + satu `UPLOAD_EXCEL` ringkasan. Laporan baris error bisa diunduh (.xlsx).
+- Izin `kontrak.daftar`. User tanpa `pic.atur`: kolom PIC diabaikan, PIC = dirinya. Maksimal 1.000 baris per file.
+
+### 11.1 Import sheet FF format lama (F3)
 Alurnya: unggah sheet FF lama (xlsx) → pemetaan kolom → **pratinjau + validasi per baris** → simpan. Semua hasil import diberi `PerluVerifikasi = TRUE`.
 
 | Kolom lama | Ke SKM |
@@ -533,7 +548,7 @@ Setiap fase: mockup → disetujui → **build** (atas perintah pemilik) → unit
 |---|---|---|---|
 | F0 | Web app uji dari jaringan kantor | – | Halaman terbuka, server menjawab, font Google & UrlFetch dicek. **Wajib lulus dulu** |
 | F1 | Setup, Repo + migrasi skema, login + ganti password, Users, Role & izin, Log, kerangka UI (sidebar, tema terang/gelap) | Admin login dan membuat akun tim | Izin ditolak di server, semua aksi tercatat |
-| F2 | Kontrak, Customer/End customer, SO/MI, BAST/BAA, tahap fleksibel, kendala, reopen, parsial, Nilai Push, panel detail, Pengaturan (tahap, kendala, nilai push, referensi, config) | Tim input dan update status di SKM (belum sinkron) | Semua aturan §5 lulus unit test, termasuk tambah/urut ulang/nonaktifkan tahap |
+| F2 | Kontrak, Customer/End customer, SO/MI, BAST/BAA, tahap fleksibel, kendala, reopen, parsial, Nilai Push, panel detail, **Upload Excel template SKM (§11.0)**, pencarian nomor lama, arsip, Pengaturan (tahap, kendala, nilai push, referensi, config) | Tim input dan update status di SKM (belum sinkron) | Semua aturan §5 lulus unit test, termasuk tambah/urut ulang/nonaktifkan tahap |
 | F3 | **Import data lama** (§11), Dashboard, Perlu Perhatian, atur PIC massal, Ctrl+K | Data riil masuk; admin memantau | 4 baris Lampiran A ter-import sesuai §11 · angka dashboard cocok dengan hitungan manual |
 | F4a | Script penerima, wizard target (koneksi, tab TERBARU, pemetaan + validasi), Cek saja, Update, pengaman kolom | Status terkirim ke sheet unit dengan istilah seragam | Uji di **salinan** sheet lulus: kolom disisipkan, judul header diganti/hilang → ditolak, header dipakai ganda → wizard menolak, sel berformula, kontrak berulang, tab bulan baru, baris diurutkan ulang |
 | F4b | Pencatat edit manual, jejak sel, notifikasi lengkap + tutup otomatis, Antrian, tab Sheet unit (§8.7), beda data & kelengkapan, sinkron terjadwal | Sistem berjalan sendiri tiap 15 menit | Sel kontrak OPEN diubah manual → notifikasi (dengan pelaku bila ada) + tidak ditimpa, lalu ditulis lagi setelah status di SKM berubah · kontrak CLOSE tidak ditulis lagi dan perubahan luar tanpa notifikasi · saat kontrak close, notifikasinya yang belum dibaca hilang dari lonceng · reopen → ditulis lagi · nomor baru masuk Antrian sekali |
@@ -567,6 +582,8 @@ Setiap fase: mockup → disetujui → **build** (atas perintah pemilik) → unit
 | D10 | Cara pasang | ✔ Salin 2 file dari halaman instalasi |
 | D11 | Cara login | ✔ Username + password SKM; akuntabilitas lewat Log & riwayat (§6.2) |
 | D12 | Akun pemilik | ✔ Gmail khusus FF menjadi pemilik project & `SKM_DB` (pasang baru); akses web app "Anyone with Google account" + login SKM |
+| D13 | Input banyak kontrak | ✔ Upload Excel dengan template SKM di F2; import format FF lama di F3 |
+| D14 | Nomor lama (alias) | ✔ Tidak tampil di tabel, ikut dicari; hasil diberi keterangan asal, waktu, pelaku, alasan |
 
 Sudah dikonfirmasi:
 - BAST ON REVIEW → tahap Draft Review Customer.

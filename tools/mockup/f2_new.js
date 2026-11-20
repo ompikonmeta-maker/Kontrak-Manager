@@ -104,7 +104,7 @@ function saveKontrak(){
     const label={no:'No. kontrak',jenis:'Jenis dok',tahun:'Tahun',pop:'Populasi',pel:'Customer',end:'End customer',judul:'Judul',seg:'Segment',nilai:'Nilai',lok:'Jumlah lokasi',pic:'PIC'};
     const ch=Object.keys(data).filter(f=>String(data[f]??'')!==String(O[f]??''));
     if(!ch.length){closeKForm();toast('Tidak ada perubahan.');return;}
-    if(ch.includes('no')){O.alias=O.alias||[];if(!O.alias.includes(O.no))O.alias.push(O.no);}
+    if(ch.includes('no')){O.alias=O.alias||[];if(!O.alias.includes(O.no))O.alias.push(O.no);AMETA[normKey(O.no)]={sumber:'KOREKSI',waktu:nowTxt().replace(' Nov',' Nov 2026'),oleh:meName(),catatan:''};}
     const jc0=jenisCust(O);
     ch.forEach(f=>log(me(),'UBAH_KONTRAK','Kontrak',O.id,label[f],O[f]??'',data[f]??''));
     Object.assign(O,data);
