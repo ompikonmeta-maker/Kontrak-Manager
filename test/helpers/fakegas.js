@@ -15,9 +15,11 @@ function makeClock() {
   return { Date: FakeDate, tambah(ms) { offset += ms; }, now: () => RealDate.now() + offset };
 }
 
+const OPS = { n: 0 };
 class Range {
   constructor(sh, r, c, nr, nc) { Object.assign(this, { sh, r, c, nr, nc }); }
   getValues() {
+    OPS.n++;
     const out = [];
     for (let i = 0; i < this.nr; i++) {
       const row = [];
@@ -27,33 +29,37 @@ class Range {
     return out;
   }
   setValues(v) {
+    OPS.n++;
+    if (this.r + this.nr - 1 > this.sh.maxRows) throw new Error(`Exception: Those rows are out of bounds (baris ${this.r + this.nr - 1} > ${this.sh.maxRows})`);
     if (v.length !== this.nr || v.some(row => row.length !== this.nc)) throw new Error(`Ukuran data ${v.length}x${v[0] && v[0].length} tidak sama dengan range ${this.nr}x${this.nc}`);
     for (let i = 0; i < this.nr; i++) {
       const ri = this.r - 1 + i;
       this.sh.data[ri] = this.sh.data[ri] || [];
       for (let j = 0; j < this.nc; j++) this.sh.data[ri][this.c - 1 + j] = v[i][j];
     }
-    this.sh.maxRows = Math.max(this.sh.maxRows, this.r + this.nr - 1);
     return this;
   }
-  setNumberFormat(f) { this.sh.formats.push([this.r, this.c, this.nr, this.nc, f]); return this; }
+  setNumberFormat(f) { OPS.n++; if (this.r + this.nr - 1 > this.sh.maxRows) throw new Error('Exception: Those rows are out of bounds'); this.sh.formats.push([this.r, this.c, this.nr, this.nc, f]); return this; }
 }
 
 class Sheet {
   constructor(name) { this.name = name; this.data = []; this.maxRows = 1000; this.maxCols = 26; this.formats = []; this.frozen = 0; }
   getName() { return this.name; }
   isEmptyRow(row) { return !row || row.every(v => v === '' || v === undefined || v === null); }
-  getLastRow() { for (let i = this.data.length - 1; i >= 0; i--) if (!this.isEmptyRow(this.data[i])) return i + 1; return 0; }
-  getLastColumn() { let m = 0; this.data.forEach(row => (row || []).forEach((v, j) => { if (v !== '' && v !== undefined && v !== null) m = Math.max(m, j + 1); })); return m; }
+  insertRowsAfter(after, n) { OPS.n++; this.maxRows += n; }
+  insertColumnsAfter(after, n) { OPS.n++; this.maxCols += n; }
+  getLastRow() { OPS.n++; return this._lastRow(); }
+  _lastRow() { for (let i = this.data.length - 1; i >= 0; i--) if (!this.isEmptyRow(this.data[i])) return i + 1; return 0; }
+  getLastColumn() { OPS.n++; let m = 0; this.data.forEach(row => (row || []).forEach((v, j) => { if (v !== '' && v !== undefined && v !== null) m = Math.max(m, j + 1); })); return m; }
   getMaxRows() { return this.maxRows; }
   getMaxColumns() { return this.maxCols; }
   getRange(r, c, nr = 1, nc = 1) {
     if (r < 1 || c < 1 || nr < 1 || nc < 1) throw new Error(`Range tidak valid (${r},${c},${nr},${nc})`);
     return new Range(this, r, c, nr, nc);
   }
-  getDataRange() { return new Range(this, 1, 1, Math.max(this.getLastRow(), 1), Math.max(this.getLastColumn(), 1)); }
+  getDataRange() { OPS.n++; let m = 0; this.data.forEach(row => (row || []).forEach((v, j) => { if (v !== '' && v !== undefined && v !== null) m = Math.max(m, j + 1); })); return new Range(this, 1, 1, Math.max(this._lastRow(), 1), Math.max(m, 1)); }
   setFrozenRows(n) { this.frozen = n; }
-  deleteRow(r) { this.data.splice(r - 1, 1); }
+  deleteRow(r) { OPS.n++; this.data.splice(r - 1, 1); }
 }
 
 class Spreadsheet {
@@ -75,12 +81,13 @@ function createGas(opts = {}) {
   const props = {};
   const cache = {};
   const logs = [];
+  const lockState = { held: false };
   const fmt2 = n => String(n).padStart(2, '0');
   const gas = {
     Date: clock.Date,
     SpreadsheetApp: {
       create(name) { const id = 'ss_' + crypto.randomUUID().slice(0, 8); files[id] = new Spreadsheet(id, name, owner); return files[id]; },
-      openById(id) { if (!files[id]) throw new Error('File tidak ditemukan: ' + id); return files[id]; },
+      openById(id) { OPS.n++; if (!files[id]) throw new Error('File tidak ditemukan: ' + id); return files[id]; },
     },
     PropertiesService: { getScriptProperties: () => ({
       getProperty: k => (k in props ? props[k] : null), setProperty(k, v) { props[k] = String(v); return this; }, deleteProperty(k) { delete props[k]; },
@@ -90,7 +97,7 @@ function createGas(opts = {}) {
       put(k, v, ttl = 600) { if (String(v).length > 100 * 1024) throw new Error('Argument too large: value'); if (ttl > 21600) throw new Error('TTL maks 21600'); cache[k] = { v: String(v), exp: clock.now() + ttl * 1000 }; },
       remove(k) { delete cache[k]; },
     }) },
-    LockService: { getScriptLock: () => ({ tryLock: () => true, waitLock() {}, releaseLock() {} }) },
+    LockService: { getScriptLock: () => ({ tryLock() { lockState.held = true; return true; }, waitLock() { lockState.held = true; }, releaseLock() { lockState.held = false; }, hasLock: () => lockState.held }) },
     Utilities: {
       DigestAlgorithm: { SHA_256: 'sha256' }, Charset: { UTF_8: 'utf8' },
       computeDigest(alg, s) { return [...crypto.createHash(alg).update(String(s), 'utf8').digest()].map(b => (b > 127 ? b - 256 : b)); },
@@ -110,7 +117,7 @@ function createGas(opts = {}) {
   const ctx = vm.createContext(gas);
   vm.runInContext(fs.readFileSync(opts.file || path.join(__dirname, '..', '..', 'dist', 'Code.gs'), 'utf8'), ctx, { filename: 'Code.gs' });
   return {
-    ctx, clock, logs, props, cache,
+    ctx, clock, logs, props, cache, ops: OPS,
     db: () => files[props.DB_ID],
     tab: name => { const s = files[props.DB_ID].getSheetByName(name); const [h, ...rows] = s.data; return rows.filter(r => r && r.some(v => v !== '')).map(r => Object.fromEntries(h.map((k, i) => [k, r[i] === undefined ? '' : r[i]]))); },
     /** Jalankan api() seperti google.script.run: hasil dibuat ulang lewat JSON (yang bisa dikirim ke browser saja). */

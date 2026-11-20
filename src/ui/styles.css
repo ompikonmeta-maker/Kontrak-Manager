@@ -433,3 +433,9 @@ dl.kv dt{color:var(--muted)} dl.kv dd{margin:0;min-width:0;overflow-wrap:anywher
 .btn.danger{border-color:var(--crit);color:var(--crit);background:transparent}
 .sfoot{display:flex;gap:8px;justify-content:flex-end;padding-block:14px;padding-left:24px;padding-right:max(24px,env(safe-area-inset-right,0px));border-top:1px solid var(--line);background:var(--surface)}
 .ussheet .dbody{display:flex;flex-direction:column;gap:22px}
+
+/* tombol sibuk */
+.btn.busy { cursor: progress; opacity: .85; }
+.bspin { width: 13px; height: 13px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; display: inline-block; animation: bspin .7s linear infinite; flex: none; }
+@keyframes bspin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .bspin { animation-duration: 2s; } }

@@ -27,9 +27,13 @@ async function bukaApp(g, viewport = { width: 1366, height: 860 }) {
   await page.exposeFunction('__gas', (name, argsJson) => {
     const args = JSON.parse(argsJson);
     if (name !== 'api') throw new Error('fungsi server tidak dikenal: ' + name);
+    (g.panggilan = g.panggilan || []).push(args[1]);
     return JSON.stringify(g.api(...args));
   });
-  await page.setContent('<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">' + BRIDGE + g.ctx.UI_HTML);
+  // disajikan dari alamat http tiruan (bukan about:blank) supaya localStorage & muat ulang halaman bekerja seperti aslinya
+  const html = '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">' + BRIDGE + g.ctx.UI_HTML;
+  await page.route('http://skm.test/**', r => r.fulfill({ contentType: 'text/html; charset=utf-8', body: html }));
+  await page.goto('http://skm.test/');
   return { browser, page, errors };
 }
 const teks = (page, sel) => page.$eval(sel, e => e.textContent.trim());
@@ -93,8 +97,19 @@ test('UI F1: login pertama → ganti password → kelola user → role → log �
 
     // --- role & izin: centang lalu simpan
     await page.click('[data-go="role"]'); await page.waitForSelector('[data-perm="STAFF|pic.atur"]');
+    g.panggilan = [];
     await page.click('[data-perm="STAFF|pic.atur"]'); await page.click('#roleSave'); await page.waitForTimeout(400);
     assert.ok(g.tab('Ref_Role').find(r => r.Role === 'STAFF').Izin.includes('pic.atur'));
+    assert.deepEqual(g.panggilan, ['roles.simpan'], 'simpan izin cukup satu panggilan server');
+    assert.equal(await page.$eval('[data-perm="STAFF|pic.atur"]', c => c.checked), true);
+    assert.equal(await page.$$eval('#roleSave', e => e.length), 0);
+
+    // --- muat ulang halaman: cukup satu panggilan (boot), tetap masuk
+    g.panggilan = [];
+    await page.reload(); await page.waitForSelector('.top h1');
+    assert.deepEqual(g.panggilan, ['boot'], 'membuka halaman cukup satu panggilan');
+    assert.match(await teks(page, '.top h1'), /Selamat datang/);
+    await page.click('[data-go="role"]'); await page.waitForSelector('[data-perm="STAFF|pic.atur"]');
 
     // --- log & sistem
     await page.click('[data-go="log"]'); await page.waitForSelector('#lfr');

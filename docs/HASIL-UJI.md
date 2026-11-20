@@ -29,3 +29,18 @@ F0 v1.2: halaman OK · server 677 ms · font termuat · UrlFetch status 302 · C
 - `SKM_DB` dibuat 10:46:08 oleh `setup()`, pemilik serviceintegrasi@gmail.com, migrasi v0 → v1, 5 tab.
 - Pemeriksaan kesehatan 6/6 hijau; akses file **1 akun** (perbaikan v1.0.2 terkonfirmasi).
 - Checklist Bagian B (akun, izin, kunci akun, reset, Log): menunggu laporan.
+
+**Laporan pengguna (20 Nov 2026), v1.0.2:** langkah B12 (Simpan izin) terasa lama; refresh halaman
+sempat menggantung (juga di Incognito).
+→ diperbaiki di **v1.0.3** (diukur dengan Apps Script tiruan, `test/f1.perf.test.js`):
+
+| Alur | v1.0.2 | v1.0.3 |
+|---|---|---|
+| Simpan izin (B12) | 3 panggilan server, 23 operasi Sheet | 1 panggilan, 6 operasi |
+| Ubah user | 3 panggilan, 13 operasi | 1 panggilan, 4 operasi |
+| Buka / refresh halaman | 3 panggilan berurutan | 1 panggilan (`boot`), 0 operasi Sheet |
+
+Caranya: judul kolom diingat (memo + cache), format teks diatur sekali saat baris sheet ditambah,
+Log ditulis sekaligus di akhir permintaan, cache diperbarui setelah menulis (bukan dibuang), dan jawaban
+server membawa data terbaru. Sekalian diperbaiki: tab (termasuk Log) gagal ditulis setelah 1.000 baris.
+Jeda "cold start" Apps Script 1–3 detik pada panggilan pertama setelah lama tidak dipakai tetap ada.

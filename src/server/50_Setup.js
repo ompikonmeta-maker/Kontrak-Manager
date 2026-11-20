@@ -30,7 +30,7 @@ function setup() {
       console.log('User sudah ada; admin awal tidak dibuat ulang. Lupa password admin? Jalankan pulihkanAdmin().');
     }
     console.log('Selesai (aplikasi v' + APP.VERSI + ', skema v' + APP.SKEMA + '). Buka Web app URL untuk login.');
-  } finally { lock.releaseLock(); }
+  } finally { try { Repo.flushLog(); } finally { lock.releaseLock(); } }
 }
 
 /**

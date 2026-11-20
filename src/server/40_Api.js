@@ -5,6 +5,7 @@
 
 function doGet() {
   try { Repo.pastikanMigrasi(); } catch (e) { console.error('Migrasi gagal: ' + e.message); }
+  try { Repo.flushLog(); } catch (e) { console.error('Log gagal: ' + e.message); }
   return HtmlService.createHtmlOutput(UI_HTML)
     .setTitle(APP.NAMA)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
@@ -18,12 +19,7 @@ function api(token, aksi, payload) {
     if (A.publik) return { ok: true, data: A.fn(ctx) };
 
     if (!Repo.siap()) throw Repo.galat('BELUM_SETUP', 'Database belum dibuat. Jalankan setup() di editor Apps Script.');
-    var sesi = Auth.ambilSesi(token);
-    var u = Repo.cari('Users', sesi.u);
-    if (!u || !Domain.bool(u.Aktif) || Domain.num(u.SesiVersi, 0) !== sesi.v) {
-      Auth.hapusSesi(token);
-      throw Repo.galat('SESI_HABIS', 'Sesi Anda berakhir. Silakan masuk lagi.');
-    }
+    var u = userSesi_(token);
     ctx.user = u;
     ctx.peta = Domain.petaRole(Repo.semua('Ref_Role'));
     ctx.izin = Domain.izinUser(u, ctx.peta);
@@ -35,10 +31,12 @@ function api(token, aksi, payload) {
       Repo.tulisLog({ user: u.Username, aksi: 'IZIN_DITOLAK', entitas: 'api', id: aksi, catatan: A.izin + ' dibutuhkan', hasil: 'DITOLAK' });
       throw Repo.galat('IZIN_DITOLAK', 'Anda tidak punya izin untuk aksi ini (' + A.izin + '). Hubungi admin bila memerlukan akses.');
     }
-    var data = A.ubah ? Repo.kunci(function () { return A.fn(ctx); }) : A.fn(ctx);
-    if (A.ubah && !Domain.bool(u.PunyaAktivitas) && Repo.cari('Users', u.Username)) {
-      Repo.kunci(function () { Repo.ubah('Users', u.Username, { PunyaAktivitas: 'TRUE' }); });
-    }
+    var data = A.ubah ? Repo.kunci(function () {
+      var d = A.fn(ctx);
+      var saya = Repo.cari('Users', u.Username);
+      if (saya && !Domain.bool(saya.PunyaAktivitas)) Repo.ubah('Users', u.Username, { PunyaAktivitas: 'TRUE' });
+      return d;
+    }) : A.fn(ctx);
     return { ok: true, data: data };
   } catch (e) {
     if (!e.kode && /required permissions|do not have permission|tidak memiliki izin/i.test(String(e.message))) {
@@ -46,7 +44,20 @@ function api(token, aksi, payload) {
     }
     if (!e.kode) console.error(aksi + ': ' + (e.stack || e.message));
     return { ok: false, kode: e.kode || 'ERROR', pesan: e.kode ? e.message : 'Terjadi kesalahan di server: ' + e.message };
+  } finally {
+    try { Repo.flushLog(); } catch (e2) { console.error('Log gagal ditulis: ' + e2.message); }
   }
+}
+
+/** User pemilik token yang masih sah; selain itu SESI_HABIS. */
+function userSesi_(token) {
+  var sesi = Auth.ambilSesi(token);
+  var u = Repo.cari('Users', sesi.u);
+  if (!u || !Domain.bool(u.Aktif) || Domain.num(u.SesiVersi, 0) !== sesi.v) {
+    Auth.hapusSesi(token);
+    throw Repo.galat('SESI_HABIS', 'Sesi Anda berakhir. Silakan masuk lagi.');
+  }
+  return u;
 }
 
 // ---------------------------------------------------------------- helper
@@ -60,12 +71,37 @@ function infoApp_() {
            passwordMin: cfgNum_('PASSWORD_MIN', 8), sesiJam: cfgNum_('SESI_JAM', 6) };
 }
 function wajib_(kondisi, pesan, kode) { if (!kondisi) throw Repo.galat(kode || 'VALIDASI', pesan); }
+/** Data terbaru setelah perubahan, supaya layar tidak perlu memanggil server lagi. */
+function petaKini_() { return Domain.petaRole(Repo.semua('Ref_Role')); }
+function daftarRole_(peta) {
+  var users = Repo.semua('Users');
+  return Object.keys(peta).map(function (r) {
+    return { role: r, izin: peta[r], jumlahUser: users.filter(function (u) { return u.Role === r && Domain.bool(u.Aktif); }).length };
+  });
+}
+function daftarUser_(peta) {
+  return { users: Repo.semua('Users').map(function (u) { return Auth.profil(u); }), roles: daftarRole_(peta), katalog: IZIN };
+}
+function profilKini_(ctx, peta) { var u = Repo.cari('Users', ctx.user.Username); return u ? Auth.profil(u, peta) : null; }
+function setelahUbahUser_(ctx, hasil) {
+  var peta = petaKini_();
+  hasil.daftar = daftarUser_(peta); hasil.me = profilKini_(ctx, peta);
+  return hasil;
+}
 function jam_(ms) { return Utilities.formatDate(new Date(Number(ms)), APP.TZ, 'HH:mm'); }
 
 // ---------------------------------------------------------------- aksi
 var AKSI = {
 
   status: { publik: true, fn: function () { return { siap: Repo.siap(), app: infoApp_() }; } },
+
+  /** Satu panggilan saat halaman dibuka: status aplikasi + profil (bila token masih sah) + katalog izin. */
+  boot: { publik: true, fn: function (ctx) {
+    var hasil = { siap: Repo.siap(), app: infoApp_(), user: null, katalog: IZIN };
+    if (!hasil.siap || !ctx.token) return hasil;
+    try { hasil.user = Auth.profil(userSesi_(ctx.token), petaKini_()); } catch (e) { if (e.kode !== 'SESI_HABIS') throw e; }
+    return hasil;
+  } },
 
   login: { publik: true, fn: function (ctx) {
     wajib_(Repo.siap(), 'Database belum dibuat. Jalankan setup() di editor Apps Script.', 'BELUM_SETUP');
@@ -90,7 +126,7 @@ var AKSI = {
       var u2 = Repo.ubah('Users', u.Username, { GagalLogin: '0', TerkunciSampai: '', LoginTerakhir: Repo.sekarang(), PunyaAktivitas: 'TRUE' });
       log('', 'BERHASIL');
       var peta = Domain.petaRole(Repo.semua('Ref_Role'));
-      return { token: Auth.buatSesi(u2), user: Auth.profil(u2, peta), app: infoApp_() };
+      return { token: Auth.buatSesi(u2), user: Auth.profil(u2, peta), app: infoApp_(), katalog: IZIN };
     });
   } },
 
@@ -114,8 +150,7 @@ var AKSI = {
 
   // ---------------- users ----------------
   'users.list': { izin: 'user.kelola', fn: function (ctx) {
-    return { users: Repo.semua('Users').map(function (u) { return Auth.profil(u); }),
-             roles: Object.keys(ctx.peta).map(function (r) { return { role: r, izin: ctx.peta[r] }; }), katalog: IZIN };
+    return daftarUser_(ctx.peta);
   } },
 
   'users.simpan': { izin: 'user.kelola', ubah: true, fn: function (ctx) {
@@ -146,7 +181,7 @@ var AKSI = {
         Aktif: 'TRUE', WajibGantiPassword: 'TRUE', GagalLogin: '0', TerkunciSampai: '', LoginTerakhir: '', PunyaAktivitas: 'FALSE',
         SesiVersi: '0', CreatedBy: oleh, UpdatedBy: oleh });
       catat_(ctx, 'BUAT_USER', 'Users', uname, 'role ' + p.role + (alias ? ', alias ' + alias : '') + ' · ' + catatPw);
-      return { username: uname, passwordAcak: mode === 'acak' ? pw : '' };
+      return setelahUbahUser_(ctx, { username: uname, passwordAcak: mode === 'acak' ? pw : '' });
     }
 
     var u = Repo.cari('Users', Domain.normUsername(p.username));
@@ -166,7 +201,7 @@ var AKSI = {
     Repo.ubah('Users', u.Username, patch, oleh, p.version);
     if (ubah.length) catat_(ctx, 'UBAH_USER', 'Users', u.Username, ubah.join(', '));
     if (pw) catat_(ctx, 'RESET_PASSWORD', 'Users', u.Username, catatPw + ' · sesi diakhiri');
-    return { username: u.Username, passwordAcak: mode === 'acak' ? pw : '' };
+    return setelahUbahUser_(ctx, { username: u.Username, passwordAcak: mode === 'acak' ? pw : '' });
   } },
 
   'users.aktif': { izin: 'user.kelola', ubah: true, fn: function (ctx) {
@@ -180,7 +215,7 @@ var AKSI = {
     if (!aktif) patch.SesiVersi = String(Domain.num(u.SesiVersi, 0) + 1);
     Repo.ubah('Users', u.Username, patch, ctx.user.Username);
     catat_(ctx, aktif ? 'AKTIFKAN_USER' : 'NONAKTIFKAN_USER', 'Users', u.Username, aktif ? '' : 'sesi aktif diakhiri');
-    return {};
+    return setelahUbahUser_(ctx, {});
   } },
 
   'users.bukaKunci': { izin: 'user.kelola', ubah: true, fn: function (ctx) {
@@ -188,7 +223,7 @@ var AKSI = {
     wajib_(u, 'User tidak ditemukan.', 'TIDAK_ADA');
     Repo.ubah('Users', u.Username, { GagalLogin: '0', TerkunciSampai: '' }, ctx.user.Username);
     catat_(ctx, 'BUKA_KUNCI', 'Users', u.Username, '');
-    return {};
+    return setelahUbahUser_(ctx, {});
   } },
 
   'users.hapus': { izin: 'user.kelola', ubah: true, fn: function (ctx) {
@@ -203,15 +238,12 @@ var AKSI = {
     }
     Repo.hapus('Users', u.Username);
     catat_(ctx, 'HAPUS_USER', 'Users', u.Username, 'tanpa aktivitas');
-    return {};
+    return setelahUbahUser_(ctx, {});
   } },
 
   // ---------------- role & izin ----------------
   'roles.list': { izin: 'user.kelola', fn: function (ctx) {
-    var users = Repo.semua('Users');
-    return { katalog: IZIN, roles: Object.keys(ctx.peta).map(function (r) {
-      return { role: r, izin: ctx.peta[r], jumlahUser: users.filter(function (u) { return u.Role === r && Domain.bool(u.Aktif); }).length };
-    }) };
+    return { katalog: IZIN, roles: daftarRole_(ctx.peta) };
   } },
 
   'roles.simpan': { izin: 'user.kelola', ubah: true, fn: function (ctx) {
@@ -233,7 +265,8 @@ var AKSI = {
       kurang.forEach(function (i) { catat_(ctx, 'UBAH_IZIN', 'Ref_Role', r, '', '', i, 'ya', 'tidak'); });
       n += tambah.length + kurang.length;
     });
-    return { diubah: n };
+    var peta = petaKini_();
+    return { diubah: n, daftar: { katalog: IZIN, roles: daftarRole_(peta) }, me: profilKini_(ctx, peta) };
   } },
 
   'roles.buat': { izin: 'user.kelola', ubah: true, fn: function (ctx) {
@@ -243,7 +276,7 @@ var AKSI = {
     var izin = dari && ctx.peta[dari] ? ctx.peta[dari] : [];
     Repo.tambah('Ref_Role', { Role: nama, Izin: izin.join(','), UpdatedBy: ctx.user.Username });
     catat_(ctx, 'BUAT_ROLE', 'Ref_Role', nama, dari ? 'disalin dari ' + dari : 'tanpa izin');
-    return { role: nama };
+    return { role: nama, daftar: { katalog: IZIN, roles: daftarRole_(petaKini_()) } };
   } },
 
   // ---------------- log ----------------
@@ -296,9 +329,9 @@ var AKSI = {
       wajib_(/^\d+$/.test(nilai) && n >= BATAS[key][0] && n <= BATAS[key][1], key + ' harus angka ' + BATAS[key][0] + '–' + BATAS[key][1] + '.');
     } else wajib_(nilai && nilai.length <= 60, key + ' wajib diisi (maks. 60 karakter).');
     var lama = Repo.cari('Config', key);
-    if (lama.Nilai === nilai) return { berubah: false };
+    if (lama.Nilai === nilai) return { berubah: false, app: infoApp_() };
     Repo.ubah('Config', key, { Nilai: nilai }, ctx.user.Username);
     catat_(ctx, 'UBAH_CONFIG', 'Config', key, '', '', 'Nilai', lama.Nilai, nilai);
-    return { berubah: true };
+    return { berubah: true, app: infoApp_() };
   } }
 };

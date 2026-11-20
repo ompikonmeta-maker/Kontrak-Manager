@@ -36,7 +36,13 @@ function call(aksi, payload) {
       .api(S.token, aksi, payload || {});
   });
 }
-function busy(btn, on) { if (btn) { btn.classList.toggle('busy', on); btn.disabled = on; } }
+/** Tombol sibuk: label diganti "Menyimpan…" + putaran kecil, supaya jelas permintaan sedang diproses. */
+function busy(btn, on, teks) {
+  if (!btn) return;
+  if (on && !btn.classList.contains('busy')) { btn.dataset.lbl = btn.innerHTML; btn.innerHTML = `<span class="bspin" aria-hidden="true"></span>${teks || 'Menyimpan…'}`; }
+  if (!on && btn.classList.contains('busy') && btn.dataset.lbl !== undefined) btn.innerHTML = btn.dataset.lbl;
+  btn.classList.toggle('busy', on); btn.disabled = on;
+}
 function gagal(e) { if (e && e.kode !== 'SESI_HABIS' && e.kode !== 'WAJIB_GANTI') toast(e.pesan || String(e), true); }
 function sesiHabis(pesan) {
   S.me = null; S.token = null; store.set('skm-token', null); closeSheet(true); closeMenu();
@@ -48,18 +54,28 @@ function sesiHabis(pesan) {
 /* ---------------- boot & navigasi ---------------- */
 async function boot() {
   try {
-    const st = await call('status');
-    S.app = st.app;
-    if (!st.siap) { renderBelumSetup(); return; }
-    if (S.token) {
-      try { const m = await call('me'); S.me = m.user; S.app = m.app; S.katalog = m.katalog; }
-      catch (e) { S.token = null; store.set('skm-token', null); }
-    }
+    const b = await call('boot');   // satu panggilan: status + profil (bila token masih sah) + katalog
+    S.app = b.app; S.katalog = b.katalog;
+    if (!b.siap) { renderBelumSetup(); return; }
+    S.me = b.user || null;
+    if (!S.me && S.token) { S.token = null; store.set('skm-token', null); }
     go(S.me ? (S.me.wajibGanti ? 'ganti' : 'beranda') : 'login');
   } catch (e) { renderFatal(e.pesan || String(e)); }
 }
 function go(page) { S.page = page; closeMenu(); render(); window.scrollTo(0, 0); }
-async function refreshMe() { try { const m = await call('me'); S.me = m.user; } catch (e) { /* ditangani call() */ } }
+/** Profil terbaru dari jawaban server. Bila izin user.kelola hilang, pindah ke beranda. */
+function pakaiMe(me) {
+  if (!me) return;
+  S.me = me;
+  const P = PAGES[S.page];
+  if (P && P.izin && !can(P.izin)) { go('beranda'); return; }
+  // perbarui menu samping & nama di header saja; isi halaman tidak dimuat ulang
+  const side = $('#side'), meBtn = $('#meBtn');
+  if (!side || !meBtn) return;
+  const t = document.createElement('div'); t.innerHTML = shell('', '');
+  side.replaceWith(t.querySelector('#side')); meBtn.replaceWith(t.querySelector('#meBtn'));
+  bindShell();
+}
 
 const PAGES = {
   beranda: { title: () => 'Selamat datang, ' + S.me.nama, crumb: 'Fondasi aplikasi (F1)' },
@@ -178,11 +194,10 @@ function bindLogin() {
     ev.preventDefault();
     const u = $('#lu').value.trim(), p = $('#lp').value, btn = $('#lbtn');
     if (!u || !p) { S.loginErr = { msg: 'Isi username dan password.', kind: 'warn', u }; render(); return; }
-    busy(btn, true);
+    busy(btn, true, 'Masuk…');
     try {
       const r = await call('login', { username: u, password: p });
-      S.token = r.token; store.set('skm-token', r.token); S.me = r.user; S.app = r.app; S.loginErr = null;
-      call('me').then(m => { S.katalog = m.katalog; }).catch(() => {});
+      S.token = r.token; store.set('skm-token', r.token); S.me = r.user; S.app = r.app; S.katalog = r.katalog; S.loginErr = null;
       S.pw1 = S.pw2 = S.pwLama = ''; S.gantiErr = '';
       go(r.user.wajibGanti ? 'ganti' : 'beranda');
     } catch (e) {
@@ -229,7 +244,7 @@ function bindGanti() {
     try {
       const r = await call('gantiPassword', { lama: S.pwLama, baru: S.pw1 });
       S.me = Object.assign(S.me, r.user); S.pw1 = S.pw2 = S.pwLama = ''; S.gantiErr = '';
-      await refreshMe(); go('beranda'); toast('Password diganti. Password lama tidak berlaku lagi.');
+      go('beranda'); toast('Password diganti. Password lama tidak berlaku lagi.');
     } catch (e) { S.gantiErr = e.pesan || String(e); render(); }
   };
 }
@@ -274,6 +289,8 @@ function viewUsers() {
 }
 function rerenderUsers() { const c = document.getElementById('content'); if (!c || S.page !== 'users') return; c.innerHTML = viewUsers(); bindUsers(); }
 async function reloadUsers() { try { S.users = await call('users.list'); rerenderUsers(); } catch (e) { gagal(e); } }
+/** Pakai daftar user + profil yang dibawa jawaban server (tanpa panggilan tambahan). */
+function pakaiDaftarUser(r) { if (r && r.daftar) { S.users = r.daftar; rerenderUsers(); } if (r && r.me) pakaiMe(r.me); }
 function bindUsers() {
   const q = $('#uq');
   q.oninput = () => { S.uq = q.value; const pos = q.selectionStart; rerenderUsers(); const n = $('#uq'); n.focus(); n.setSelectionRange(pos, pos); };
@@ -311,7 +328,7 @@ function openMenu(btn, u) {
   const first = m.querySelector('button'); if (first) first.focus();
 }
 async function simple(aksi, payload, okMsg) {
-  try { await call(aksi, payload); toast(okMsg); await reloadUsers(); refreshMe(); } catch (e) { modalGagal(e); }
+  try { const r = await call(aksi, payload); toast(okMsg); pakaiDaftarUser(r); } catch (e) { modalGagal(e); }
 }
 function modalGagal(e) {
   if (e.kode === 'SESI_HABIS' || e.kode === 'WAJIB_GANTI') return;
@@ -405,7 +422,7 @@ async function saveUser() {
   busy(btn, true);
   try {
     const r = await call('users.simpan', payload);
-    closeSheet(); await reloadUsers(); refreshMe();
+    closeSheet(); pakaiDaftarUser(r);
     const target = { username: r.username, nama: F.nama.trim() };
     if (r.passwordAcak) setTimeout(() => showTempPw(target, r.passwordAcak, O ? 'Password direset' : 'User dibuat'), 320);
     else toast(!O ? `User ${r.username} dibuat. Wajib ganti password saat login pertama.` : F.pwOn ? 'Disimpan. Password baru wajib diganti saat login.' : 'Perubahan disimpan dan dicatat di Log.');
@@ -439,13 +456,18 @@ function bindRole() {
   if ($('#roleCancel')) $('#roleCancel').onclick = () => { S.roleDraft = null; rerenderRole(); };
   if ($('#roleSave')) $('#roleSave').onclick = async () => {
     const btn = $('#roleSave'); busy(btn, true);
-    try { const r = await call('roles.simpan', { peta: S.roleDraft }); toast(`${r.diubah} izin diubah. Berlaku di permintaan berikutnya.`); S.roles = await call('roles.list'); S.roleDraft = null; rerenderRole(); refreshMe(); }
+    try {
+      const r = await call('roles.simpan', { peta: S.roleDraft });
+      toast(`${r.diubah} izin diubah. Berlaku di permintaan berikutnya.`);
+      S.roles = r.daftar; S.roleDraft = null;
+      if (r.me && JSON.stringify(r.me.izin) !== JSON.stringify(S.me.izin)) pakaiMe(r.me); else { S.me = r.me || S.me; rerenderRole(); }
+    }
     catch (e) { busy(btn, false); modalGagal(e); }
   };
   $('#addRole').onclick = () => modal('Role baru', `<label class="of"><span>Nama role</span><input class="inp mono" id="rn" placeholder="mis. KOORDINATOR"></label><label class="of"><span>Salin izin dari</span><select class="inp" id="rc"><option value="">— tanpa izin —</option>${S.roles.roles.map(r => `<option>${esc(r.role)}</option>`).join('')}</select></label>`,
     [{ l: 'Batal' }, { l: 'Buat', pri: true, fn: d => {
       const nama = d.querySelector('#rn').value, dari = d.querySelector('#rc').value;
-      call('roles.buat', { nama, salinDari: dari }).then(async r => { toast(`Role ${r.role} dibuat. Atur izinnya di tabel.`); S.roles = await call('roles.list'); S.roleDraft = null; rerenderRole(); }).catch(modalGagal);
+      call('roles.buat', { nama, salinDari: dari }).then(r => { toast(`Role ${r.role} dibuat. Atur izinnya di tabel.`); S.roles = r.daftar; S.roleDraft = null; rerenderRole(); }).catch(modalGagal);
     } }]);
 }
 
@@ -481,13 +503,13 @@ function viewSistem() {
 }
 function bindSistem() {
   $('#health').onclick = async () => {
-    const btn = $('#health'); busy(btn, true);
+    const btn = $('#health'); busy(btn, true, 'Memeriksa…');
     try { const r = await call('sistem.cek'); $('#hres').innerHTML = r.hasil.map(h => `<div class="check"><span class="d ${h.ok ? 'y' : ''}" style="${h.ok ? '' : 'background:var(--crit);color:#fff'}">${h.ok ? '✓' : '!'}</span><span>${esc(h.nama)}${h.catatan ? `<br><span class="muted" style="font-size:12px">${esc(h.catatan)}</span>` : ''}</span></div>`).join(''); toast(`Pemeriksaan selesai: ${r.hasil.filter(h => h.ok).length} dari ${r.hasil.length} OK.`); }
     catch (e) { gagal(e); } finally { busy(btn, false); }
   };
   $$('[data-cfgsave]').forEach(b => b.onclick = async () => {
     const key = b.dataset.cfgsave, nilai = document.querySelector(`[data-cfg="${key}"]`).value; busy(b, true);
-    try { const r = await call('config.simpan', { key, nilai }); toast(r.berubah ? `${key} disimpan.` : 'Tidak ada perubahan.'); const st = await call('status'); S.app = Object.assign(S.app, st.app); }
+    try { const r = await call('config.simpan', { key, nilai }); toast(r.berubah ? `${key} disimpan.` : 'Tidak ada perubahan.'); S.app = Object.assign(S.app, r.app); }
     catch (e) { modalGagal(e); } finally { busy(b, false); }
   });
 }
