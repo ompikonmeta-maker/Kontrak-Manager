@@ -16,9 +16,16 @@ Catatan: percobaan pertama UrlFetch gagal karena izin `script.external_request` 
 layar izin Google (granular consent). Setelah izin diberikan ulang, lulus. Sejak itu ditambahkan fungsi
 `mintaIzin()` (F0 v1.2, F1 v1.0.1) dan langkah "Select all" di halaman pasang.
 
-## F1 · fondasi — terpasang, uji berjalan (19 Nov 2026)
+## F0 · ulang di akun FF (serviceintegrasi@gmail.com) — LULUS (20 Nov 2026)
 
-- `setup()` berhasil di akun asli: `SKM_DB` dibuat 16:48:47, migrasi v0 → v1, 5 tab, isi awal role & config.
-- Halaman Sistem: pemeriksaan kesehatan 6/6 hijau.
-- Temuan: "Akses file: 2 akun" — penghitungan editor + viewer bisa menghitung pemilik dua kali. Diperbaiki di
-  v1.0.2 (daftar unik + tampilkan email). Menunggu checklist Bagian B lengkap.
+F0 v1.2: halaman OK · server 677 ms · font termuat · UrlFetch status 302 · Chrome 157. Izin lengkap sejak awal.
+
+## F1 · fondasi
+
+**Akun pribadi (19 Nov 2026, kini tidak dipakai):** `setup()` berhasil, kesehatan 6/6. Temuan "Akses file: 2 akun"
+→ diperbaiki di v1.0.2 (daftar akses unik + email ditampilkan).
+
+**Akun FF (20 Nov 2026), v1.0.2 — terpasang:**
+- `SKM_DB` dibuat 10:46:08 oleh `setup()`, pemilik serviceintegrasi@gmail.com, migrasi v0 → v1, 5 tab.
+- Pemeriksaan kesehatan 6/6 hijau; akses file **1 akun** (perbaikan v1.0.2 terkonfirmasi).
+- Checklist Bagian B (akun, izin, kunci akun, reset, Log): menunggu laporan.
