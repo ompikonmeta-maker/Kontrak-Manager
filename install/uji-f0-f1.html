@@ -56,7 +56,7 @@ pre{margin:0;white-space:pre-wrap;font:12px/1.6 var(--mono);font-variant-ligatur
 </style>
 
 <div class="wrap">
- <div><div class="eyebrow">Status Kontrak Manager · F0 v1.0 + F1 v1.0.0</div><h1>Panduan uji F0 &amp; F1</h1>
+ <div><div class="eyebrow">Status Kontrak Manager · F0 v1.2 + F1 v1.0.3</div><h1>Panduan uji F0 &amp; F1</h1>
   <p class="muted">Ikuti langkah dari atas ke bawah. Setiap langkah punya <b>hasil yang diharapkan</b>; tandai <b>OK</b> atau <b>Gagal</b> dan isi catatan bila perlu. Di akhir, klik <b>Salin laporan</b> lalu tempel di chat. Centang Anda tersimpan di browser ini saja.</p></div>
 
  <div class="card"><h2>Persiapan</h2>
@@ -95,7 +95,7 @@ pre{margin:0;white-space:pre-wrap;font:12px/1.6 var(--mono);font-variant-ligatur
 var F0=[
  ['Pasang F0','Buka halaman pasang <b>①</b> dan ikuti 6 langkahnya: project baru <span class="mono">Status Kontrak Manager</span>, tempel 2 file, Deploy sebagai Web app (Execute as <b>Me</b>, Who has access <b>Anyone with Google account</b>), izinkan akses.','Deploy berhasil dan Anda mendapat <b>Web app URL</b> berakhiran <span class="mono">/exec</span>.'],
  ['Buka dari PC kantor','Buka Web app URL di Chrome/Edge di PC kantor (jaringan kantor). Tunggu sampai semua baris selesai berputar.','Halaman "Uji koneksi dari jaringan ini" tampil, lima baris selesai, kesimpulan <b>Lulus</b> atau <b>Lulus dengan catatan</b> (font kuning boleh).'],
- ['Salin hasil','Klik <b>Salin hasil</b> di halaman uji. Tempel teksnya di kolom catatan langkah ini (atau langsung di chat).','Teks diawali <span class="mono">Hasil uji F0 SKM (v1.0): …</span> dan berisi 5 baris.']
+ ['Salin hasil','Klik <b>Salin hasil</b> di halaman uji. Tempel teksnya di kolom catatan langkah ini (atau langsung di chat).','Teks diawali <span class="mono">Hasil uji F0 SKM (v1.2): …</span> dan berisi 5 baris.']
 ];
 var F1=[
  ['Ganti kode ke F1','Buka halaman pasang <b>②</b>. Akun baru (mis. akun FF): pilih <b>Akun ini belum punya project SKM</b> dan ikuti langkahnya sampai Deploy. Project yang sudah ada: pilih <b>Update project yang sudah ada</b> lalu ganti isi <span class="mono">appsscript.json</span> dan <span class="mono">Code.gs</span> <b>masing-masing di filenya sendiri</b> (panel kiri editor) dengan tombol Salin, lalu <kbd>Ctrl</kbd>+<kbd>S</kbd>.','Di panel kiri tetap ada dua file terpisah, tersimpan tanpa garis merah/error di editor.'],
@@ -143,7 +143,7 @@ function paint(){
   document.getElementById('rep').textContent=report();
 }
 function report(){
-  var lines=['Laporan uji SKM F0 v1.0 + F1 v1.0.0'];
+  var lines=['Laporan uji SKM F0 v1.2 + F1 v1.0.3'];
   [['A','F0',F0],['B','F1',F1]].forEach(function(x){lines.push('','['+x[1]+']');x[2].forEach(function(s,i){var k=x[0]+'-'+(i+1),e=st[k]||{};lines.push(x[0]+(i+1)+' '+s[0]+': '+(e.v||'belum')+(e.n?' — '+e.n:''));});});
   return lines.join('\n');
 }

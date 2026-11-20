@@ -28,7 +28,7 @@ F0 v1.2: halaman OK · server 677 ms · font termuat · UrlFetch status 302 · C
 **Akun FF (20 Nov 2026), v1.0.2 — terpasang:**
 - `SKM_DB` dibuat 10:46:08 oleh `setup()`, pemilik serviceintegrasi@gmail.com, migrasi v0 → v1, 5 tab.
 - Pemeriksaan kesehatan 6/6 hijau; akses file **1 akun** (perbaikan v1.0.2 terkonfirmasi).
-- Checklist Bagian B (akun, izin, kunci akun, reset, Log): menunggu laporan.
+- Checklist Bagian B (akun, izin, kunci akun, reset, Log): **lulus**, lihat di bawah.
 
 **Laporan pengguna (20 Nov 2026), v1.0.2:** langkah B12 (Simpan izin) terasa lama; refresh halaman
 sempat menggantung (juga di Incognito).
@@ -44,3 +44,14 @@ Caranya: judul kolom diingat (memo + cache), format teks diatur sekali saat bari
 Log ditulis sekaligus di akhir permintaan, cache diperbarui setelah menulis (bukan dibuang), dan jawaban
 server membawa data terbaru. Sekalian diperbaiki: tab (termasuk Log) gagal ditulis setelah 1.000 baris.
 Jeda "cold start" Apps Script 1–3 detik pada panggilan pertama setelah lama tidak dipakai tetap ada.
+
+**Checklist lengkap (20 Nov 2026), akun FF — LULUS 26/26:**
+- F0: A1 pasang, A2 buka dari PC kantor, A3 salin hasil — OK.
+- F1: B1–B23 semua OK (setup & ulang setup, login salah/benar, wajib ganti password, buat akun ADMIN pribadi
+  & staff uji, login staff di Incognito, izin berlaku tanpa login ulang, izin ditolak di server, kunci & buka
+  kunci akun, reset password mengakhiri sesi, pengaman admin terakhir, hapus hanya tanpa aktivitas, Log lengkap,
+  pemeriksaan sistem, login akun pribadi, admin awal dinonaktifkan, tema & ponsel).
+- Catatan: judul laporan masih tertulis "F0 v1.0 + F1 v1.0.0" karena teks tetap di halaman uji (sudah
+  dibetulkan). Uji dijalankan di v1.0.2; v1.0.3 hanya mengubah kecepatan, perilaku sama (55 tes otomatis lulus).
+
+**Kesimpulan: F0 & F1 selesai. F2 boleh dibangun setelah mockup F2 disetujui dan pengguna menulis "build".**
