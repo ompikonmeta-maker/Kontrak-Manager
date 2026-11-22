@@ -3,7 +3,7 @@
   "private": true,
   "description": "Status Kontrak Manager (Apps Script). Paket ini hanya untuk test dan build, tidak dipasang di Apps Script.",
   "scripts": {
-    "build": "node tools/build.js && node tools/build-install.js f1",
+    "build": "node tools/build.js && node tools/build-install.js f2",
     "test": "node tools/build.js && node --test test/*.test.js",
     "build:install:uji": "node tools/build-install.js uji",
     "build:install:f0": "node tools/build-install.js f0"

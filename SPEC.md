@@ -1,7 +1,13 @@
 # SPEC — Status Kontrak Manager
 
-Versi 1.13 · 22 Nov 2026 · Pemilik: omPik (Unit Fulfillment)
+Versi 1.14 · 22 Nov 2026 · Pemilik: omPik (Unit Fulfillment)
 Referensi konsep: BAA.flow (BAA Generator). Mockup UI yang disetujui: `mockup/mockup.html` (desain "Orbit").
+
+**Perubahan v1.14** (build F2)
+- Kolom yang ditambahkan saat build: `Kontrak.TglClose`, `Kontrak.AlasanArsip`; `OrderInternal.Dihapus` & `BAST.Dihapus` (hapus = ditandai, baris tidak bergeser); `Kendala.CatatanSelesai`, `Kendala.Version`; `RiwayatTahap.KontrakID`. `RiwayatTahap` hanya ditambah: waktu keluar tahap = waktu masuk baris berikutnya (kolom `Keluar` tidak disimpan).
+- ID turunan: BAST `K-000001-B1`, SO/MI `K-000001-O1`, kendala `K-000001-B1-K1` (ditentukan dari kontraknya, sama di browser dan server).
+- Satu BAST dengan cakupan lokasi kosong dianggap mencakup semua lokasi kontrak; bila ada lebih dari satu BAST, cakupan kosong dihitung 0 (§5.4).
+- Membuka aplikasi: data aktif ikut dalam panggilan `boot` (satu panggilan). Server menolak operasi bila versi kontrak di browser sudah lama (KONFLIK); browser mengembalikan tampilan dan memberi pesan.
 
 **Perubahan v1.13** (hasil uji beban di akun FF, `docs/HASIL-UJI.md`)
 - **Penyimpanan berlapis** (§4.3, D15): `SKM_DB` hanya berisi kontrak aktif (OPEN + CLOSE < 90 hari) dan indeks semua kontrak; kontrak CLOSE > 90 hari dipindah otomatis tiap bulan ke `SKM_ARSIP_<tahun close>`. Semua kontrak tetap bisa dicari lewat indeks dan **bisa dibuka kembali (reopen) walau sudah di arsip**.
@@ -334,7 +340,7 @@ Aturan umum: baris 1 berisi header. ID dibuat server dan tidak pernah berubah. T
 | `Indeks` | NoKontrakNorm, KontrakID, NoKontrak, Customer, EndCustomer, JudulKontrak, StatusKontrak, TahapKontrak, PIC, Lokasi (`AKTIF`/`ARSIP_<tahun>`), TglClose *(semua kontrak; §4.3)* |
 | `OrderInternal` | OrderID, KontrakID, JenisOrder (SO/MI), NoOrder, NoOrderNorm, JenisLayanan, JenisPekerjaan, JumlahLokasi, Keterangan, Created/UpdatedAt/By, Version |
 | `BAST` | BASTID (`K-000001-B1`), KontrakID, Urutan, DokTagih (BAST/BAA), KodeTahap, Siklus, CakupanOrder, CakupanLokasi, DaftarLokasi, NoDokBAST, TglTahapMulai, Keterangan, Status (OPEN/CLOSE), Created/UpdatedAt/By, Version |
-| `RiwayatTahap` | BASTID, Siklus, KodeTahap, Masuk, Keluar, Oleh, Keterangan |
+| `RiwayatTahap` | BASTID, KontrakID, Siklus, KodeTahap, Masuk, Oleh, Keterangan *(hanya ditambah; keluar = masuk baris berikutnya)* |
 | `Kendala` | KendalaID, BASTID, KontrakID, Jenis, Keterangan, Status, Mulai, DibuatOleh, Selesai, DiselesaikanOleh |
 | `Log` | Timestamp, Username, Aksi, Entitas, EntitasID, Field, NilaiLama, NilaiBaru, Catatan, Hasil (`BERHASIL`/`GAGAL`/`DITOLAK`) *(hanya ditambah)* |
 | `_Meta` | Key, Nilai *(SKEMA_VERSI, DB_DIBUAT, RIWAYAT_MIGRASI)* |

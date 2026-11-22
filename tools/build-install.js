@@ -95,6 +95,39 @@ const PHASES = {
   }
 };
 
+const S_IZIN_F2 = ['Berikan izin baru (mintaIzin)', 'Pilih fungsi <span class="mono">mintaIzin</span> → <b>Run</b> → <b>Review permissions</b> → akun FF → <b>Advanced</b> → <b>Go to Status Kontrak Manager (unsafe)</b> → <b>Select all</b> → <b>Allow</b>. F2 butuh izin baru: Google Drive (file arsip, log, template Excel sementara), akses URL (mengubah Google Sheet sementara menjadi .xlsx), dan pemicu waktu (pindah arsip bulanan). Log menulis <span class="mono">Semua izin sudah diberikan</span>.'];
+const S_SETUP_F2 = ['Jalankan setup()', 'Pilih fungsi <span class="mono">setup</span> → <b>Run</b>. Log menulis migrasi skema <span class="mono">v1 → v2</span>: 14 tab baru, isi awal tahap/kendala/Nilai Push/referensi, Log F1 disalin ke file <span class="mono">SKM_LOG_2026</span>, dan <span class="mono">Pemicu pindah arsip bulanan dipasang</span>.'];
+PHASES.f2 = {
+  dir: 'dist', judul: 'Instalasi SKM F2', h1: 'Pasang F2: kontrak, BAST/BAA, upload Excel',
+  versi: code => (code.match(/VERSI: '([^']+)'/) || [])[1],
+  intro: 'F2 menambahkan kontrak, BAST/BAA, tahap, kendala, Nilai Push, upload Excel, arsip tahunan, dan Log per bulan. Data F1 (users, role, log) tetap dipakai. Butuh sekitar 15 menit.',
+  pre: `<div class="card warn"><h2>Sebelum mulai</h2><p class="muted" style="margin-top:8px">Pakai <b>akun Gmail khusus FF</b> dan project <b>Status Kontrak Manager</b> yang sudah berjalan (F1). Pilih <b>Update project yang sudah ada</b>. Migrasi berjalan otomatis dan <b>hanya menambah</b>: tidak ada data F1 yang dihapus. Tab <span class="mono">Log</span> lama di SKM_DB dibiarkan sebagai cadangan.</p></div>
+    <div class="card"><h2>Yang baru di F2</h2><div class="checks">
+      <div><i></i><span>Kontrak, SO/MI, BAST/BAA bertahap, tahap fleksibel, kendala, reopen</span></div>
+      <div><i></i><span>Nilai Push (Kendala Umum) dihitung otomatis; pratinjau per kontrak</span></div>
+      <div><i></i><span>Data aktif dimuat sekali ke browser: daftar, filter, cari, detail instan</span></div>
+      <div><i></i><span>Simpan di latar dengan tanda Menyimpan → Tersimpan; perubahan tim masuk otomatis</span></div>
+      <div><i></i><span>Upload Excel dengan template SKM (tanpa CDN)</span></div>
+      <div><i></i><span>Kontrak CLOSE > 90 hari pindah ke arsip tahunan; tetap bisa dicari & di-reopen</span></div></div></div>`,
+  steps: {
+    'Update project yang sudah ada': [
+      ['Buka project yang sama', 'Login dengan <b>akun Gmail khusus FF</b>, buka <b>script.google.com</b> → project <b>Status Kontrak Manager</b>.'],
+      ['Ganti isi 2 file terpisah', 'Klik <span class="mono">appsscript.json</span> → <kbd>Ctrl</kbd>+<kbd>A</kbd> → hapus → tempel hasil <b>Salin appsscript.json</b>. Lalu klik <span class="mono">Code.gs</span> → <kbd>Ctrl</kbd>+<kbd>A</kbd> → hapus → tempel hasil <b>Salin Code.gs</b>. Simpan dengan <kbd>Ctrl</kbd>+<kbd>S</kbd>. <b>Jangan digabung dalam satu file.</b>'],
+      S_IZIN_F2, S_SETUP_F2,
+      ['Perbarui deployment', '<b>Deploy › Manage deployments</b> → deployment yang ada → ikon pensil (<b>Edit</b>) → Version: <b>New version</b> → Description <span class="mono">F2</span> → <b>Deploy</b>. URL web app tetap sama.'],
+      ['Buka aplikasi', 'Buka Web app URL dan login. Setelah login muncul layar <b>Memuat data aktif</b>, lalu Beranda dengan kotak angka. Di kiri bawah tertulis <b>Versi 2.0.0 · F2</b>.']],
+    'Akun ini belum punya project SKM': [S_BARU, S_MANIFEST, S_TEMPEL, S_IZIN_F2, S_SETUP, S_CATAT,
+      ['Deploy sebagai Web app', '<b>Deploy › New deployment</b> → ikon roda gigi → <b>Web app</b>. Execute as: <b>Me</b> · Who has access: <b>Anyone with Google account</b> → <b>Deploy</b> → salin <b>Web app URL</b>.'],
+      ['Login pertama', 'Buka Web app URL → masuk dengan <span class="mono">admin</span> + password sementara → buat password baru.']]
+  },
+  fileDesc: ['Pengaturan project: zona Asia/Jakarta dan mode Web app. Izin dideteksi otomatis oleh Google.', 'Seluruh aplikasi (server + tampilan) dalam satu file.'],
+  post: `<div class="card"><h2>Kalau ada masalah</h2><div class="checks one">
+      <div><i></i><span>Halaman menulis <b>"Izin Google untuk aplikasi belum lengkap"</b> → jalankan <span class="mono">mintaIzin</span> → <b>Select all</b> → <b>Allow</b>, lalu muat ulang.</span></div>
+      <div><i></i><span><b>Sistem › Pemeriksaan</b> menulis pemicu arsip belum terpasang → klik <b>Pasang pemicu arsip</b> di halaman Sistem (atau jalankan <span class="mono">setup</span> lagi).</span></div>
+      <div><i></i><span>Tombol <b>Unduh template</b> tidak mengunduh apa-apa → kirim screenshot; browser kantor mungkin memblokir unduhan dari halaman Google Apps Script.</span></div>
+      <div><i></i><span>Tanda di bilah atas lama tertulis <b>Mencoba lagi…</b> → koneksi terputus; perubahan tetap antre dan dikirim ulang otomatis. Jangan tutup tab sampai tertulis <b>Tersimpan</b>.</span></div>
+      <div><i></i><span>Ada error merah saat <b>Run</b> atau halaman tidak tampil → kirim screenshot-nya di chat.</span></div></div></div>`
+};
 const P = PHASES[phase];
 if (!P) { console.error('Fase tidak dikenal: ' + phase); process.exit(1); }
 const src = path.join(root, P.dir);

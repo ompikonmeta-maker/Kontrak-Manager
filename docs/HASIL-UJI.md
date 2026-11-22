@@ -89,3 +89,10 @@ Tulis massal: 19.283 sel/dtk.
 Kesimpulan: arsip per tahun terbukti perlu (baca 4× lebih cepat). Platform lebih lambat dari perkiraan awal bila setiap
 klik memanggil server, sehingga diusulkan: data aktif dimuat sekali ke browser, simpan optimis di latar, Log per bulan,
 bagian simpan yang dikunci dipersingkat.
+
+## F2 v2.0.0 — dibangun 22 Nov 2026 (menunggu uji di akun FF)
+
+- Tes otomatis: aturan bersama (`f2.kd`), server dari ujung ke ujung (`f2.server`: kontrak, konflik versi, feed, izin,
+  indeks pulih sendiri, upload, arsip/reopen, pengaturan, template Excel, migrasi Log F1), UI browser (`f2.ui`).
+- Pindah tahap ≤ 14 operasi Sheet; membuka/memuat ulang halaman = 1 panggilan server (`boot` membawa data aktif).
+- Panduan uji: install/uji-f2.html (27 langkah). Halaman pasang: install/install-f2.html.

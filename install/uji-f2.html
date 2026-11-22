@@ -1,0 +1,146 @@
+<title>Panduan Uji F2</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: satu kolom; atas = persiapan & tautan, lalu dua bagian uji (F0, F1) berisi kartu langkah bernomor dengan hasil yang diharapkan + OK/Gagal + catatan; bawah = laporan yang bisa disalin. */
+:root{--bg:#edf2f5;--surface:#fff;--surface2:#f3f7f9;--line:#d9e3e9;--line2:#c3d1d9;--fg:#0c1a24;--muted:#4d606d;--dim:#7b8d99;--accent:#07857b;--on-accent:#fff;--accent-bg:rgba(7,133,123,.10);--ok:#14905a;--ok-bg:rgba(20,144,90,.11);--crit:#cc3b3b;--crit-bg:rgba(204,59,59,.10);--warn:#9c6205;--warn-bg:rgba(214,150,30,.15);
+  --font:"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif;--mono:"JetBrains Mono",Consolas,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#060b14;--surface:#0d1522;--surface2:#121d2e;--line:#1b293d;--line2:#2a3c57;--fg:#e4edf6;--muted:#93a6bb;--dim:#617490;--accent:#37e2cb;--on-accent:#022320;--accent-bg:rgba(55,226,203,.12);--ok:#4fd897;--ok-bg:rgba(79,216,151,.12);--crit:#ff7c78;--crit-bg:rgba(255,124,120,.12);--warn:#f4c552;--warn-bg:rgba(244,197,82,.12);color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#060b14;--surface:#0d1522;--surface2:#121d2e;--line:#1b293d;--line2:#2a3c57;--fg:#e4edf6;--muted:#93a6bb;--dim:#617490;--accent:#37e2cb;--on-accent:#022320;--accent-bg:rgba(55,226,203,.12);--ok:#4fd897;--ok-bg:rgba(79,216,151,.12);--crit:#ff7c78;--crit-bg:rgba(255,124,120,.12);--warn:#f4c552;--warn-bg:rgba(244,197,82,.12);color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font);line-height:1.55;font-size:14px}
+.wrap{max-width:900px;margin:0 auto;padding-block:36px 72px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:22px}
+.eyebrow{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--accent)}
+h1{font-size:clamp(26px,4vw,38px);margin:4px 0 8px;font-weight:800;letter-spacing:-.03em;line-height:1.1;text-wrap:balance}
+h2{font-size:20px;margin:0;font-weight:800;letter-spacing:-.02em}
+h3{font-size:15px;margin:0;font-weight:700}
+p{margin:0;max-width:70ch}
+a{color:var(--accent);font-weight:600}
+.muted{color:var(--muted)} .mono{font-family:var(--mono);font-size:.92em;font-variant-ligatures:none}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:20px}
+.links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}
+.lk{display:flex;flex-direction:column;gap:4px;padding:14px;border-radius:14px;background:var(--surface2);border:1px solid var(--line);text-decoration:none;color:var(--fg)}
+.lk:hover{border-color:var(--accent)}
+.lk b{font-size:14px} .lk span{font-size:12.5px;color:var(--muted);font-weight:400}
+.lk.main{background:var(--accent-bg);border-color:transparent}
+.files{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.files a{font-family:var(--mono);font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--line2);text-decoration:none}
+.prep{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}
+.prep div{padding:12px 14px;border-radius:14px;background:var(--surface2);font-size:13px}
+.prep b{display:block}
+.sec{display:flex;flex-direction:column;gap:12px}
+.sechead{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.sechead .sp{flex:1}
+.prog{font-size:12.5px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
+.step{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px 18px;display:grid;grid-template-columns:40px minmax(0,1fr);gap:14px;transition:border-color .2s,background .2s}
+.step.ok{border-color:color-mix(in srgb,var(--ok) 45%,transparent)} .step.fail{border-color:color-mix(in srgb,var(--crit) 55%,transparent);background:var(--crit-bg)}
+.num{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:12.5px;background:var(--surface2);border:1.5px solid var(--line2);color:var(--muted)}
+.step.ok .num{background:var(--ok);border-color:var(--ok);color:var(--on-accent)} .step.fail .num{background:var(--crit);border-color:var(--crit);color:#fff}
+.body{display:flex;flex-direction:column;gap:8px;min-width:0}
+.do{font-size:13.5px}
+.exp{font-size:13px;padding:9px 12px;border-radius:10px;background:var(--surface2);border-left:3px solid var(--accent)}
+.exp b{color:var(--accent)}
+.ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ctl button{font:inherit;font-weight:700;font-size:12.5px;border:1.5px solid var(--line2);background:var(--surface);color:var(--fg);border-radius:999px;padding:5px 14px;cursor:pointer}
+.ctl button.on.okb{background:var(--ok);border-color:var(--ok);color:var(--on-accent)}
+.ctl button.on.failb{background:var(--crit);border-color:var(--crit);color:#fff}
+.ctl input{flex:1 1 220px;min-width:0;font:inherit;font-size:13px;border:1px solid var(--line2);border-radius:10px;padding:6px 10px;background:var(--surface);color:var(--fg)}
+.opt{font-size:11px;font-weight:700;color:var(--warn);background:var(--warn-bg);border-radius:999px;padding:1px 8px;margin-left:6px;vertical-align:2px}
+kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line2);border-bottom-width:2px;border-radius:6px;padding:0 6px;background:var(--surface2)}
+pre{margin:0;white-space:pre-wrap;font:12px/1.6 var(--mono);font-variant-ligatures:none;background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:14px;color:var(--muted);max-height:320px;overflow:auto}
+.btn{font:inherit;font-weight:700;font-size:13.5px;border:0;border-radius:999px;padding:10px 18px;background:var(--accent);color:var(--on-accent);cursor:pointer}
+.btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--line2)}
+.note{padding:12px 14px;border-radius:14px;font-size:13px;background:var(--warn-bg)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (max-width:700px){.links,.prep{grid-template-columns:minmax(0,1fr)}.step{grid-template-columns:minmax(0,1fr)}}
+</style>
+
+<div class="wrap">
+ <div><div class="eyebrow">Status Kontrak Manager · F2 v2.0.0</div><h1>Panduan uji F2</h1>
+  <p class="muted">Ikuti langkah dari atas ke bawah. Setiap langkah punya <b>hasil yang diharapkan</b>; tandai <b>OK</b> atau <b>Gagal</b> dan isi catatan bila perlu. Di akhir, klik <b>Salin laporan</b> lalu tempel di chat. Centang Anda tersimpan di browser ini saja.</p></div>
+
+ <div class="card"><h2>Persiapan</h2>
+  <div class="prep">
+   <div><b>Akun Gmail khusus FF</b>Project Status Kontrak Manager yang sudah lulus F1.</div>
+   <div><b>Akun admin + akun staff uji</b>Siapkan satu jendela <i>Incognito</i> untuk akun staff (uji dua orang sekaligus).</div>
+   <div><b>±60 menit</b>Pasang ±15 menit, uji ±45 menit. Boleh dicicil; centang tersimpan di browser ini.</div>
+  </div>
+  <div class="links">
+   <a class="lk main" href="https://claude.ai/artifact/KP7aNGYNYAGYncv2xtyhox" target="_blank" rel="noopener"><b>① Halaman pasang F2 →</b><span>Update project + tombol Salin untuk 2 file F2</span></a>
+   <a class="lk" href="https://claude.ai/artifact/BE7n6ZYyC2LWxb2UZiX6qN" target="_blank" rel="noopener"><b>Mockup F2 →</b><span>Pembanding tampilan yang disetujui</span></a>
+  </div>
+  <p class="muted" style="font-size:12.5px;margin-top:12px">Pindah ke arsip tahunan hanya terjadi untuk kontrak yang CLOSE lebih dari 90 hari, jadi belum bisa dicoba langsung sekarang. Alurnya (pindah, cari, buka, reopen dari arsip) sudah diuji otomatis; di sini cukup dicek bahwa pemicunya terpasang (C25).</p>
+ </div>
+
+ <section class="sec" id="secF2"></section>
+
+ <div class="card" style="display:flex;flex-direction:column;gap:12px"><h2>Laporan</h2>
+  <p class="muted">Laporan berisi status setiap langkah dan catatan Anda. Tempel di chat; kalau ada langkah gagal, sertakan screenshot.</p>
+  <pre id="rep"></pre>
+  <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="copy">Salin laporan</button><button class="btn ghost" id="reset">Kosongkan semua centang</button><span id="msg" class="muted" style="align-self:center;font-size:13px"></span></div>
+ </div>
+</div>
+
+<script>
+var F2=[
+ ['Pasang F2','Buka halaman pasang <b>①</b>, pilih <b>Update project yang sudah ada</b>, ikuti 6 langkahnya (ganti 2 file, mintaIzin, setup, New version).','Log setup menulis migrasi <span class="mono">v1 → v2</span>, <span class="mono">Log F1 disalin…</span>, dan <span class="mono">Pemicu pindah arsip bulanan dipasang</span>. Tidak ada error merah.'],
+ ['Cek Drive','Buka Google Drive akun FF. <b>Jangan mengubah isi file.</b>','<span class="mono">SKM_DB</span> punya tab baru (Kontrak, BAST, Indeks, Ref_Tahap, …). Ada file baru <span class="mono">SKM_LOG_2026</span> berisi tab <span class="mono">Log-2026-11</span>. Tab Log lama di SKM_DB masih ada.'],
+ ['Buka aplikasi','Buka Web app URL dan login sebagai admin.','Muncul layar <b>Memuat data aktif</b>, lalu Beranda dengan kotak angka. Kiri bawah: <b>Versi 2.0.0 · F2</b>. Menu: Beranda, <b>Kontrak</b>, Pengaturan › <b>Tahap &amp; aturan</b>.'],
+ ['Pengaturan awal','Menu <b>Tahap &amp; aturan</b>: buka tab Tahap, Kendala, Nilai Push.','6 tahap (penutup: BAST Takeout), 5 jenis kendala, 13 aturan Nilai Push. Tidak ada peringatan kuning.'],
+ ['Tambah kontrak','Kontrak → <b>Tambah kontrak</b>. Isi nomor, judul, Customer = End customer (mis. sama-sama "Bank BRI"), nilai, 1 SO → Simpan kontrak.','Panel detail kontrak baru terbuka. Pill <b>DIRECT</b>, BAST-1 dokumen tagih <b>BAA</b>, tahap Kompulir Eviden. Bilah atas: <i>Menyimpan…</i> lalu <i>Tersimpan</i>.'],
+ ['Cek nomor dobel','Tambah kontrak lagi dengan nomor yang sama tapi beda huruf besar/kecil atau spasi.','Langsung muncul peringatan merah "Nomor ini sudah terdaftar sebagai K-…" dan tidak bisa disimpan.'],
+ ['Pindah tahap','Di panel detail, klik tahap berikutnya → Pindah. Lalu klik tahap sebelumnya (mundur) tanpa keterangan, lalu dengan keterangan.','Maju langsung berubah di layar. Mundur tanpa keterangan ditolak; dengan keterangan berhasil. Kotak "Tampil di sheet unit" ikut berubah.'],
+ ['Kendala','<b>Buka kendala</b> → Kendala Sisi Customer + keterangan → simpan. Lalu klik <b>Selesai</b>.','Saat aktif, Kendala Umum = <span class="mono">KENDALA CUSTOMER</span> dan Kendala Detil = keterangan Anda. Setelah selesai, kembali mengikuti tahap.'],
+ ['Close & reopen','Pindahkan BAST ke tahap terakhir (BAST Takeout). Lalu <b>Buka kendala</b> → Revisi Dokumen + keterangan.','Setelah tahap terakhir: BAST & kontrak <b>CLOSE</b>. Setelah kendala revisi: BAST <b>Siklus 2 · reopen</b> di Drafting Dokumen, kontrak OPEN lagi.'],
+ ['BAST parsial','Kontrak baru dengan Jumlah lokasi 10. Ubah BAST-1 → cakupan lokasi 4 → pindahkan ke tahap terakhir. Lalu <b>Tambah BAST/BAA parsial</b> (cakupan 6) → tahap terakhir.','Setelah BAST-1 close: kontrak tetap OPEN dengan <b>Menunggu BAST lanjutan</b> (sisa 6). Mencoba cakupan 7 ditolak. Setelah BAST-2 close: kontrak CLOSE.'],
+ ['Koreksi nomor','Tab <b>Data kontrak</b> → Ubah → ganti nomor, isi alasan → simpan. Lalu cari nomor lama di kotak pencarian daftar.','Kontrak tetap ditemukan dengan keterangan "Ditemukan lewat <b>nomor lama</b> …"; panel detail menampilkan penjelasan nomor lama.'],
+ ['SO/MI','Tab Data kontrak → SO/MI: tambah, klik baris untuk ubah, lalu hapus satu.','Tersimpan dan tercatat di Riwayat › Log perubahan.'],
+ ['Arsipkan & kembalikan','Tombol <b>Arsipkan</b> di panel detail (alasan wajib). Lalu filter <b>Diarsipkan</b> → buka → <b>Kembalikan dari arsip</b>.','Kontrak hilang dari daftar OPEN, muncul di filter Diarsipkan, tidak bisa diubah sampai dikembalikan.'],
+ ['Dua orang sekaligus','Login staff di Incognito. Staff mengubah tahap sebuah kontrak. Di jendela admin, tunggu ±30 detik tanpa memuat ulang.','Di layar admin kontrak itu ikut berubah, barisnya disorot sebentar, dan muncul pesan "… mengubah K-…".'],
+ ['Bentrok perubahan','Admin dan staff membuka kontrak yang sama. Staff pindah tahap. Sebelum 30 detik, admin juga pindah tahap kontrak itu.','Salah satu mendapat jendela <b>Perubahan tidak tersimpan</b>: "baru saja diubah orang lain", dan tampilannya kembali ke data terbaru.'],
+ ['Izin STAFF','Staff menambah kontrak (isi PIC orang lain bila bisa). Coba ganti PIC dan cari tombol Arsipkan.','PIC kontrak baru = staff itu sendiri. Pilihan PIC terkunci; tidak ada tombol Arsipkan.'],
+ ['PIC massal','Admin: centang beberapa kontrak di daftar → pilih PIC → <b>Atur PIC</b>.','Semua kontrak terpilih ganti PIC; tercatat ATUR_PIC di Log.'],
+ ['Unduh template','Kontrak → <b>Upload Excel</b> → <b>Unduh template</b>.','File <span class="mono">Template_Upload_Kontrak_SKM.xlsx</span> terunduh. Di Excel ada tab Petunjuk, Kontrak, SO_MI, Referensi; kolom Populasi/PIC/Tahap punya dropdown.'],
+ ['Pratinjau upload','Isi template: 3 kontrak baru, 1 baris tanpa judul, 1 nomor yang sudah ada di SKM, 1 SO untuk salah satu kontrak baru. Upload.','Pratinjau: 3 Baru (atau peringatan), 1 Error "Judul kontrak wajib diisi", 1 Sudah ada. Belum ada yang tersimpan.'],
+ ['Simpan upload','Klik <b>Simpan</b>. Lalu upload file yang sama sekali lagi.','Selesai: 3 dibuat, kontrak langsung muncul di daftar dengan BAST-1. Upload kedua: semuanya "Sudah ada", tidak dobel.'],
+ ['Laporan error','Di pratinjau atau layar selesai, klik <b>Unduh laporan error</b>.','File Excel berisi baris yang error beserta alasannya.',true],
+ ['Ubah Nilai Push','Tahap &amp; aturan → Nilai Push → ubah teks aturan <span class="mono">TAHAP:KOMPULIR</span> → Simpan. Kembalikan seperti semula setelahnya.','Kolom "Kontrak terkena" menghitung di layar. Setelah simpan: kontrak di Kompulir menampilkan teks baru di daftar.'],
+ ['Tahap baru','Tab Tahap → <b>Tahap baru</b> (mis. VERIF_AR) → Simpan. Lalu coba nonaktifkan tahap yang masih dipakai BAST OPEN.','Muncul peringatan kuning "belum ada aturan Nilai Push untuk …". Menonaktifkan tahap yang dipakai ditolak dengan tawaran <b>Pindahkan BAST</b>. (Nonaktifkan tahap uji setelahnya.)'],
+ ['Log per bulan','Buka <b>Log</b>. Coba pilihan periode dan kotak cari.','Default 30 hari terakhir; ada pilihan bulan. Semua aksi di atas tercatat (BUAT_KONTRAK, UBAH_TAHAP, BUKA_KENDALA, REOPEN, UPLOAD_EXCEL, …).'],
+ ['Sistem','<b>Sistem → Jalankan</b>. Lalu di kartu Arsip tahunan klik <b>Jalankan pindah arsip sekarang</b>.','Semua pemeriksaan hijau (±10). Pemicu bulanan <b>terpasang</b>. Pindah arsip: "Tidak ada kontrak yang perlu dipindah".'],
+ ['Rasa kecepatan','Catat di kolom catatan: berapa detik buka aplikasi sampai Beranda? Apakah klik kontrak, filter, dan simpan terasa langsung?','Daftar/filter/detail instan; simpan langsung berubah di layar, tersimpan ±3–4 detik kemudian.'],
+ ['Ponsel','Buka di ponsel: daftar kontrak, panel detail, form tambah.','Tidak ada yang terpotong; menu di tombol ☰.',true]
+];
+var KEY='skm-uji-f2';
+var st={};try{st=JSON.parse(localStorage.getItem(KEY)||'{}');}catch(e){st={};}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(st));}catch(e){}}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function sec(id,kode,judul,intro,list){
+  var el=document.getElementById(id);
+  el.innerHTML='<div class="sechead"><div><div class="eyebrow">Bagian '+kode+'</div><h2>'+judul+'</h2><p class="muted" style="margin-top:4px">'+intro+'</p></div><span class="sp"></span><span class="prog" id="prog'+kode+'"></span></div>'+
+   list.map(function(s,i){var k=kode+'-'+(i+1);return '<div class="step" id="st-'+k+'"><div class="num">'+kode+(i+1)+'</div><div class="body"><h3>'+s[0]+(s[3]?'<span class="opt">opsional</span>':'')+'</h3><div class="do">'+s[1]+'</div><div class="exp"><b>Harusnya:</b> '+s[2]+'</div>'+
+    '<div class="ctl"><button type="button" class="okb" data-k="'+k+'" data-v="OK">OK</button><button type="button" class="failb" data-k="'+k+'" data-v="GAGAL">Gagal</button><input type="text" data-n="'+k+'" placeholder="Catatan (opsional)" aria-label="Catatan '+k+'"></div></div></div>';}).join('');
+}
+sec('secF2','C','Uji F2: kontrak, BAST/BAA, upload, pengaturan','Jalankan setelah F2 terpasang. Langkah C14–C16 butuh akun staff di jendela Incognito.',F2);
+function paint(){
+  document.querySelectorAll('[data-k]').forEach(function(b){var v=(st[b.dataset.k]||{}).v;b.classList.toggle('on',v===b.dataset.v);});
+  document.querySelectorAll('[data-n]').forEach(function(i){if(document.activeElement!==i)i.value=(st[i.dataset.n]||{}).n||'';});
+  document.querySelectorAll('.step').forEach(function(s){var k=s.id.slice(3),v=(st[k]||{}).v;s.classList.toggle('ok',v==='OK');s.classList.toggle('fail',v==='GAGAL');});
+  [['C',F2]].forEach(function(x){var n=x[1].length,ok=0,f=0;for(var i=1;i<=n;i++){var v=(st[x[0]+'-'+i]||{}).v;if(v==='OK')ok++;if(v==='GAGAL')f++;}
+    document.getElementById('prog'+x[0]).textContent=ok+' OK · '+f+' gagal · '+(n-ok-f)+' belum';});
+  document.getElementById('rep').textContent=report();
+}
+function report(){
+  var lines=['Laporan uji SKM F2 v2.0.0'];
+  [['C','F2',F2]].forEach(function(x){lines.push('','['+x[1]+']');x[2].forEach(function(s,i){var k=x[0]+'-'+(i+1),e=st[k]||{};lines.push(x[0]+(i+1)+' '+s[0]+': '+(e.v||'belum')+(e.n?' — '+e.n:''));});});
+  return lines.join('\n');
+}
+document.addEventListener('click',function(e){var b=e.target.closest('[data-k]');if(!b)return;var k=b.dataset.k;st[k]=st[k]||{};st[k].v=st[k].v===b.dataset.v?'':b.dataset.v;save();paint();});
+document.addEventListener('input',function(e){var i=e.target.closest('[data-n]');if(!i)return;st[i.dataset.n]=st[i.dataset.n]||{};st[i.dataset.n].n=i.value;save();document.getElementById('rep').textContent=report();});
+document.getElementById('copy').onclick=function(){var t=report(),m=document.getElementById('msg');
+  var pilih=function(){var r=document.createRange();r.selectNodeContents(document.getElementById('rep'));getSelection().removeAllRanges();getSelection().addRange(r);m.textContent='Teks dipilih, tekan Ctrl+C.';};
+  try{navigator.clipboard.writeText(t).then(function(){m.textContent='Laporan tersalin. Tempel di chat.';},pilih);}catch(err){pilih();}};
+var resetArmed=false;document.getElementById('reset').onclick=function(){var b=this,m=document.getElementById('msg');if(!resetArmed){resetArmed=true;b.textContent='Klik lagi untuk mengosongkan';m.textContent='';setTimeout(function(){resetArmed=false;b.textContent='Kosongkan semua centang';},4000);return;}
+  st={};save();paint();resetArmed=false;b.textContent='Kosongkan semua centang';m.textContent='Semua centang dikosongkan.';};
+paint();
+</script>
