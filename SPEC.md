@@ -1,7 +1,14 @@
 # SPEC — Status Kontrak Manager
 
-Versi 1.12 · 20 Nov 2026 · Pemilik: omPik (Unit Fulfillment)
+Versi 1.13 · 22 Nov 2026 · Pemilik: omPik (Unit Fulfillment)
 Referensi konsep: BAA.flow (BAA Generator). Mockup UI yang disetujui: `mockup/mockup.html` (desain "Orbit").
+
+**Perubahan v1.13** (hasil uji beban di akun FF, `docs/HASIL-UJI.md`)
+- **Penyimpanan berlapis** (§4.3, D15): `SKM_DB` hanya berisi kontrak aktif (OPEN + CLOSE < 90 hari) dan indeks semua kontrak; kontrak CLOSE > 90 hari dipindah otomatis tiap bulan ke `SKM_ARSIP_<tahun close>`. Semua kontrak tetap bisa dicari lewat indeks dan **bisa dibuka kembali (reopen) walau sudah di arsip**.
+- **Data aktif dimuat sekali ke browser** saat aplikasi dibuka; daftar, filter, cari, dan detail dikerjakan di browser. **Simpan optimis**: tampilan langsung berubah, simpan berjalan di latar; perubahan orang lain ditarik tiap ±30 dtk (§4.4, D16).
+- **Log, RiwayatPush, SyncLog disimpan per bulan** di `SKM_LOG_<tahun>` (satu tab per bulan) (§4.3, D17).
+- Bagian simpan yang dikunci dipersingkat (target ±1 dtk di server) (§12).
+- **Tanpa pustaka dari CDN** untuk Excel: file dibaca di browser dengan pembaca zip/XML bawaan; template & laporan dibuat di server (§11.0, D18).
 
 **Perubahan v1.12** (review mockup F2)
 - **Upload Excel** masuk F2 (§11.0, D13): template SKM (tab Kontrak + SO_MI, dropdown dari Referensi) → pratinjau & periksa per baris → simpan. Import sheet FF format lama tetap F3.
@@ -124,12 +131,37 @@ Aplikasi tetap membutuhkan tempat menyimpan data. Yang jadi master adalah **apli
 | Infrastruktur | Tidak ada, berjalan di Google | PC/server harus selalu hidup |
 | Akses | Dari mana saja via URL Google | Sejauh jaringan server bisa dijangkau |
 | Mesin DB | File Google Sheet tersembunyi milik akun FF | File SQLite |
-| Kecepatan | ±1–3 detik per aksi | Cepat |
-| Kapasitas nyaman | ±10.000 kontrak | Praktis tak terbatas |
+| Kecepatan (terukur, §4.4) | Panggilan server ±1 dtk + kerja; dengan data aktif di browser: daftar/detail instan, simpan di latar ±3–4 dtk | Cepat |
+| Kapasitas nyaman | ±3.000–5.000 kontrak aktif per file; total tak terbatas karena arsip per tahun (§4.3) | Praktis tak terbatas |
 | Menulis ke GSheet unit | Lewat script penerima (UrlFetch) | Lewat script penerima yang sama |
 | Biaya | Gratis | Gratis (listrik/PC) |
 
 Spec ini ditulis untuk **A**. Kalau nanti dipilih B, aturan bisnis (§5), model data (§7), dan sinkron (§8) tetap berlaku. Yang berubah hanya §12–§13.
+
+### 4.3 File database berlapis dan arsip (D15, D17)
+Hasil uji beban: membaca 3.000 kontrak ±1,2 dtk, 18.000 kontrak ±5,1 dtk; menambah 1 baris ke Log 300.000 baris ±1,5 dtk. Karena itu data dipisah:
+
+| File | Isi | Ukuran wajar |
+|---|---|---|
+| `SKM_DB` | Kontrak **aktif** (OPEN + CLOSE < `ARSIP_SETELAH_HARI`, default 90) beserta BAST, OrderInternal, RiwayatTahap, Kendala; **Indeks semua kontrak**; KontrakAlias semua kontrak; Users, Ref_*, Config, Target*, Antrian, Notifikasi, JejakSel, DataUnit | ±2–5 ribu kontrak, tetap kecil walau bertahun-tahun |
+| `SKM_ARSIP_<tahun>` | Kontrak CLOSE yang dipindah, dikelompokkan menurut **tahun close**, dengan tab yang sama (Kontrak, BAST, OrderInternal, RiwayatTahap, Kendala) | ±6 ribu kontrak per tahun |
+| `SKM_LOG_<tahun>` | `Log-<yyyy-mm>`, `Push-<yyyy-mm>`, `Sync-<yyyy-mm>`: satu tab per bulan | ±25 ribu baris per tab |
+
+- **Indeks** (`Indeks` di `SKM_DB`): satu baris per kontrak dari semua tahun, tidak pernah dipindah: NoKontrakNorm, KontrakID, NoKontrak, Customer, EndCustomer, JudulKontrak, StatusKontrak, TahapKontrak, PIC, Lokasi (`AKTIF`/`ARSIP_<tahun>`), TglClose. Dipakai untuk: pencarian semua kontrak (termasuk lewat nomor lama di `KontrakAlias`), cek nomor dobel, pencocokan sinkron (kontrak arsip tidak dianggap baru dan tidak masuk Antrian).
+- **Pindah ke arsip**: pemicu bulanan (malam hari) memindah kontrak yang CLOSE lebih dari `ARSIP_SETELAH_HARI` hari: salin baris ke file arsip tahunnya, hapus dari `SKM_DB`, ubah `Lokasi` di Indeks. Berjalan bertahap per 300 kontrak (terukur ±29 dtk), di dalam kunci, aman diulang. ID tidak berubah.
+- **Membuka kontrak arsip**: cari di Indeks → buka satu file arsip yang tepat → ambil baris kontrak itu (TextFinder). Terukur ±4 dtk dari browser. Tampilan hanya-baca.
+- **Reopen dari arsip**: membuka kendala pemicu reopen pada kontrak arsip memindahkannya kembali ke `SKM_DB` (beserta BAST, order, riwayat, kendala), lalu aturan reopen §5.3 berlaku. Terukur ±5 dtk.
+- File arsip & log dibuat otomatis saat pertama dibutuhkan; ID file disimpan di `_Meta`. Semuanya milik akun FF dan tidak dibagikan (§12).
+- Export dan dashboard tahunan yang butuh data lama membaca file arsip di server (lebih lambat, diberi progres).
+
+### 4.4 Cara aplikasi memuat dan menyimpan data (D16)
+Hasil uji beban dari browser: setiap panggilan server minimal ±0,9 dtk; daftar ±2,3 dtk, detail ±3 dtk, simpan ±3,8 dtk bila setiap klik ke server. Karena itu:
+- **Saat aplikasi dibuka**, data aktif (kontrak, BAST, order, kendala, riwayat, referensi) dimuat sekali ke memori browser, dengan layar progres. Server menyimpan **snapshot** data aktif di cache (dipotong ≤ 90 KB per item; terukur 1,6 MB utuh) agar pemuatan tidak selalu membaca sheet. Perkiraan buka aplikasi ±5–8 dtk.
+- **Daftar, filter, pencarian, detail kontrak aktif, dashboard** dihitung di browser: instan.
+- **Simpan optimis**: perubahan langsung tampil, lalu dikirim ke server lewat antrean di latar (satu per satu, urut). Bilah atas menampilkan *Menyimpan n perubahan… → Tersimpan hh:mm*. Bila ditolak (KONFLIK versi, izin, validasi), tampilan dikembalikan ke data server dan muncul pesan. Menutup tab saat antrean belum kosong memunculkan peringatan browser.
+- **Perubahan orang lain**: setiap simpan menambah entri ke *feed perubahan* bernomor urut di cache (berisi baris yang berubah). Browser menarik feed tiap `SINKRON_KLIEN_DETIK` (default 30) dan menerapkannya; baris yang berubah diberi sorotan singkat. Bila feed terputus (cache hilang), browser memuat ulang data aktif.
+- **Kontrak arsip, Log, export** tetap diambil dari server saat diminta.
+- Izin tetap dicek di server pada setiap simpan; data yang dikirim ke browser mengikuti izin user (mis. tanpa `log.semua` hanya Log miliknya).
 
 ---
 
@@ -181,6 +213,7 @@ Aturan:
 
 ### 5.3 Close dan reopen
 - **Close berarti tugas FF selesai.** Begitu kontrak mencapai tahap penutup (BAST Takeout / Sertim AR) dan memenuhi syarat close di §5.4, kontrak dianggap selesai bagi FF. Setelah nilai penutupnya berhasil ditulis ke sheet unit, SKM berhenti menulis untuk kontrak itu (§8.5).
+- Kontrak CLOSE lebih dari 90 hari tersimpan di arsip tahunan (§4.3) tetapi **tetap bisa dicari dan di-reopen**; reopen memindahkannya kembali ke data aktif lebih dulu.
 - **Reopen** terjadi kalau ada return karena revisi, yaitu kendala dengan `MemicuReopen` dibuka pada BAST yang sudah close. Akibatnya: `Siklus + 1`, BAST kembali OPEN di tahap yang dipilih user (default diambil dari `Config.TAHAP_REOPEN` = DRAFTING), kontrak kembali OPEN, dan push ke sheet unit berjalan lagi.
 
 ### 5.4 BAST parsial dan status kontrak
@@ -290,12 +323,15 @@ Daftar izin: `dashboard.lihat`, `kontrak.lihat`, `kontrak.update`, `kontrak.daft
 
 ## 7. Model data (tab di DB aplikasi)
 
+Lokasi tab: `Kontrak`, `OrderInternal`, `BAST`, `RiwayatTahap`, `Kendala` ada di `SKM_DB` untuk kontrak aktif dan di `SKM_ARSIP_<tahun>` untuk kontrak arsip; `Log`, `RiwayatPush`, `SyncLog` ada di `SKM_LOG_<tahun>` dengan satu tab per bulan; sisanya di `SKM_DB` (§4.3).
+
 Aturan umum: baris 1 berisi header. ID dibuat server dan tidak pernah berubah. Timestamp memakai zona `Asia/Jakarta`. `Version` dipakai untuk mencegah dua orang saling timpa.
 
 | Tab | Kolom |
 |---|---|
 | `Kontrak` | KontrakID, NoKontrak, NoKontrakNorm, JenisDok, TahunProject, Populasi, NamaPelanggan (customer), EndCustomer, JudulKontrak, Segment, NilaiKontrak, JumlahLokasi, PIC, **turunan:** JenisCustomer, TahapKontrak, StatusKontrak, SisaLokasi, KendalaUmum, KendalaDetil, TglStatusBerubah · PerluVerifikasi, Arsip, SumberAwal, Created/UpdatedAt/By, Version |
-| `KontrakAlias` | AliasNorm, NoAsli, KontrakID, Sumber (`KOREKSI`/`ANTRIAN`/`UPLOAD`), Catatan, CreatedAt/By |
+| `KontrakAlias` | AliasNorm, NoAsli, KontrakID, Sumber (`KOREKSI`/`ANTRIAN`/`UPLOAD`), Catatan, CreatedAt/By *(semua kontrak, tidak ikut diarsipkan)* |
+| `Indeks` | NoKontrakNorm, KontrakID, NoKontrak, Customer, EndCustomer, JudulKontrak, StatusKontrak, TahapKontrak, PIC, Lokasi (`AKTIF`/`ARSIP_<tahun>`), TglClose *(semua kontrak; §4.3)* |
 | `OrderInternal` | OrderID, KontrakID, JenisOrder (SO/MI), NoOrder, NoOrderNorm, JenisLayanan, JenisPekerjaan, JumlahLokasi, Keterangan, Created/UpdatedAt/By, Version |
 | `BAST` | BASTID (`K-000001-B1`), KontrakID, Urutan, DokTagih (BAST/BAA), KodeTahap, Siklus, CakupanOrder, CakupanLokasi, DaftarLokasi, NoDokBAST, TglTahapMulai, Keterangan, Status (OPEN/CLOSE), Created/UpdatedAt/By, Version |
 | `RiwayatTahap` | BASTID, Siklus, KodeTahap, Masuk, Keluar, Oleh, Keterangan |
@@ -314,7 +350,7 @@ Aturan umum: baris 1 berisi header. ID dibuat server dan tidak pernah berubah. T
 | `SyncLog` | Waktu, Oleh, Jenis (`CEK`/`UPDATE`), TargetID, Tab, BarisCocok, SelDitulis, Gagal, Alarm, Detail |
 | `Notifikasi` | NotifID, Untuk (username), Jenis (`DIUBAH_LUAR`/`SINKRON_ERROR`/`TAB_BERGANTI`/`ANTRIAN_BARU`/`PIC_DITUGASKAN`), Pesan, KontrakID, TargetID, Dibaca, Waktu |
 | `Antrian` | AntrianID, TargetID, Tab, Baris, NoKontrakAsli, NoKontrakNorm, Prefill, Status (`BARU`/`DIDAFTARKAN`/`DIALIASKAN`/`DIABAIKAN`), DiprosesOleh, DiprosesPada |
-| `Config` | key–value: APP_NAMA = "Status Kontrak Manager", SESI_JAM = 6, LOGIN_GAGAL_MAKS = 5, KUNCI_MENIT = 15, PASSWORD_MIN = 8, SYNC_INTERVAL_MENIT = 15, TAHAP_REOPEN = DRAFTING, AGING_BATAS = 7,14,30, KENDALA_BATAS_HARI = 14, FIELD_WAJIB = Customer,EndCustomer,NilaiKontrak,Segment,Populasi,OrderInternal, DOKTAGIH_DEFAULT_DIRECT = BAA, DOKTAGIH_DEFAULT_INDIRECT = BAST, DOKTAGIH_DEFAULT_BELUM = BAST, KONFIRMASI_TAB_BARU = TRUE, BACKUP_SIMPAN = 8, SKEMA_VERSI |
+| `Config` | key–value: APP_NAMA = "Status Kontrak Manager", SESI_JAM = 6, LOGIN_GAGAL_MAKS = 5, KUNCI_MENIT = 15, PASSWORD_MIN = 8, SYNC_INTERVAL_MENIT = 15, TAHAP_REOPEN = DRAFTING, AGING_BATAS = 7,14,30, KENDALA_BATAS_HARI = 14, FIELD_WAJIB = Customer,EndCustomer,NilaiKontrak,Segment,Populasi,OrderInternal, ARSIP_SETELAH_HARI = 90, SINKRON_KLIEN_DETIK = 30, DOKTAGIH_DEFAULT_DIRECT = BAA, DOKTAGIH_DEFAULT_INDIRECT = BAST, DOKTAGIH_DEFAULT_BELUM = BAST, KONFIRMASI_TAB_BARU = TRUE, BACKUP_SIMPAN = 8, SKEMA_VERSI |
 
 ---
 
@@ -434,7 +470,8 @@ Tampilan mengikuti mockup `mockup/mockup.html` (desain "Orbit"): **tema terang d
    - **Tabel tim** per PIC: open, kendala, bar aging Fresh/Warm/Stale/Cold, jumlah update 7 hari (termasuk yang "bantu"), dan perubahan terakhir.
    - Status sinkron per target.
 3. **Kontrak**
-   - Tabel dengan filter (tahap, Kendala Umum, PIC, populasi, segment, pelanggan, status) dan pencarian.
+   - Tabel dengan filter (tahap, Kendala Umum, PIC, populasi, segment, pelanggan, status) dan pencarian, dikerjakan di browser (§4.4).
+   - Pencarian juga mencari **kontrak lama** di arsip lewat Indeks (bagian "Kontrak lama" di bawah tabel, ±1–3 dtk); kontrak lama dibuka hanya-baca dengan tombol **Buka kembali (reopen)**.
    - **Detail** dibuka sebagai panel geser dari kanan (daftar tetap terlihat; pindah kontrak dengan panah atau J/K; Esc menutup) dengan tab Proses · Data kontrak · Sheet unit · Riwayat. Isinya: data kontrak beserta kelengkapannya, SO/MI, daftar BAST (tambah BAST parsial, ubah tahap, cakupan), kendala (buka/tutup), pratinjau nilai yang akan muncul di sheet unit, data dari setiap sheet unit (§8.7), riwayat perubahan, dan riwayat di sheet unit.
    - Aksi massal: atur PIC.
    - Pencarian cepat **Ctrl+K** dari halaman mana pun.
@@ -444,7 +481,7 @@ Tampilan mengikuti mockup `mockup/mockup.html` (desain "Orbit"): **tema terang d
    - Daftar target, tombol **Tes koneksi**, **Cek saja**, dan **Update ke GSheet**, alarm, dan tabel Update log.
    - **Wizard target**: salin script penerima + kode rahasia untuk pemilik sheet → tempel Web App URL dari pemilik → Tes koneksi → pilih tab atau pola → pilih header untuk setiap field dari dropdown → Cek saja → aktifkan.
 7. **Pengaturan**: Tahap, Kendala, Nilai Push (urutkan, tambah, aktif/nonaktif, pratinjau "berapa kontrak terkena"), Referensi, Role & izin, Users, Config, Import, Backup.
-8. **Log**, dengan filter dan export xlsx.
+8. **Log**, dengan filter dan export xlsx. Default **30 hari terakhir**; pilih bulan untuk melihat bulan lain (Log disimpan per bulan, §4.3).
 9. **Notifikasi**: ikon lonceng dengan jumlah belum dibaca di topbar. Klik notifikasi membuka kontrak atau target terkait, dan ada tombol "tandai sudah dibaca".
    - **Kontrak CLOSE tidak memunculkan notifikasi apa pun.**
      - Saat kontrak close, semua notifikasi miliknya yang belum dibaca otomatis ditutup dan hilang dari lonceng (kolom `Dibaca` diisi `AUTO_CLOSE`).
@@ -459,7 +496,7 @@ Tampilan mengikuti mockup `mockup/mockup.html` (desain "Orbit"): **tema terang d
 
 ### 11.0 Upload Excel dengan template SKM (F2, D13)
 - **Unduh template**: dibuat SKM saat diklik, berisi tab Petunjuk, `Kontrak` (satu baris = satu kontrak), `SO_MI` (satu baris = satu order, dihubungkan lewat No. Kontrak), dan `Referensi` (daftar dropdown sesuai Pengaturan saat itu). Kolom wajib: No. Kontrak, Judul Kontrak. Kolom opsional: Jenis Dok, Tahun, Populasi, Customer, End Customer, Segment, Nilai, Jumlah Lokasi, PIC, Dok Tagih BAST-1, Tahap Awal BAST-1, Tgl Masuk Tahap, Kendala, Keterangan Kendala, Catatan. Contoh: `mockup/Template_Upload_Kontrak_SKM.xlsx`.
-- **Baca**: kolom dikenali dari judul header; file dibaca di browser, lalu **server memeriksa ulang semuanya** sebelum menyimpan.
+- **Baca**: kolom dikenali dari judul header; file dibaca di browser **tanpa pustaka dari CDN** (pembaca zip + XML bawaan, `DecompressionStream`), lalu **server memeriksa ulang semuanya** sebelum menyimpan. Template dan laporan error dibuat di server sebagai Google Sheet sementara lalu diekspor ke .xlsx (D18). *(Mockup memakai pustaka luar hanya untuk peragaan.)*
 - **Pratinjau** per baris: Baru, Baru dengan peringatan (tetap disimpan, mis. Customer kosong → BELUM TERDEFINISI, PIC tidak dikenal → tanpa PIC, referensi tidak dikenal → dikosongkan), Sudah ada (cocok lewat nomor atau nomor lama), Error (tidak disimpan: nomor/judul kosong, nomor dobel di file, nilai/lokasi/tanggal tidak terbaca, tanggal masa depan, tahap/kendala/dok tagih tidak dikenal, kendala tanpa keterangan). Baris SO_MI diperiksa juga (kontrak harus ada, jenis SO/MI, nomor order tidak dobel/terpakai).
 - **Nomor sudah ada**: pilihan *Lewati* (default) atau *Perbarui kolom yang diisi* (sel kosong tidak menghapus; tahap & kendala kontrak lama tidak diubah).
 - **Simpan**: bertahap per 50 baris di dalam kunci; upload ulang file yang sama aman (yang sudah tersimpan terbaca Sudah ada). Setiap kontrak baru mendapat BAST-1 (tahap & tanggal dari file, dok tagih dari file atau usulan otomatis), `SumberAwal = UPLOAD`, tidak diberi PerluVerifikasi. Log: `BUAT_KONTRAK`/`UBAH_KONTRAK` per baris + satu `UPLOAD_EXCEL` ringkasan. Laporan baris error bisa diunduh (.xlsx).
@@ -513,15 +550,15 @@ status-kontrak-manager/
 └─ test/             # node --test: domain, sheet, import
 ```
 - **Distribusi**: user cukup menyalin 2 file (`Code.gs` + `appsscript.json`) dari halaman instalasi bertombol Salin. HTML UI disematkan di dalam `Code.gs`. Update versi = salin ulang `Code.gs`, lalu *Deploy › Manage deployments › Edit › New version*. Migrasi skema berjalan otomatis saat versi baru pertama kali dibuka.
-- **Konkurensi**: `LockService` untuk setiap penulisan, plus `Version` per baris. Kalau ada konflik, user diminta memuat ulang.
-- **Performa**: data dibaca sekali per request dan di-cache 5 menit. Penulisan hanya pada baris yang berubah.
-- **Kuota akun gratis**: runtime trigger 90 menit per hari. Karena sinkron hanya jalan saat ada perubahan, pemakaian diperkirakan di bawah 30 menit per hari.
+- **Konkurensi**: `LockService` untuk setiap penulisan, plus `Version` per baris. Bagian yang dikunci dibuat sependek mungkin (tanpa membaca ulang; nomor baris dari cache; Log ke tab bulanan), target ±1 dtk di server. Uji 15 simpan di detik yang sama sebelum perbaikan: antre maks ±26 dtk; batas tunggu kunci 45 dtk lalu dicoba ulang otomatis oleh antrean browser. Kalau ada konflik versi, perubahan user dibatalkan di layar dengan pesan.
+- **Performa**: lihat §4.3–§4.4. Tabel kecil (Users, Ref_*, Config) di-cache 5 menit dan diperbarui setelah menulis. Penulisan hanya pada baris yang berubah. Upload/import dicicil per ±500–1.000 baris (tulis massal terukur ±19.000 sel/dtk).
+- **Kuota akun gratis** (kantor tidak memakai Workspace): runtime trigger 90 menit per hari, dipakai sinkron terjadwal (F4b) dan pindah ke arsip bulanan (±1–2 menit per bulan). Sinkron hanya jalan saat ada perubahan; interval dinaikkan bila mendekati batas.
 - **Keamanan**:
   - Password di-hash (SHA-256 berulang + salt), akun dikunci 15 menit setelah 5 kali gagal login.
   - Sesi berupa token di CacheService dengan masa berlaku 6 jam yang diperpanjang setiap request.
   - Semua output di-escape.
   - File DB tidak dibagikan ke siapa pun selain akun FF dan maksimal 1 admin cadangan.
-- **Backup**: salinan file DB mingguan ke folder Drive, menyimpan 8 salinan terakhir, plus tombol backup manual.
+- **Backup**: salinan `SKM_DB` mingguan ke folder Drive, menyimpan 8 salinan terakhir, plus tombol backup manual. File arsip & log tahun yang sudah lewat dibackup sekali saat tahunnya ditutup.
 
 ---
 
@@ -548,7 +585,7 @@ Setiap fase: mockup → disetujui → **build** (atas perintah pemilik) → unit
 |---|---|---|---|
 | F0 | Web app uji dari jaringan kantor | – | Halaman terbuka, server menjawab, font Google & UrlFetch dicek. **Wajib lulus dulu** |
 | F1 | Setup, Repo + migrasi skema, login + ganti password, Users, Role & izin, Log, kerangka UI (sidebar, tema terang/gelap) | Admin login dan membuat akun tim | Izin ditolak di server, semua aksi tercatat |
-| F2 | Kontrak, Customer/End customer, SO/MI, BAST/BAA, tahap fleksibel, kendala, reopen, parsial, Nilai Push, panel detail, **Upload Excel template SKM (§11.0)**, pencarian nomor lama, arsip, Pengaturan (tahap, kendala, nilai push, referensi, config) | Tim input dan update status di SKM (belum sinkron) | Semua aturan §5 lulus unit test, termasuk tambah/urut ulang/nonaktifkan tahap |
+| F2 | Kontrak, Customer/End customer, SO/MI, BAST/BAA, tahap fleksibel, kendala, reopen, parsial, Nilai Push, panel detail, **Upload Excel template SKM (§11.0)**, pencarian nomor lama, arsip manual, **file berlapis + Indeks + arsip tahunan + reopen dari arsip (§4.3)**, **data aktif di browser + simpan di latar + feed perubahan (§4.4)**, Log per bulan (migrasi Log F1), Pengaturan (tahap, kendala, nilai push, referensi, config) | Tim input dan update status di SKM (belum sinkron) | Semua aturan §5 lulus unit test, termasuk tambah/urut ulang/nonaktifkan tahap |
 | F3 | **Import data lama** (§11), Dashboard, Perlu Perhatian, atur PIC massal, Ctrl+K | Data riil masuk; admin memantau | 4 baris Lampiran A ter-import sesuai §11 · angka dashboard cocok dengan hitungan manual |
 | F4a | Script penerima, wizard target (koneksi, tab TERBARU, pemetaan + validasi), Cek saja, Update, pengaman kolom | Status terkirim ke sheet unit dengan istilah seragam | Uji di **salinan** sheet lulus: kolom disisipkan, judul header diganti/hilang → ditolak, header dipakai ganda → wizard menolak, sel berformula, kontrak berulang, tab bulan baru, baris diurutkan ulang |
 | F4b | Pencatat edit manual, jejak sel, notifikasi lengkap + tutup otomatis, Antrian, tab Sheet unit (§8.7), beda data & kelengkapan, sinkron terjadwal | Sistem berjalan sendiri tiap 15 menit | Sel kontrak OPEN diubah manual → notifikasi (dengan pelaku bila ada) + tidak ditimpa, lalu ditulis lagi setelah status di SKM berubah · kontrak CLOSE tidak ditulis lagi dan perubahan luar tanpa notifikasi · saat kontrak close, notifikasinya yang belum dibaca hilang dari lonceng · reopen → ditulis lagi · nomor baru masuk Antrian sekali |
@@ -584,6 +621,10 @@ Setiap fase: mockup → disetujui → **build** (atas perintah pemilik) → unit
 | D12 | Akun pemilik | ✔ Gmail khusus FF menjadi pemilik project & `SKM_DB` (pasang baru); akses web app "Anyone with Google account" + login SKM |
 | D13 | Input banyak kontrak | ✔ Upload Excel dengan template SKM di F2; import format FF lama di F3 |
 | D14 | Nomor lama (alias) | ✔ Tidak tampil di tabel, ikut dicari; hasil diberi keterangan asal, waktu, pelaku, alasan |
+| D15 | Penyimpanan berlapis | ✔ `SKM_DB` aktif kecil + Indeks semua kontrak + `SKM_ARSIP_<tahun>`; CLOSE > 90 hari dipindah bulanan; semua kontrak tetap bisa dicari & di-reopen (uji beban 22 Nov 2026) |
+| D16 | Cara memuat & menyimpan | ✔ Data aktif dimuat sekali ke browser; simpan optimis di latar; feed perubahan tiap ±30 dtk |
+| D17 | Log | ✔ `SKM_LOG_<tahun>`, satu tab per bulan (Log, RiwayatPush, SyncLog) |
+| D18 | Excel tanpa CDN | ✔ Baca .xlsx di browser dengan kode sendiri; template & laporan dibuat di server lalu diekspor |
 
 Sudah dikonfirmasi:
 - BAST ON REVIEW → tahap Draft Review Customer.
