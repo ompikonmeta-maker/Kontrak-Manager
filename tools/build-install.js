@@ -18,7 +18,36 @@ const S_IZIN = 'Bila diminta: <b>Review permissions</b> → pilih akun FF → <b
 const S_SETUP = ['Jalankan setup()', 'Di toolbar editor, pilih fungsi <span class="mono">setup</span> lalu klik <b>Run</b>. ' + S_IZIN];
 const S_CATAT = ['Catat password admin', 'Di <b>Execution log</b> muncul baris <span class="mono">username: admin &nbsp; password sementara: xxx-xxx-xxx</span>. Catat sekarang; password ini tidak ditampilkan lagi.'];
 
+const IZIN_UJI = 'Bila diminta: <b>Review permissions</b> → pilih akun FF → <b>Advanced</b> → <b>Go to SKM Uji Beban (unsafe)</b> → <b>Select all</b> → <b>Allow</b>. Izinnya: membuat file Sheet, memindahkan file uji ke folder & ke Sampah, dan membuat pemicu waktu untuk melanjutkan otomatis.';
 const PHASES = {
+  uji: {
+    dir: 'uji', judul: 'Uji Beban SKM', h1: 'Uji beban: seberapa cepat Google Sheet di akun FF',
+    versi: code => (code.match(/UJI_VERSI = '([^']+)'/) || [])[1],
+    intro: 'Membuat database tiruan setara ±3 tahun data (18.000 kontrak, 300.000 baris Log) lalu mengukur waktu nyata: buka daftar, cari, simpan, buka arsip, pindah ke arsip, dan 15 orang bersamaan. Kerja Anda ±15 menit; sisanya menunggu. <b>Tidak menyentuh SKM_DB maupun project SKM.</b>',
+    pre: `<div class="card warn"><h2>Sebelum mulai</h2><p class="muted" style="margin-top:8px">Pakai <b>akun Gmail khusus FF</b> (supaya kuota dan kecepatannya sama dengan SKM nanti), tetapi buat <b>project baru terpisah</b> bernama <b>SKM Uji Beban</b>. Data uji (±7 juta sel di 6 file) dibuat di folder Drive <span class="mono">SKM_UJI_BEBAN</span> dan dihapus di langkah terakhir. Drive akun FF butuh ruang kosong ±200 MB.</p></div>
+     <div class="card"><h2>Yang diukur</h2><div class="checks">
+      <div><i></i><span>Kerja harian di DB aktif kecil (3.000 kontrak) vs satu file besar tanpa arsip (18.000 kontrak)</span></div>
+      <div><i></i><span>Cari nomor di indeks 18.000 kontrak, lalu buka detail kontrak di file arsip tahunnya</span></div>
+      <div><i></i><span>Simpan perubahan status (kunci + kontrak + riwayat + Log 300.000 baris)</span></div>
+      <div><i></i><span>Pindah 300 kontrak ke arsip, reopen kontrak dari arsip</span></div>
+      <div><i></i><span>Dari browser PC kantor: waktu sampai layar, dan 15 orang membuka/menyimpan bersamaan</span></div>
+      <div><i></i><span>Kecepatan tulis massal (untuk upload/import)</span></div></div></div>`,
+    steps: { utama: [
+      ['Buat project terpisah', 'Login dengan <b>akun Gmail khusus FF</b>, buka <b>script.google.com</b> → <b>New project</b>. Ganti nama project menjadi <b>SKM Uji Beban</b>. <b>Jangan</b> memakai project Status Kontrak Manager.'],
+      S_MANIFEST, S_TEMPEL,
+      ['Siapkan data (siapkanData)', 'Pilih fungsi <span class="mono">siapkanData</span> → <b>Run</b>. ' + IZIN_UJI + ' Satu kali jalan ±4,5 menit, lalu otomatis berlanjut sendiri tiap ±1 menit sampai selesai (perkiraan 10–40 menit total). Editor boleh ditutup.'],
+      ['Tunggu sampai SIAP', 'Sesekali pilih fungsi <span class="mono">status</span> → <b>Run</b>. Execution log menampilkan persentase. Lanjut bila tertulis <span class="mono">Data uji SIAP (100%)</span>. Folder <span class="mono">SKM_UJI_BEBAN</span> di My Drive boleh dibuka untuk melihat filenya.'],
+      ['Ukur di server (ukurServer)', 'Pilih fungsi <span class="mono">ukurServer</span> → <b>Run</b> (±3–6 menit). Bila log menulis <span class="mono">Jalankan ukurServer sekali lagi</span>, klik Run lagi sampai tertulis <span class="mono">Selesai</span>.'],
+      ['Deploy sebagai Web app', '<b>Deploy › New deployment</b> → ikon roda gigi → <b>Web app</b>. Execute as: <b>Me</b> · Who has access: <b>Only myself</b> → <b>Deploy</b> → salin <b>Web app URL</b>.'],
+      ['Uji dari PC kantor', 'Buka Web app URL di Chrome/Edge di PC kantor (jaringan kantor), login dengan akun FF. Klik <b>1. Uji berurutan</b>, tunggu selesai, lalu <b>2. Uji 15 orang bersamaan</b>. Klik <b>Salin laporan</b> dan tempel di chat.'],
+      ['Bersihkan', 'Setelah laporan terkirim, pilih fungsi <span class="mono">bersihkan</span> → <b>Run</b>. Semua file uji pindah ke Sampah Drive. Project <b>SKM Uji Beban</b> boleh dihapus.']] },
+    fileDesc: ['Pengaturan project: zona Asia/Jakarta, izin (Sheet, Drive, pemicu), Web app hanya untuk Anda.', 'Pembuat data tiruan, pengukur, dan halaman uji browser.'],
+    post: `<div class="card"><h2>Kalau ada masalah</h2><div class="checks one">
+      <div><i></i><span><b>status</b> tidak bertambah lebih dari 5 menit → jalankan <span class="mono">siapkanData</span> lagi; ia melanjutkan dari posisi terakhir, tidak mengulang dari awal.</span></div>
+      <div><i></i><span>Error <b>"limit of 10000000 cells"</b> atau <b>kuota</b> → kirim screenshot-nya; itu juga hasil uji yang penting.</span></div>
+      <div><i></i><span>Halaman Web app menulis <b>"Data belum siap"</b> atau <b>"hasil server belum ada"</b> → selesaikan langkah siapkanData / ukurServer dulu, lalu muat ulang halaman.</span></div>
+      <div><i></i><span>Laporan di Execution log juga bisa dicetak ulang dengan fungsi <span class="mono">laporan</span>.</span></div></div></div>`
+  },
   f0: {
     dir: 'f0', judul: 'Instalasi SKM F0', h1: 'Pasang web app uji',
     versi: code => (code.match(/F0_VERSI = '([^']+)'/) || [])[1],
@@ -119,7 +148,7 @@ pre{font-variant-ligatures:none;margin:0;max-height:260px;overflow:auto;backgrou
 @media (max-width:620px){.checks{grid-template-columns:minmax(0,1fr)}}
 </style>
 <div class="wrap">
- <div><div class="eyebrow">Status Kontrak Manager · Fase ${phase.toUpperCase()} · v${esc(versi)}</div><h1>${P.h1}</h1>
+ <div><div class="eyebrow">Status Kontrak Manager · ${phase === 'uji' ? 'Uji beban' : 'Fase ' + phase.toUpperCase()} · v${esc(versi)}</div><h1>${P.h1}</h1>
   <p class="muted">${P.intro}</p></div>
  ${P.pre}
  <div class="card"><h2>Langkah</h2>${tabs.length > 1 ? `<div class="seg" role="group" aria-label="Kondisi">${tabs.map((t, i) => `<button type="button" data-seg="${i}" class="${i ? '' : 'on'}">${t}</button>`).join('')}</div>` : ''}

@@ -5,6 +5,7 @@
   "scripts": {
     "build": "node tools/build.js && node tools/build-install.js f1",
     "test": "node tools/build.js && node --test test/*.test.js",
+    "build:install:uji": "node tools/build-install.js uji",
     "build:install:f0": "node tools/build-install.js f0"
   }
 }
