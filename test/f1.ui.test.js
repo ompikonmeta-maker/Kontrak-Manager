@@ -119,7 +119,9 @@ test('UI F1: login pertama → ganti password → kelola user → role → log �
     assert.deepEqual([...new Set(await page.$$eval('tbody td:last-child', els => els.map(e => e.textContent)))], ['GAGAL']);
     await page.click('[data-go="sistem"]'); await page.waitForSelector('#health');
     await page.click('#health'); await page.waitForSelector('#hres .check');
-    assert.equal(await page.$$eval('#hres .d.y', e => e.length), 6);
+    const cekTotal = await page.$$eval('#hres .check', e => e.length);
+    assert.ok(cekTotal >= 10, 'pemeriksaan F2 ikut tampil');
+    assert.equal(await page.$$eval('#hres .d.y', e => e.length), cekTotal, 'semua pemeriksaan hijau');
 
     // --- keluar, login sebagai staff
     await page.click('#meBtn'); await page.click('.modal [data-a="1"]');

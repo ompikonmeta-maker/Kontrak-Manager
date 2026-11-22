@@ -3,7 +3,7 @@ Object.assign(S, { sel: new Set(), kf: { q: '', st: 'OPEN', quick: '', tahap: ''
                    lama: null, arsQ: '', arsHasil: null, arsMemuat: false, riw: {}, prog: {} });
 
 /* ---------- penyaji kecil ---------- */
-const rp = n => (n === '' || n === null || n === undefined || !isFinite(Number(n))) ? '—' : 'Rp ' + Number(n).toLocaleString('id-ID');
+// rp() dari icons.js
 const T = kode => (D.ref && D.ref.T[kode]) || null;
 const labelTahap = kode => (T(kode) || {}).Label || kode || '—';
 const labelKendala = kode => ((D.ref && D.ref.KD[kode]) || {}).Label || kode;
@@ -203,7 +203,7 @@ async function bukaLama(kid) {
 
 /* ---------- panel detail ---------- */
 function bundleDrawer() { if (S.lama && S.lama.kid === S.drawer) return S.lama.bundle || null; return kontrak(S.drawer); }
-function openDrawer(kid, list) { S.lama = null; S.drawer = kid; S.dlist = list && list.indexOf(kid) >= 0 ? list : [kid]; S.dtab = 'proses'; renderDrawer(true); markSel(); }
+function openDrawer(kid, list) { kid = idAsli(kid); S.lama = null; S.drawer = kid; S.dlist = list && list.indexOf(kid) >= 0 ? list : [kid]; S.dtab = 'proses'; renderDrawer(true); markSel(); }
 function closeDrawer(instant) {
   const root = document.getElementById('sheet-root'); if (!S.drawer) return;
   S.drawer = null; S.lama = null; markSel();

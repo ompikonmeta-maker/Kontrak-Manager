@@ -1,9 +1,9 @@
-/* ================= Status Kontrak Manager · UI F1 ================= */
+/* ================= Status Kontrak Manager · UI (F1 fondasi + F2 kontrak) ================= */
 'use strict';
 
 const S = {
   token: null, me: null, app: null, katalog: [], theme: 'system', page: 'beranda',
-  users: null, roles: null, uf: '', uq: '', logF: { user: '', aksi: '', hasil: '' }, roleDraft: null,
+  users: null, roles: null, uf: '', uq: '', logF: { user: '', aksi: '', hasil: '', bulan: '', q: '' }, roleDraft: null,
   form: null, formOrig: null, formErr: '', permAnim: false, loginErr: null, gantiErr: '', pw1: '', pw2: '', pwLama: ''
 };
 const store = {
@@ -45,24 +45,39 @@ function busy(btn, on, teks) {
 }
 function gagal(e) { if (e && e.kode !== 'SESI_HABIS' && e.kode !== 'WAJIB_GANTI') toast(e.pesan || String(e), true); }
 function sesiHabis(pesan) {
+  resetData();
   S.me = null; S.token = null; store.set('skm-token', null); closeSheet(true); closeMenu();
   document.getElementById('overlay-root').innerHTML = '';
   S.loginErr = { msg: esc(pesan || 'Sesi Anda berakhir. Silakan masuk lagi.'), kind: 'info' };
   go('login');
 }
 
+function keluar() {
+  if (D.antre.length && !confirm(D.antre.length + ' perubahan belum tersimpan akan hilang. Tetap keluar?')) return;
+  call('logout').catch(() => {}); resetData(); S.me = null; S.token = null; store.set('skm-token', null); S.loginErr = null; go('login');
+}
+function resetData() {
+  clearTimeout(tarikT); closeDrawer(true); closeKForm();
+  Object.assign(D, { siap: false, memuat: null, seq: 0, base: {}, view: {}, antre: [], kirim: false, flash: {} });
+  S.sel = new Set(); S.riw = {}; S.lama = null; S.arsQ = ''; S.arsHasil = null;
+}
+/** Setelah masuk: muat data aktif sekali dengan layar progres (bila boleh melihat kontrak). */
+function mulaiData() { if (S.me && !S.me.wajibGanti && can('kontrak.lihat') && !D.siap && !D.memuat) muatData(true).then(() => segarkanTampilan()).catch(e => { if (e.kode !== 'SESI_HABIS') toast(e.pesan || String(e), true); }); }
+
 /* ---------------- boot & navigasi ---------------- */
 async function boot() {
   try {
-    const b = await call('boot');   // satu panggilan: status + profil (bila token masih sah) + katalog
+    const b = await call('boot', { data: true });   // satu panggilan: status + profil (bila token masih sah) + katalog + data aktif
     S.app = b.app; S.katalog = b.katalog;
     if (!b.siap) { renderBelumSetup(); return; }
     S.me = b.user || null;
     if (!S.me && S.token) { S.token = null; store.set('skm-token', null); }
+    if (b.data) muatData(false, b.data);
     go(S.me ? (S.me.wajibGanti ? 'ganti' : 'beranda') : 'login');
+    mulaiData();
   } catch (e) { renderFatal(e.pesan || String(e)); }
 }
-function go(page) { S.page = page; closeMenu(); render(); window.scrollTo(0, 0); }
+function go(page) { S.page = page; closeMenu(); closeDrawer(true); render(); window.scrollTo(0, 0); }
 /** Profil terbaru dari jawaban server. Bila izin user.kelola hilang, pindah ke beranda. */
 function pakaiMe(me) {
   if (!me) return;
@@ -78,13 +93,16 @@ function pakaiMe(me) {
 }
 
 const PAGES = {
-  beranda: { title: () => 'Selamat datang, ' + S.me.nama, crumb: 'Fondasi aplikasi (F1)' },
+  beranda: { title: () => 'Selamat datang, ' + S.me.nama, crumb: () => 'Ringkasan hari ini · ' + new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) },
+  kontrak: { title: () => 'Kontrak', crumb: () => D.siap ? semuaKontrak().filter(b => !KD.bool(b.k.Arsip)).length.toLocaleString('id-ID') + ' kontrak aktif · kontrak lama di arsip ikut dicari' : 'Memuat data aktif…', izin: 'kontrak.lihat' },
+  upload: { title: () => 'Upload Excel', crumb: 'Kontrak · tambah banyak kontrak sekaligus', izin: 'kontrak.daftar', nav: 'kontrak' },
+  pengaturan: { title: () => 'Pengaturan', crumb: 'Tahap, kendala, Nilai Push, referensi, config', izin: 'pengaturan.kelola' },
   users: { title: () => 'Users', crumb: 'Akun tim FF', izin: 'user.kelola' },
   role: { title: () => 'Role & izin', crumb: 'Hak akses berupa data, bisa diubah tanpa ubah kode', izin: 'user.kelola' },
   sistem: { title: () => 'Sistem', crumb: 'Database, skema, dan kesehatan aplikasi', izin: 'user.kelola' },
   log: { title: () => can('log.semua') ? 'Log' : 'Log saya', crumb: () => can('log.semua') ? 'Semua aksi, hanya ditambah' : 'Aksi yang Anda lakukan' }
 };
-const SOON = [['dashboard', 'Dashboard', 'dash', 'F3'], ['kontrak', 'Kontrak', 'doc', 'F2'], ['perhatian', 'Perlu Perhatian', 'warn', 'F3'], ['antrian', 'Antrian', 'inbox', 'F4b'], ['gsheet', 'Google Sheet', 'sync', 'F4a']];
+const SOON = [['dashboard', 'Dashboard', 'dash', 'F3'], ['perhatian', 'Perlu Perhatian', 'warn', 'F3'], ['antrian', 'Antrian', 'inbox', 'F4b'], ['gsheet', 'Google Sheet', 'sync', 'F4a']];
 
 function render() {
   const root = document.getElementById('root');
@@ -104,6 +122,9 @@ async function loadPage(page) {
   };
   try {
     if (page === 'beranda') { show(viewHome()); return; }
+    if (page === 'kontrak') { show(viewKontrak()); bindKontrak(); if (S.kf.q) cariArsip(); return; }
+    if (page === 'upload') { show(viewUpload()); bindUpload(); return; }
+    if (page === 'pengaturan') { show(viewPengaturan()); bindPengaturan(); return; }
     c.innerHTML = '<div class="loading"><div class="spinner"></div>Memuat…</div>';
     if (page === 'users') { S.users = await call('users.list'); show(viewUsers()); bindUsers(); }
     else if (page === 'role') { S.roles = await call('roles.list'); S.roleDraft = null; show(viewRole()); bindRole(); }
@@ -128,14 +149,16 @@ function renderFatal(msg) {
 /* ---------------- shell ---------------- */
 const avatarOf = u => `<span class="av">${esc(String(u.nama || u.username || '?')[0].toUpperCase())}</span>`;
 function shell(title, crumb) {
-  const a = (h, l, i) => `<a href="#" data-go="${h}" class="${S.page === h ? 'on' : ''}">${ic(i)}<span>${l}</span></a>`;
+  const navOn = (PAGES[S.page] || {}).nav || S.page;
+  const a = (h, l, i) => `<a href="#" data-go="${h}" class="${navOn === h ? 'on' : ''}">${ic(i)}<span>${l}</span></a>`;
   const soon = ([h, l, i, f]) => `<a class="soon" aria-disabled="true" title="Dibangun di ${f}">${ic(i)}<span>${l}</span><span class="cnt">${f}</span></a>`;
   return `<div class="app">
    <aside class="side" id="side">
     <div class="brand">${LOGO}<div><b>Status Kontrak<br>Manager</b><span>Unit Fulfillment</span></div></div>
-    <nav class="nav">${a('beranda', 'Beranda', 'home')}${SOON.map(soon).join('')}
-     ${can('user.kelola') ? `<div class="eyebrow" style="padding:16px 12px 6px;font-size:10.5px">Pengaturan</div>${a('users', 'Users', 'users')}${a('role', 'Role & izin', 'shield')}${a('sistem', 'Sistem', 'db')}` : ''}
-     <div style="height:8px"></div>${a('log', can('log.semua') ? 'Log' : 'Log saya', 'log')}</nav>
+    <nav class="nav">${a('beranda', 'Beranda', 'home')}${can('kontrak.lihat') ? a('kontrak', 'Kontrak', 'doc') : ''}
+     ${can('user.kelola') || can('pengaturan.kelola') ? `<div class="eyebrow" style="padding:16px 12px 6px;font-size:10.5px">Pengaturan</div>${can('pengaturan.kelola') ? a('pengaturan', 'Tahap & aturan', 'gear') : ''}${can('user.kelola') ? a('users', 'Users', 'users') + a('role', 'Role & izin', 'shield') + a('sistem', 'Sistem', 'db') : ''}` : ''}
+     <div style="height:8px"></div>${a('log', can('log.semua') ? 'Log' : 'Log saya', 'log')}
+     <div class="eyebrow" style="padding:16px 12px 6px;font-size:10.5px">Fase berikutnya</div>${SOON.map(soon).join('')}</nav>
     <div class="side-foot"><span class="live"><span class="pulse"></span>Versi ${esc(S.app.versi)} · ${esc(S.app.fase)}</span><span>Skema database v${S.app.skema}</span><span class="dim">Menu redup dibangun di fase berikutnya</span></div>
    </aside>
    <div class="main">
@@ -143,6 +166,7 @@ function shell(title, crumb) {
      <button class="iconbtn burger" id="burger" aria-label="Menu">${ic('menu')}</button>
      <div style="min-width:0"><h1>${esc(title)}</h1><div class="crumb">${esc(crumb)}</div></div>
      <div class="sp"></div>
+     <button class="syncchip" id="syncChip" hidden aria-live="polite" title="Cara data tersimpan"></button>
      <button class="iconbtn" id="themeBtn" aria-label="Ganti tema" title="Ganti tema">${ic({ system: 'auto', light: 'sun', dark: 'moon' }[S.theme])}</button>
      <button class="me" id="meBtn">${avatarOf(S.me)}<span class="nm">${esc(S.me.nama)} · ${esc(S.me.role)}</span></button>
     </header>
@@ -152,11 +176,12 @@ function shell(title, crumb) {
 function bindShell() {
   $('#burger').onclick = e => { e.stopPropagation(); $('#side').classList.toggle('open'); };
   $('#themeBtn').onclick = e => cycleTheme(e);
+  $('#syncChip').onclick = infoSync; syncChip();
   $$('[data-go]').forEach(a => a.onclick = e => { e.preventDefault(); go(a.dataset.go); });
   $('#meBtn').onclick = () => modal(esc(S.me.nama) + ' · ' + esc(S.me.role),
     `<dl class="kv"><dt>Username</dt><dd class="mono">${esc(S.me.username)}</dd><dt>Alias PIC</dt><dd>${esc(S.me.alias) || '—'}</dd><dt>Sesi</dt><dd>berakhir setelah ${S.app.sesiJam} jam tanpa aktivitas</dd></dl>`,
     [{ l: 'Ganti password', fn: () => { S.pw1 = S.pw2 = S.pwLama = ''; S.gantiErr = ''; go('ganti'); } },
-     { l: 'Keluar', pri: true, fn: () => { call('logout').catch(() => {}); S.me = null; S.token = null; store.set('skm-token', null); S.loginErr = null; go('login'); } }]);
+     { l: 'Keluar', pri: true, fn: () => keluar() }]);
 }
 function cycleTheme(e) {
   const order = ['system', 'light', 'dark'], next = order[(order.indexOf(S.theme) + 1) % 3];
@@ -200,6 +225,7 @@ function bindLogin() {
       S.token = r.token; store.set('skm-token', r.token); S.me = r.user; S.app = r.app; S.katalog = r.katalog; S.loginErr = null;
       S.pw1 = S.pw2 = S.pwLama = ''; S.gantiErr = '';
       go(r.user.wajibGanti ? 'ganti' : 'beranda');
+      mulaiData();
     } catch (e) {
       S.loginErr = { msg: esc(e.pesan || String(e)), kind: e.kode === 'TERKUNCI' || e.kode === 'AKUN_NONAKTIF' ? 'crit' : 'warn', u };
       render();
@@ -236,7 +262,7 @@ function bindGanti() {
   ['pw0', 'pw1', 'pw2'].forEach(id => { const el = document.getElementById(id); if (el) el.oninput = upd; });
   setTimeout(() => ($('#pw0') || $('#pw1')).focus(), 50);
   if ($('#gback')) $('#gback').onclick = () => go('beranda');
-  if ($('#gout')) $('#gout').onclick = () => { call('logout').catch(() => {}); S.me = null; S.token = null; store.set('skm-token', null); go('login'); };
+  if ($('#gout')) $('#gout').onclick = () => keluar();
   $('#gform').onsubmit = async ev => {
     ev.preventDefault();
     if (!pwRules().every(x => x[0])) return;
@@ -244,23 +270,30 @@ function bindGanti() {
     try {
       const r = await call('gantiPassword', { lama: S.pwLama, baru: S.pw1 });
       S.me = Object.assign(S.me, r.user); S.pw1 = S.pw2 = S.pwLama = ''; S.gantiErr = '';
-      go('beranda'); toast('Password diganti. Password lama tidak berlaku lagi.');
+      go('beranda'); toast('Password diganti. Password lama tidak berlaku lagi.'); mulaiData();
     } catch (e) { S.gantiErr = e.pesan || String(e); render(); }
   };
 }
 
 /* ---------------- beranda ---------------- */
 function viewHome() {
-  const done = ['Database & migrasi skema otomatis', 'Login, sesi ' + S.app.sesiJam + ' jam, kunci akun setelah salah password berulang', 'Users, Role & izin (dicek di server)', 'Log semua aksi', 'Tema terang/gelap'];
-  const next = [['F2', 'Kontrak, BAST/BAA, tahap, kendala, Nilai Push'], ['F3', 'Import data lama, Dashboard, Perlu Perhatian'], ['F4a', 'Script penerima & update ke sheet unit'], ['F4b', 'Jejak sel, notifikasi, Antrian, sinkron otomatis'], ['F5', 'Export & backup']];
-  return `<div class="card hero" style="padding:24px"><div class="row" style="position:relative;align-items:flex-start"><div style="flex:1 1 320px"><div class="eyebrow">Versi ${esc(S.app.versi)} · fase ${esc(S.app.fase)}</div><h2 style="font-size:22px;margin:6px 0">Fondasi aplikasi sudah berjalan</h2>
-    <p class="muted" style="margin:0;max-width:60ch">${can('user.kelola') ? 'Buat akun untuk setiap anggota tim di menu <b>Users</b>, lalu cek hak aksesnya di <b>Role &amp; izin</b>.' : 'Menu lain akan aktif bertahap sesuai fase.'}</p></div>
-    ${can('user.kelola') ? `<button class="btn pri" data-go2="users">${ic('users', 's')}Kelola users</button>` : ''}</div></div>
-   <div class="grid g2">
-    <div class="card"><h2>Sudah tersedia</h2>${done.map(t => `<div class="check"><span class="d y">✓</span><span>${t}</span></div>`).join('')}</div>
-    <div class="card"><h2>Berikutnya</h2>${next.map(([f, t]) => `<div class="check"><span class="d n">${f}</span><span>${t}</span></div>`).join('')}</div>
-   </div>`;
+  const next = [['F3', 'Import data lama, Dashboard, Perlu Perhatian, Ctrl+K'], ['F4a', 'Script penerima & update ke sheet unit'], ['F4b', 'Jejak sel, notifikasi, Antrian, sinkron otomatis'], ['F5', 'Export & backup']];
+  if (!can('kontrak.lihat')) return `<div class="card"><h2>Belum ada menu untuk role Anda</h2><p class="muted">Hubungi admin bila Anda perlu melihat kontrak.</p></div>`;
+  if (!D.siap) return '<div class="loading"><div class="spinner"></div>Memuat data aktif…</div>';
+  const all = semuaKontrak().filter(b => !KD.bool(b.k.Arsip)), open = all.filter(b => b.k.StatusKontrak === 'OPEN'), saya = S.me.alias ? open.filter(b => b.k.PIC === S.me.alias) : [];
+  const q = id => QUICK.find(x => x[0] === id)[2], kpi = [['OPEN', open.length, 'kontrak OPEN', '', ''], ['kend', open.filter(q('kend')).length, 'ada kendala aktif', 'crit', 'kend'], ['lewat', open.filter(q('lewat')).length, 'lewat batas aging', 'warn', 'lewat'],
+    ['nopic', open.filter(q('nopic')).length, 'tanpa PIC', 'warn', 'nopic'], ['kurang', open.filter(q('kurang')).length, 'data belum lengkap', 'warn', 'kurang']];
+  const nilai = open.reduce((a, b) => a + (Number(b.k.NilaiKontrak) || 0), 0);
+  return `<div class="card hero" style="padding:24px"><div class="row" style="position:relative;align-items:flex-start"><div style="flex:1 1 320px"><div class="eyebrow">Versi ${esc(S.app.versi)} · fase ${esc(S.app.fase)}</div><h2 style="font-size:22px;margin:6px 0">${saya.length ? `Anda PIC untuk ${saya.length} kontrak OPEN` : 'Kontrak siap diproses'}</h2>
+    <p class="muted" style="margin:0;max-width:60ch">Nilai kontrak OPEN ${rp(nilai)}. Dashboard lengkap dan daftar Perlu Perhatian hadir di F3.</p></div>
+    <div class="row">${saya.length ? `<button class="btn" id="hSaya">${ic('person', 's')}Kontrak saya</button>` : ''}<button class="btn pri" data-go2="kontrak">${ic('doc', 's')}Buka kontrak</button></div></div></div>
+   <div class="utiles">${kpi.map(([id, n, l, cls, quick]) => `<button class="utile ${cls}" data-hq="${quick}"><b class="tnum">${n.toLocaleString('id-ID')}</b><span>${l}</span></button>`).join('')}</div>
+   <div class="card"><h2>Berikutnya</h2>${next.map(([f, t]) => `<div class="check"><span class="d n">${f}</span><span>${t}</span></div>`).join('')}</div>`;
 }
+document.addEventListener('click', e => {
+  const h = e.target.closest('[data-hq]'); if (h && S.page === 'beranda') { Object.assign(S.kf, { st: 'OPEN', quick: h.dataset.hq, q: '', pic: '' }); go('kontrak'); return; }
+  if (e.target.closest('#hSaya')) { Object.assign(S.kf, { st: 'OPEN', quick: '', q: '', pic: S.me.alias }); go('kontrak'); }
+});
 document.addEventListener('click', e => { const b = e.target.closest('[data-go2]'); if (b) go(b.dataset.go2); });
 
 /* ---------------- users ---------------- */
@@ -475,17 +508,22 @@ function bindRole() {
 function viewLog() {
   const L = S.log, f = S.logF;
   const sel = (id, lbl, opts, v) => `<select class="inp" id="${id}" aria-label="${lbl}"><option value="">${lbl}: semua</option>${opts.map(o => `<option ${o === v ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
+  const bln = b => new Date(b + '-01T00:00:00').toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
   return `<div class="card" style="display:flex;flex-direction:column;gap:14px"><div class="row">
+   <select class="inp" id="lfb" aria-label="Periode"><option value="">30 hari terakhir</option>${(L.daftarBulan || []).map(b => `<option value="${esc(b)}" ${b === f.bulan ? 'selected' : ''}>${esc(bln(b))}</option>`).join('')}</select>
+   <div class="search" style="max-width:260px">${ic('search', 's')}<input id="lfq" placeholder="Cari ID, nilai, catatan…" value="${esc(f.q || '')}"></div>
    ${L.semua ? sel('lfu', 'User', L.users, f.user) : ''}${sel('lfa', 'Aksi', L.aksi, f.aksi)}${sel('lfr', 'Hasil', ['BERHASIL', 'GAGAL', 'DITOLAK'], f.hasil)}
    <span class="sp"></span><span class="muted tnum">${L.entri.length < L.total ? `${L.entri.length} terbaru dari ${L.total}` : L.total + ' entri'}</span><button class="btn" disabled title="Dibangun di F5">${ic('dl', 's')}Export xlsx · F5</button></div>
    <div class="tbl-wrap"><table class="t"><thead><tr><th>Waktu</th><th>User</th><th>Aksi</th><th>Entitas</th><th>Detail</th><th>Hasil</th></tr></thead><tbody>
    ${L.entri.map(l => `<tr><td class="tnum" style="white-space:nowrap">${esc(l.waktu)}</td><td class="mono">${esc(l.user)}</td><td><span class="pill p-dim">${esc(l.aksi)}</span></td><td>${esc(l.entitas)} <span class="mono" style="font-size:12px">${esc(l.id)}</span></td>
      <td class="muted">${l.field ? `<span class="mono">${esc(l.field)}</span>: ${esc(l.lama)} → ${esc(l.baru)} ` : ''}${esc(l.catatan)}</td><td class="${l.hasil === 'BERHASIL' ? 'res-ok' : 'res-no'}">${esc(l.hasil)}</td></tr>`).join('') || '<tr><td colspan="6" class="muted" style="text-align:center;padding:24px">Tidak ada entri.</td></tr>'}
    </tbody></table></div>
-   <div class="muted" style="font-size:12px">Log hanya bisa ditambah; tidak ada yang bisa mengubah atau menghapus entri, termasuk admin. Password tidak pernah dicatat.</div></div>`;
+   <div class="muted" style="font-size:12px">Log disimpan per bulan (file per tahun, tab per bulan) supaya tetap cepat. Log hanya bisa ditambah; tidak ada yang bisa mengubah atau menghapus entri, termasuk admin. Password tidak pernah dicatat.</div></div>`;
 }
 function bindLog() {
-  [['lfu', 'user'], ['lfa', 'aksi'], ['lfr', 'hasil']].forEach(([id, k]) => { const el = document.getElementById(id); if (el) el.onchange = () => { S.logF[k] = el.value; loadPage('log'); }; });
+  const q = document.getElementById('lfq'); let lt = null;
+  if (q) q.oninput = () => { clearTimeout(lt); lt = setTimeout(() => { S.logF.q = q.value; loadPage('log'); }, 500); };
+  [['lfb', 'bulan'], ['lfu', 'user'], ['lfa', 'aksi'], ['lfr', 'hasil']].forEach(([id, k]) => { const el = document.getElementById(id); if (el) el.onchange = () => { S.logF[k] = el.value; loadPage('log'); }; });
 }
 
 /* ---------------- sistem ---------------- */
@@ -494,8 +532,12 @@ function viewSistem() {
   return `<div class="grid g2">
    <div class="card"><h2>${ic('db', 's')} Database</h2><dl class="kv"><dt>File</dt><dd class="mono">${esc(I.db.nama)}</dd><dt>Pemilik</dt><dd>${esc(I.akunFF) || 'akun FF'}</dd><dt>Akses file</dt><dd>${akses <= 2 ? '<span class="pill p-ok">aman</span>' : '<span class="pill p-crit">terlalu banyak</span>'} <span class="muted" style="font-size:12px">${akses} akun</span><div class="mono dim" style="font-size:11.5px;margin-top:4px">${daftar.map(esc).join('<br>')}</div></dd><dt>Versi aplikasi</dt><dd>${esc(I.app.versi)} (${esc(I.app.fase)})</dd><dt>Versi skema</dt><dd>v${esc(I.skemaDb)}</dd><dt>Dibuat</dt><dd>${esc(I.dibuat)}</dd></dl></div>
    <div class="card"><h2>${ic('check', 's')} Pemeriksaan kesehatan<span class="sp"></span><button class="btn sm" id="health">Jalankan</button></h2><div id="hres"><div class="muted" style="font-size:13px">Klik <b>Jalankan</b> untuk memeriksa database, skema, admin, role, config, dan akses file.</div></div></div>
+   <div class="card"><h2>${ic('log', 's')} Arsip tahunan</h2><dl class="kv"><dt>Pemicu bulanan</dt><dd>${I.arsip.pemicu ? '<span class="pill p-ok">terpasang</span> <span class="muted" style="font-size:12px">tanggal 1 tiap bulan ±01.00</span>' : I.arsip.pemicu === null ? '<span class="pill p-crit">izin belum lengkap</span> <span class="muted" style="font-size:12px">jalankan mintaIzin di editor</span>' : '<span class="pill p-warn">belum terpasang</span>'}</dd>
+     <dt>Pindah setelah</dt><dd>${esc(I.arsip.setelahHari)} hari sejak CLOSE</dd><dt>Terakhir jalan</dt><dd>${esc(I.arsip.terakhir) || '<span class="muted">belum pernah</span>'}</dd>
+     <dt>File arsip & log</dt><dd>${(I.db.files || []).map(f => `<div class="mono" style="font-size:11.5px">${esc(f.nama)} ${f.hilang ? '<span class="pill p-crit">tidak bisa dibuka</span>' : f.akses.length > 2 ? '<span class="pill p-crit">' + f.akses.length + ' akun</span>' : ''}</div>`).join('') || '<span class="muted">belum ada</span>'}</dd></dl>
+    ${can('pengaturan.kelola') ? `<div class="row" style="margin-top:12px">${I.arsip.pemicu ? '' : '<button class="btn sm pri" id="arsPemicu">Pasang pemicu arsip</button>'}<button class="btn sm" id="arsJalan">Jalankan pindah arsip sekarang</button></div>` : ''}</div>
    <div class="card"><h2>Tab di database</h2><div class="tbl-wrap"><table class="t"><thead><tr><th>Tab</th><th class="num">Baris data</th></tr></thead><tbody>${I.db.tabs.map(t => `<tr><td class="mono">${esc(t.tab)}</td><td class="num">${t.baris}</td></tr>`).join('')}</tbody></table></div>
-    <div class="muted" style="font-size:12px;margin-top:8px">Tab untuk kontrak, BAST, dan lainnya ditambahkan otomatis oleh migrasi di fase berikutnya.</div></div>
+    <div class="muted" style="font-size:12px;margin-top:8px">Tab baru ditambahkan otomatis oleh migrasi. Log ada di file SKM_LOG_&lt;tahun&gt;; kontrak lama di SKM_ARSIP_&lt;tahun&gt;.</div></div>
    <div class="card"><h2>Riwayat migrasi</h2><div class="tl">${I.riwayat.slice().reverse().map(e => `<div class="e"><span class="b"></span><span class="w">${esc(e.waktu)}</span><span><b>v${e.dari} → v${e.ke}</b> · ${esc(e.oleh)}<br><span class="muted" style="font-size:12px">${esc(e.langkah.join(' · '))}</span></span></div>`).join('')}</div>
     <div class="muted" style="font-size:12px;margin-top:8px">Migrasi hanya menambah tab/kolom, tidak pernah menghapus data.</div></div>
    <div class="card" style="grid-column:1/-1"><h2>Config</h2><div class="tbl-wrap"><table class="t"><thead><tr><th>Key</th><th>Nilai</th><th>Arti</th><th></th></tr></thead><tbody>${I.config.map(c => `<tr><td class="mono" style="font-size:12px">${esc(c.key)}</td><td><input class="inp" data-cfg="${esc(c.key)}" value="${esc(c.nilai)}" aria-label="${esc(c.key)}" style="max-width:240px" ${can('pengaturan.kelola') ? '' : 'disabled'}></td><td class="muted" style="font-size:12.5px">${esc(c.ket)}</td><td>${can('pengaturan.kelola') ? `<button class="btn sm" data-cfgsave="${esc(c.key)}">Simpan</button>` : ''}</td></tr>`).join('')}</tbody></table></div></div>
@@ -507,6 +549,8 @@ function bindSistem() {
     try { const r = await call('sistem.cek'); $('#hres').innerHTML = r.hasil.map(h => `<div class="check"><span class="d ${h.ok ? 'y' : ''}" style="${h.ok ? '' : 'background:var(--crit);color:#fff'}">${h.ok ? '✓' : '!'}</span><span>${esc(h.nama)}${h.catatan ? `<br><span class="muted" style="font-size:12px">${esc(h.catatan)}</span>` : ''}</span></div>`).join(''); toast(`Pemeriksaan selesai: ${r.hasil.filter(h => h.ok).length} dari ${r.hasil.length} OK.`); }
     catch (e) { gagal(e); } finally { busy(btn, false); }
   };
+  if ($('#arsPemicu')) $('#arsPemicu').onclick = async () => { const b = $('#arsPemicu'); busy(b, true); try { const r = await call('arsip.pemicu'); toast(r.aktif ? 'Pemicu arsip bulanan terpasang.' : 'Pemicu belum terpasang.'); loadPage('sistem'); } catch (e) { busy(b, false); modalGagal(e); } };
+  if ($('#arsJalan')) $('#arsJalan').onclick = async () => { const b = $('#arsJalan'); busy(b, true, 'Memindahkan…'); try { const r = await call('arsip.jalankan'); toast(r.dipindah ? `${r.dipindah} kontrak dipindah ke arsip${r.sisa ? ', ' + r.sisa + ' sisa (jalankan lagi)' : ''}.` : 'Tidak ada kontrak yang perlu dipindah.'); if (r.dipindah) muatUlangDiam(); loadPage('sistem'); } catch (e) { busy(b, false); modalGagal(e); } };
   $$('[data-cfgsave]').forEach(b => b.onclick = async () => {
     const key = b.dataset.cfgsave, nilai = document.querySelector(`[data-cfg="${key}"]`).value; busy(b, true);
     try { const r = await call('config.simpan', { key, nilai }); toast(r.berubah ? `${key} disimpan.` : 'Tidak ada perubahan.'); S.app = Object.assign(S.app, r.app); }
@@ -538,9 +582,10 @@ document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   if (document.querySelector('.menu')) { closeMenu(); return; }
   const m = [...document.querySelectorAll('#overlay-root .scrim:not(.closing)')].pop(); if (m) { m._close(); return; }
+  if (document.getElementById('kform-root')) { closeKForm(); return; }
+  if (S.drawer) { closeDrawer(); return; }
   closeSheet();
 });
 document.addEventListener('click', () => { closeMenu(); const s = $('#side'); if (s) s.classList.remove('open'); });
 window.addEventListener('resize', closeMenu);
 
-boot();

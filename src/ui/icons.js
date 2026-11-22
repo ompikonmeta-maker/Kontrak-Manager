@@ -28,7 +28,7 @@ link:"M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9
 };
 const ic=(n,c='')=>`<svg class="i ${c}" viewBox="0 0 24 24" aria-hidden="true"><path d="${IC[n]}"/></svg>`;
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const rp=n=>n==null?'—':'Rp '+Number(n).toLocaleString('id-ID');
+const rp=n=>(n===''||n==null||!isFinite(Number(n)))?'—':'Rp '+Number(n).toLocaleString('id-ID');
 const rpShort=n=>n>=1e12?'Rp '+(n/1e12).toLocaleString('id-ID',{maximumFractionDigits:1})+' T':n>=1e9?'Rp '+(n/1e9).toLocaleString('id-ID',{maximumFractionDigits:1})+' M':'Rp '+Math.round(n/1e6).toLocaleString('id-ID')+' jt';
 const REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const LOGO=`<svg viewBox="0 0 40 40" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--accent)"/><stop offset="1" stop-color="var(--violet)"/></linearGradient></defs><rect width="40" height="40" rx="12" fill="url(#lg)"/><circle cx="20" cy="20" r="11" fill="none" stroke="var(--on-accent)" stroke-opacity=".45" stroke-width="1.5"/><circle cx="20" cy="20" r="4.5" fill="var(--on-accent)"/><g class="orbit-sat"><circle cx="31" cy="20" r="2.6" fill="var(--on-accent)"/></g></svg>`;

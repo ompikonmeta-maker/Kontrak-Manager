@@ -241,14 +241,18 @@ function isiTemplate_(f) {
 }
 
 // ---------------------------------------------------------------- aksi
-AKSI['data.muat'] = { izin: 'kontrak.lihat', fn: function () {
-  return { snap: Repo.snapshot(), ref: refRaw_(), cfg: cfgKlien_(), users: daftarUserPic_(), hariIni: hariIni_(), sekarang: Repo.sekarang() };
-} };
+/** Data aktif untuk browser + perubahan sejak snapshot (supaya browser tidak perlu panggilan kedua). */
+function muatDataKlien_() {
+  var snap = Repo.snapshot();
+  return { snap: snap, feed: Repo.feedAmbil(snap.seq), ref: refRaw_(), cfg: cfgKlien_(), users: daftarUserPic_(), hariIni: hariIni_(), sekarang: Repo.sekarang() };
+}
+AKSI['data.muat'] = { izin: 'kontrak.lihat', fn: function () { return muatDataKlien_(); } };
 AKSI['data.ref'] = { izin: 'kontrak.lihat', fn: function () { return { ref: refRaw_(), cfg: cfgKlien_(), users: daftarUserPic_() }; } };
 AKSI['data.perubahan'] = { izin: 'kontrak.lihat', fn: function (ctx) { var r = Repo.feedAmbil(ctx.payload.sejak); r.hariIni = hariIni_(); return r; } };
 
 AKSI['kontrak.op'] = { izin: 'kontrak.lihat', ubah: true, fn: function (ctx) {
   var p = ctx.payload, op = String(p.op || ''), c = ctxKD_(ctx), lama = null, hasil;
+  if (p.data) delete p.data.KontrakID;   // ID kontrak baru selalu dibuat server
   if (op === 'kontrak.buat') {
     var no = KD.t((p.data && p.data.f || {}).NoKontrak);
     if (no) { var d = cariNomor_(KD.normKey(no)); if (d) throw Repo.galat('DOBEL', pesanDobel_(d)); }

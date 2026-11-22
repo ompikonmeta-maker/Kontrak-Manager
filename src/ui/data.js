@@ -1,6 +1,6 @@
 /* ================= F2 · data aktif di browser, antrean simpan, tarik perubahan (§4.4) ================= */
 const D = { siap: false, memuat: null, seq: 0, base: {}, view: {}, antre: [], kirim: false, refRaw: null, ref: null, cfg: {}, users: [], hariIni: '',
-            tersimpan: 0, terakhirTarik: 0, gagalKirim: 0, flash: {}, tempN: 0, dibuka: {} };
+            tersimpan: 0, terakhirTarik: 0, gagalKirim: 0, flash: {}, tempN: 0, dibuka: {}, petaTemp: {} };
 
 const pad2 = n => (n < 10 ? '0' : '') + n;
 function sekarangStr() { const d = new Date(); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds()); }
@@ -35,20 +35,44 @@ function hitungView(kid) {
 }
 function hitungSemuaView() { D.view = {}; Object.keys(D.base).forEach(k => { D.view[k] = D.base[k]; }); new Set(D.antre.map(a => a.kid)).forEach(hitungView); }
 const semuaKontrak = () => Object.values(D.view);
-const kontrak = kid => D.view[kid] || null;
+const idAsli = kid => D.petaTemp[kid] || kid;
+const kontrak = kid => D.view[kid] || D.view[D.petaTemp[kid]] || null;
 
-/** Muat data aktif. tampil=true memunculkan layar progres (saat aplikasi dibuka). */
-function muatData(tampil) {
+/** Terapkan entri feed perubahan ke data dasar. Mengembalikan {orangLain[], muatUlang, muatRef}. */
+function terapkanFeed(entri) {
+  const out = { orangLain: [], muatUlang: false, muatRef: false };
+  (entri || []).forEach(e => {
+    if (e.muatUlang) out.muatUlang = true;
+    if (e.muatRef) out.muatRef = true;
+    (e.bundle ? [e.bundle] : (e.bundles || [])).forEach(b => {
+      const kid = b.k.KontrakID, lama = D.base[kid];
+      if (lama && Number(lama.k.Version) > Number(b.k.Version)) return;
+      D.base[kid] = b;
+      if (b.k.UpdatedBy && S.me && b.k.UpdatedBy !== S.me.username && (!lama || lama.k.Version !== b.k.Version)) { out.orangLain.push(b); D.flash[kid] = Date.now(); }
+    });
+  });
+  return out;
+}
+/** Pasang hasil data.muat (atau data yang ikut di boot). */
+function pasangData(r) {
+  terimaRef(r.ref, r.cfg, r.users);
+  D.base = bundleDariSnapshot(r.snap.tabs); D.seq = r.snap.seq; D.hariIni = r.hariIni || hariIniStr();
+  if (r.feed && !r.feed.muatUlang) { terapkanFeed(r.feed.entri); D.seq = r.feed.seq; }
+  hitungSemuaView(); D.siap = true; D.terakhirTarik = Date.now();
+  return !!(r.feed && r.feed.muatUlang);
+}
+/** Muat data aktif. tampil=true memunculkan layar progres (saat aplikasi dibuka). pre = data yang sudah ikut di boot. */
+function muatData(tampil, pre) {
   if (D.memuat) return D.memuat;
+  if (pre) { const ulang = pasangData(pre); jadwalTarik(); syncChip(); return ulang ? muatUlangDiam() : Promise.resolve(); }
   const ov = tampil ? layarProgres('Memuat data aktif', ['Menghubungi server', 'Kontrak aktif', 'BAST, SO/MI, kendala', 'Siap: daftar, filter, cari & detail kini instan']) : null;
   if (ov) ov.langkah(0);
   D.memuat = call('data.muat').then(r => {
     if (ov) ov.langkah(1, 'Kontrak aktif · ' + r.snap.tabs.Kontrak.r.length.toLocaleString('id-ID') + ' kontrak');
-    terimaRef(r.ref, r.cfg, r.users);
-    D.base = bundleDariSnapshot(r.snap.tabs); D.seq = r.snap.seq; D.hariIni = r.hariIni || hariIniStr();
-    if (ov) ov.langkah(2);
-    hitungSemuaView(); D.siap = true; D.terakhirTarik = Date.now();
-    return tarik(true).then(() => { if (ov) { ov.langkah(3); ov.selesai(); } jadwalTarik(); syncChip(); });
+    const ulang = pasangData(r);
+    if (ov) { ov.langkah(3); ov.selesai(); }
+    jadwalTarik(); syncChip();
+    if (ulang) return muatUlangDiam();
   }).catch(e => { if (ov) ov.selesai(); throw e; }).finally(() => { D.memuat = null; });
   return D.memuat;
 }
@@ -68,19 +92,7 @@ async function tarik(diam) {
   D.terakhirTarik = Date.now();
   if (r.hariIni) D.hariIni = r.hariIni;
   if (r.muatUlang) { await muatUlangDiam(); return; }
-  const diubahOrangLain = [];
-  let perluRef = false, perluMuat = false;
-  (r.entri || []).forEach(e => {
-    if (e.muatUlang) perluMuat = true;
-    if (e.muatRef) perluRef = true;
-    const list = e.bundle ? [e.bundle] : (e.bundles || []);
-    list.forEach(b => {
-      const kid = b.k.KontrakID, lama = D.base[kid];
-      if (lama && Number(lama.k.Version) > Number(b.k.Version)) return;
-      D.base[kid] = b;
-      if (b.k.UpdatedBy && b.k.UpdatedBy !== S.me.username && (!lama || lama.k.Version !== b.k.Version)) { diubahOrangLain.push(b); D.flash[kid] = Date.now(); }
-    });
-  });
+  const hasil = terapkanFeed(r.entri), diubahOrangLain = hasil.orangLain, perluRef = hasil.muatRef, perluMuat = hasil.muatUlang;
   D.seq = r.seq;
   if (perluMuat) { await muatUlangDiam(); return; }
   if (perluRef) { try { const x = await call('data.ref'); terimaRef(x.ref, x.cfg, x.users); } catch (e) { /* coba lagi nanti */ } }
@@ -97,10 +109,7 @@ async function tarik(diam) {
 async function muatUlangDiam() {
   try {
     const r = await call('data.muat');
-    terimaRef(r.ref, r.cfg, r.users);
-    D.base = bundleDariSnapshot(r.snap.tabs); D.seq = r.snap.seq;
-    hitungSemuaView();
-    await tarik(true);
+    pasangData(r);
     segarkanTampilan();
   } catch (e) { /* coba lagi pada tarikan berikutnya */ }
 }
@@ -121,6 +130,7 @@ function jalankanOp(op, kid, data, opt) {
   return a.kid;
 }
 function gantiTemp(temp, real) {
+  D.petaTemp[temp] = real;
   D.antre.forEach(a => { if (a.kid === temp) { a.kid = real; a.data = JSON.parse(JSON.stringify(a.data).split(temp).join(real)); } });
   delete D.view[temp];
   if (S.drawer === temp) S.drawer = real;

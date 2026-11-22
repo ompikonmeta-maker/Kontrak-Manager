@@ -22,6 +22,7 @@ function buildUi() {
     if (html.includes(ph)) html = html.split(ph).join(read(file));
   }
   html = html.split('/*SHARED*/').join(sharedCode);
+  html = html.split('/*F2*/').join(['data.js', 'xlsx.js', 'kontrak.js', 'upload.js', 'pengaturan.js'].map(read).join('\n'));
   return html;
 }
 
