@@ -50,6 +50,9 @@ class Range {
       findNext() { const a = tf.findAll(); return a[0] || null; } };
     return tf;
   }
+  getValue() { return this.getValues()[0][0]; }
+  setDataValidation(v) { this.sh.validations = (this.sh.validations || 0) + 1; return this; }
+  setBackground() { return this; } setFontColor() { return this; } setFontWeight() { return this; } setFontSize() { return this; } setNote(n) { return this; }
   setNumberFormat(f) { OPS.n++; if (this.r + this.nr - 1 > this.sh.maxRows) throw new Error('Exception: Those rows are out of bounds'); this.sh.formats.push([this.r, this.c, this.nr, this.nc, f]); return this; }
 }
 
@@ -73,6 +76,7 @@ class Sheet {
     return new Range(this, r, c, nr, nc);
   }
   getDataRange() { OPS.n++; let m = 0; this.data.forEach(row => (row || []).forEach((v, j) => { if (v !== '' && v !== undefined && v !== null) m = Math.max(m, j + 1); })); return new Range(this, 1, 1, Math.max(this._lastRow(), 1), Math.max(m, 1)); }
+  setColumnWidth() { return this; }
   setFrozenRows(n) { if (n >= this.maxRows) throw new Error("You can't freeze all visible rows on the sheet."); this.frozen = n; }
   deleteRow(r) { OPS.n++; this.data.splice(r - 1, 1); }
 }
@@ -97,13 +101,15 @@ function createGas(opts = {}) {
   const cache = {};
   const logs = [];
   const lockState = { held: false };
-  const triggers = [], drive = {};
+  const triggers = [], drive = {}, fetches = [];
   const driveObj = id => ({ getId: () => id, setTrashed(b) { drive[id].trashed = b; return this; }, moveTo(f) { drive[id].folder = f.getId(); return this; } });
   const fmt2 = n => String(n).padStart(2, '0');
   const gas = {
     Date: clock.Date,
     SpreadsheetApp: {
       create(name) { const id = 'ss_' + crypto.randomUUID().slice(0, 8); files[id] = new Spreadsheet(id, name, owner); return files[id]; },
+      flush() {},
+      newDataValidation() { const b = { requireValueInRange: () => b, requireDate: () => b, setAllowInvalid: () => b, build: () => ({ dv: true }) }; return b; },
       openById(id) { OPS.n++; if (!files[id]) throw new Error('File tidak ditemukan: ' + id); return files[id]; },
     },
     PropertiesService: { getScriptProperties: () => ({
@@ -114,6 +120,7 @@ function createGas(opts = {}) {
       get(k) { const e = cache[k]; if (!e) return null; if (e.exp < clock.now()) { delete cache[k]; return null; } return e.v; },
       put(k, v, ttl = 600) { if (String(v).length > 100 * 1024) throw new Error('Argument too large: value'); if (ttl > 21600) throw new Error('TTL maks 21600'); cache[k] = { v: String(v), exp: clock.now() + ttl * 1000 }; },
       remove(k) { delete cache[k]; },
+      removeAll(keys) { keys.forEach(k => delete cache[k]); },
       putAll(o, ttl) { Object.keys(o).forEach(k => this.put(k, o[k], ttl)); },
       getAll(keys) { const r = {}; keys.forEach(k => { const v = this.get(k); if (v !== null) r[k] = v; }); return r; },
     }) },
@@ -122,6 +129,7 @@ function createGas(opts = {}) {
       DigestAlgorithm: { SHA_256: 'sha256' }, Charset: { UTF_8: 'utf8' },
       computeDigest(alg, s) { return [...crypto.createHash(alg).update(String(s), 'utf8').digest()].map(b => (b > 127 ? b - 256 : b)); },
       getUuid: () => crypto.randomUUID(),
+      base64Encode: b => Buffer.from(b.map(x => (x + 256) % 256)).toString('base64'),
       formatDate(d, tz, f) {
         if (tz !== 'Asia/Jakarta') throw new Error('Zona tidak didukung tiruan: ' + tz);
         const j = new Date(d.getTime() + 7 * 3600000);     // WIB = UTC+7, tanpa DST
@@ -129,9 +137,10 @@ function createGas(opts = {}) {
           .replace('HH', fmt2(j.getUTCHours())).replace('mm', fmt2(j.getUTCMinutes())).replace('ss', fmt2(j.getUTCSeconds()));
       },
     },
-    ScriptApp: { AuthMode: { FULL: 'FULL' }, requireAllScopes(m) { logs.push('requireAllScopes ' + m); },
-      newTrigger(fn) { const b = { timeBased: () => b, after: ms => { b.ms = ms; return b; }, create: () => { const t = { fn, ms: b.ms, getHandlerFunction: () => fn }; triggers.push(t); return t; } }; return b; },
+    ScriptApp: { AuthMode: { FULL: 'FULL' }, getOAuthToken: () => 'token-uji', requireAllScopes(m) { logs.push('requireAllScopes ' + m); },
+      newTrigger(fn) { const b = { timeBased: () => b, after: ms => { b.ms = ms; return b; }, onMonthDay: d => { b.hari = d; return b; }, atHour: h => { b.jam = h; return b; }, create: () => { const t = { fn, ms: b.ms, hari: b.hari, getHandlerFunction: () => fn }; triggers.push(t); return t; } }; return b; },
       getProjectTriggers: () => triggers.slice(), deleteTrigger(t) { const i = triggers.indexOf(t); if (i >= 0) triggers.splice(i, 1); } },
+    UrlFetchApp: { fetch(url, opt) { fetches.push([url, opt]); const isi = 'XLSX:' + url; return { getResponseCode: () => (opts.fetchGagal ? 500 : 200), getBlob: () => ({ getBytes: () => [...Buffer.from(isi)] }) }; } },
     DriveApp: {
       createFolder(name) { const id = 'fd_' + crypto.randomUUID().slice(0, 8); drive[id] = { name, trashed: false, isFolder: true }; return driveObj(id); },
       getFolderById: id => { if (!drive[id]) throw new Error('Folder tidak ada'); return driveObj(id); },
@@ -144,9 +153,18 @@ function createGas(opts = {}) {
   const ctx = vm.createContext(gas);
   vm.runInContext(fs.readFileSync(opts.file || path.join(__dirname, '..', '..', 'dist', 'Code.gs'), 'utf8'), ctx, { filename: 'Code.gs' });
   return {
-    ctx, clock, logs, props, cache, ops: OPS, triggers, drive, files,
+    ctx, clock, logs, props, cache, ops: OPS, triggers, drive, files, fetches,
     db: () => files[props.DB_ID],
-    tab: name => { const s = files[props.DB_ID].getSheetByName(name); const [h, ...rows] = s.data; return rows.filter(r => r && r.some(v => v !== '')).map(r => Object.fromEntries(h.map((k, i) => [k, r[i] === undefined ? '' : r[i]]))); },
+    tab: name => {
+      const rowsOf = sh => { const [h, ...rows] = sh.data; return rows.filter(r => r && r.some(v => v !== '')).map(r => Object.fromEntries(h.map((k, i) => [k, r[i] === undefined ? '' : r[i]]))); };
+      if (name === 'Log') {   // sejak F2 Log ada di file SKM_LOG_<tahun>, satu tab per bulan
+        return Object.values(files).filter(f => /^SKM_LOG_/.test(f.name)).sort((a, b) => a.name < b.name ? -1 : 1)
+          .flatMap(f => f.sheets.filter(sh => /^Log-/.test(sh.name)).sort((a, b) => a.name < b.name ? -1 : 1).flatMap(rowsOf));
+      }
+      const sh = files[props.DB_ID].getSheetByName(name);
+      return sh ? rowsOf(sh) : null;
+    },
+    fileBernama: n => Object.values(files).find(f => f.name === n) || null,
     /** Jalankan api() seperti google.script.run: hasil dibuat ulang lewat JSON (yang bisa dikirim ke browser saja). */
     api: (token, aksi, payload) => { ctx.Repo._reset(); return JSON.parse(JSON.stringify(ctx.api(token, aksi, payload))); },
     /** Mulai eksekusi baru (memo per-eksekusi dibuang, seperti request baru di Apps Script). */

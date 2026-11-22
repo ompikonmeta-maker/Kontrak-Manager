@@ -7,6 +7,8 @@ const path = require('path');
 const root = path.join(__dirname, '..');
 const srv = path.join(root, 'src', 'server');
 const ui = path.join(root, 'src', 'ui');
+const shared = path.join(root, 'src', 'shared');
+const sharedCode = fs.readdirSync(shared).filter(f => f.endsWith('.js')).sort().map(f => fs.readFileSync(path.join(shared, f), 'utf8').trim()).join('\n');
 const dist = path.join(root, 'dist');
 fs.mkdirSync(dist, { recursive: true });
 
@@ -19,13 +21,15 @@ function buildUi() {
   for (const [ph, file] of [['/*STYLES*/', 'styles.css'], ['/*ICONS*/', 'icons.js'], ['/*APP*/', 'app.js']]) {
     if (html.includes(ph)) html = html.split(ph).join(read(file));
   }
+  html = html.split('/*SHARED*/').join(sharedCode);
   return html;
 }
 
 // ---------- server ----------
 const files = fs.readdirSync(srv).filter(f => f.endsWith('.js')).sort();
 const versi = (fs.readFileSync(path.join(srv, '00_Config.js'), 'utf8').match(/VERSI:\s*'([^']+)'/) || [])[1] || '?';
-let code = files.map(f => `// ===== ${f} =====\n` + fs.readFileSync(path.join(srv, f), 'utf8').trim() + '\n').join('\n');
+let code = files.map(f => `// ===== ${f} =====\n` + fs.readFileSync(path.join(srv, f), 'utf8').trim() + '\n' +
+  (f === '00_Config.js' ? `\n// ===== src/shared (dipakai server dan browser) =====\n${sharedCode}\n` : '')).join('\n');
 code += `\n// ===== UI (src/ui, disematkan saat build) =====\nvar UI_HTML = ${JSON.stringify(buildUi())};\n`;
 fs.writeFileSync(path.join(dist, 'Code.gs'), code);
 

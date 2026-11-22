@@ -21,7 +21,7 @@ test('boot: satu panggilan berisi status, profil dan katalog; token rusak → us
   assert.equal(b.data.user.username, 'admin');
   assert.ok(b.data.user.izin.includes('user.kelola'));
   assert.equal(b.data.katalog.length, 12);
-  assert.equal(b.data.app.versi, '1.0.3');
+  assert.equal(b.data.app.versi, '2.0.0');
   const x = g.api('token-palsu', 'boot');
   assert.equal(x.ok, true);
   assert.equal(x.data.user, null);
@@ -90,7 +90,8 @@ test('Log & tab tetap bisa ditulis melewati 1.000 baris bawaan sheet', () => {
   assert.ok(log.length > 1100);
   assert.equal(log[log.length - 1].Catatan, '1099');
   // baris tambahan berformat teks
-  const sh = g.db().getSheetByName('Log');
+  const ym = new Date().toISOString().slice(0, 7);
+  const sh = g.fileBernama('SKM_LOG_' + ym.slice(0, 4)).getSheetByName('Log-' + ym);
   assert.ok(sh.maxRows > 1000);
   assert.ok(sh.formats.some(f => f[0] === 1001 && f[4] === '@'));
   // aksi biasa masih jalan & tercatat setelah melewati batas

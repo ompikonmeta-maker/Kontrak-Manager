@@ -29,6 +29,8 @@ function setup() {
     } else {
       console.log('User sudah ada; admin awal tidak dibuat ulang. Lupa password admin? Jalankan pulihkanAdmin().');
     }
+    try { console.log(pasangPemicuArsip_() ? 'Pemicu pindah arsip bulanan dipasang (tanggal 1, ±01.00).' : 'Pemicu pindah arsip bulanan sudah ada.'); }
+    catch (e) { console.log('Pemicu arsip belum bisa dipasang: ' + e.message + ' — jalankan mintaIzin lalu setup() lagi.'); }
     console.log('Selesai (aplikasi v' + APP.VERSI + ', skema v' + APP.SKEMA + '). Buka Web app URL untuk login.');
   } finally { try { Repo.flushLog(); } finally { lock.releaseLock(); } }
 }

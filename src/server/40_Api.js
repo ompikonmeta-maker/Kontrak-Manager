@@ -282,12 +282,24 @@ var AKSI = {
   // ---------------- log ----------------
   'log.list': { fn: function (ctx) {
     var semuaLog = ctx.izin.indexOf('log.semua') >= 0, f = ctx.payload || {}, me = ctx.user.Username;
-    var rows = Repo.semua('Log').slice().reverse().filter(function (l) { return semuaLog || l.Username === me; });
+    var bulanIni = Repo.sekarang().slice(0, 7), daftar = Repo.daftarBulanLog();
+    if (daftar.indexOf(bulanIni) < 0) daftar.unshift(bulanIni);
+    var bulan = /^\d{4}-\d{2}$/.test(f.bulan || '') ? f.bulan : '', rows;
+    if (bulan) rows = Repo.logBulan(bulan);
+    else {   // 30 hari terakhir: bulan ini + bulan lalu
+      var d = new Date(), lalu = Utilities.formatDate(new Date(d.getFullYear(), d.getMonth() - 1, 1), APP.TZ, 'yyyy-MM');
+      var batas = Utilities.formatDate(new Date(d.getTime() - 30 * 864e5), APP.TZ, 'yyyy-MM-dd');
+      rows = Repo.logBulan(lalu).concat(Repo.logBulan(bulanIni)).filter(function (l) { return String(l.Timestamp) >= batas; });
+    }
+    rows = rows.slice().reverse().filter(function (l) { return semuaLog || l.Username === me; });
     var uniq = function (k) { var s = {}; rows.forEach(function (l) { s[l[k]] = 1; }); return Object.keys(s).sort(); };
-    var users = uniq('Username'), aksi = uniq('Aksi');
-    rows = rows.filter(function (l) { return (!f.user || l.Username === f.user) && (!f.aksi || l.Aksi === f.aksi) && (!f.hasil || l.Hasil === f.hasil); });
+    var users = uniq('Username'), aksi = uniq('Aksi'), q = String(f.q || '').toLowerCase();
+    rows = rows.filter(function (l) {
+      return (!f.user || l.Username === f.user) && (!f.aksi || l.Aksi === f.aksi) && (!f.hasil || l.Hasil === f.hasil) &&
+             (!q || [l.EntitasID, l.Catatan, l.NilaiLama, l.NilaiBaru, l.Field].join(' ').toLowerCase().indexOf(q) >= 0);
+    });
     var total = rows.length;
-    return { semua: semuaLog, total: total, users: users, aksi: aksi,
+    return { semua: semuaLog, total: total, users: users, aksi: aksi, bulan: bulan, daftarBulan: daftar,
       entri: rows.slice(0, Math.min(Domain.num(f.limit, 300), 1000)).map(function (l) {
         return { waktu: l.Timestamp, user: l.Username, aksi: l.Aksi, entitas: l.Entitas, id: l.EntitasID, field: l.Field,
                  lama: l.NilaiLama, baru: l.NilaiBaru, catatan: l.Catatan, hasil: l.Hasil || 'BERHASIL' };
@@ -298,8 +310,10 @@ var AKSI = {
   'sistem.info': { izin: 'user.kelola', fn: function () {
     var riwayat = []; try { riwayat = JSON.parse(Repo.meta('RIWAYAT_MIGRASI') || '[]'); } catch (e) { riwayat = []; }
     var akun = ''; try { akun = Session.getEffectiveUser().getEmail(); } catch (e) { akun = ''; }
+    var pemicu = false; try { pemicu = pemicuArsip_().length > 0; } catch (e) { pemicu = null; }
     return { app: infoApp_(), skemaDb: Repo.meta('SKEMA_VERSI'), dibuat: Repo.meta('DB_DIBUAT'), riwayat: riwayat, db: Repo.infoDatabase(),
-             akunFF: akun, config: Repo.semua('Config').map(function (c) { return { key: c.Key, nilai: c.Nilai, ket: c.Keterangan }; }) };
+             akunFF: akun, config: Repo.semua('Config').map(function (c) { return { key: c.Key, nilai: c.Nilai, ket: c.Keterangan }; }),
+             arsip: { pemicu: pemicu, terakhir: Repo.meta('ARSIP_TERAKHIR'), setelahHari: Repo.config('ARSIP_SETELAH_HARI', '90') }, seq: Repo.seq() };
   } },
 
   'sistem.cek': { izin: 'user.kelola', fn: function (ctx) {
@@ -316,15 +330,39 @@ var AKSI = {
     cek('Config lengkap', !kurang.length, kurang.length ? 'Kurang: ' + kurang.join(', ') : '');
     var info = Repo.infoDatabase(), orang = info.akses.length;
     cek('File database tidak dibagikan (maks. akun FF + 1 admin cadangan)', orang <= 2, orang + ' akun punya akses: ' + info.akses.join(', '));
+    var bocor = info.files.filter(function (f) { return f.akses.length > 2; }), hilang = info.files.filter(function (f) { return f.hilang; });
+    if (info.files.length) cek('File arsip & log tidak dibagikan dan bisa dibuka', !bocor.length && !hilang.length,
+      bocor.map(function (f) { return f.nama + ': ' + f.akses.length + ' akun'; }).concat(hilang.map(function (f) { return f.nama + ' tidak bisa dibuka'; })).join('; ') || info.files.length + ' file');
+    var ref = KD.siapkanRef(refRaw_()), penutup = ref.tahap.filter(function (t) { return t.Aktif && t.Penutup; }).length;
+    cek('Tepat satu tahap penutup aktif', penutup === 1, penutup + ' tahap penutup aktif');
+    var celah = KD.celahAturan(ref);
+    cek('Semua tahap & kendala aktif tercakup aturan Nilai Push', !celah.length, celah.join(', '));
+    var pemicu = null; try { pemicu = pemicuArsip_().length > 0; } catch (e) { pemicu = null; }
+    cek('Pemicu pindah arsip bulanan terpasang', pemicu === true, pemicu === null ? 'Izin Google untuk pemicu belum diberikan: jalankan mintaIzin di editor' : pemicu ? 'tanggal 1 tiap bulan ±01.00' : 'Belum terpasang: klik "Pasang pemicu arsip" di halaman Sistem');
     catat_(ctx, 'CEK_SISTEM', '_Meta', '—', hasil.filter(function (h) { return h.ok; }).length + '/' + hasil.length + ' OK');
     return { hasil: hasil };
   } },
 
   'config.simpan': { izin: 'pengaturan.kelola', ubah: true, fn: function (ctx) {
     var key = String(ctx.payload.key || ''), nilai = String(ctx.payload.nilai == null ? '' : ctx.payload.nilai).trim();
-    var BATAS = { SESI_JAM: [1, 6], LOGIN_GAGAL_MAKS: [3, 20], KUNCI_MENIT: [1, 1440], PASSWORD_MIN: [6, 64] };
+    var BATAS = { SESI_JAM: [1, 6], LOGIN_GAGAL_MAKS: [3, 20], KUNCI_MENIT: [1, 1440], PASSWORD_MIN: [6, 64], KENDALA_BATAS_HARI: [1, 365],
+                  ARSIP_SETELAH_HARI: [30, 3650], SINKRON_KLIEN_DETIK: [15, 300] };
     wajib_(CONFIG_AWAL.some(function (c) { return c[0] === key; }), 'Key config tidak dikenal.');
-    if (BATAS[key]) {
+    var ref = KD.siapkanRef(refRaw_());
+    if (key === 'TAHAP_REOPEN') {
+      var t = ref.T[nilai]; wajib_(t && t.Aktif && !t.Penutup, 'TAHAP_REOPEN harus kode tahap aktif yang bukan penutup (mis. DRAFTING).');
+    } else if (key === 'AGING_BATAS') {
+      var a = nilai.split(',').map(function (x) { return x.trim(); });
+      wajib_(a.length === 3 && a.every(function (x) { return /^\d+$/.test(x); }) && +a[0] < +a[1] && +a[1] < +a[2], 'AGING_BATAS berisi 3 angka naik, mis. 7,14,30.');
+      nilai = a.join(',');
+    } else if (key === 'FIELD_WAJIB') {
+      var boleh = ['Customer', 'EndCustomer', 'NilaiKontrak', 'Segment', 'Populasi', 'OrderInternal', 'JumlahLokasi', 'PIC', 'TahunProject', 'JenisDok'];
+      var f = nilai.split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+      f.forEach(function (x) { wajib_(boleh.indexOf(x) >= 0, 'Field "' + x + '" tidak dikenal. Pilihan: ' + boleh.join(', ')); });
+      nilai = f.join(',');
+    } else if (/^DOKTAGIH_DEFAULT_/.test(key)) {
+      wajib_(ref.dokTagih.some(function (d) { return d.Aktif && d.Kode === nilai; }), key + ' harus salah satu dokumen tagih aktif (BAST/BAA).');
+    } else if (BATAS[key]) {
       var n = Number(nilai);
       wajib_(/^\d+$/.test(nilai) && n >= BATAS[key][0] && n <= BATAS[key][1], key + ' harus angka ' + BATAS[key][0] + '–' + BATAS[key][1] + '.');
     } else wajib_(nilai && nilai.length <= 60, key + ' wajib diisi (maks. 60 karakter).');
@@ -332,6 +370,7 @@ var AKSI = {
     if (lama.Nilai === nilai) return { berubah: false, app: infoApp_() };
     Repo.ubah('Config', key, { Nilai: nilai }, ctx.user.Username);
     catat_(ctx, 'UBAH_CONFIG', 'Config', key, '', '', 'Nilai', lama.Nilai, nilai);
+    if (['SESI_JAM', 'LOGIN_GAGAL_MAKS', 'KUNCI_MENIT', 'PASSWORD_MIN', 'APP_NAMA'].indexOf(key) < 0) Repo.feedTambah({ muatRef: true });
     return { berubah: true, app: infoApp_() };
   } }
 };
