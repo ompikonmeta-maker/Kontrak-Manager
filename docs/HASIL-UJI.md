@@ -55,3 +55,37 @@ Jeda "cold start" Apps Script 1–3 detik pada panggilan pertama setelah lama ti
   dibetulkan). Uji dijalankan di v1.0.2; v1.0.3 hanya mengubah kecepatan, perilaku sama (55 tes otomatis lulus).
 
 **Kesimpulan: F0 & F1 selesai. F2 boleh dibangun setelah mockup F2 disetujui dan pengguna menulis "build".**
+
+## Uji beban (22 Nov 2026, akun FF, uji/Code.gs v1.0, browser dari rumah)
+
+Data tiruan ±3 tahun: DB aktif 3.000 kontrak, indeks 18.000, arsip 2024/2025/2026, pembanding tanpa arsip 18.000, Log 300.000 baris.
+Tulis massal: 19.283 sel/dtk.
+
+| Ukuran (server) | Waktu |
+|---|---|
+| Baca kontrak aktif 3.000 × 36 | 1,16 dtk |
+| Baca 18.000 × 36 (tanpa arsip) | 5,1 dtk |
+| Cari nomor di indeks (TextFinder) | 0,44 dtk |
+| Detail kontrak aktif (TextFinder 4 tab) | 1,76 dtk |
+| Cari + detail kontrak arsip | 3,2 dtk |
+| Simpan 1 perubahan (kunci + kontrak + riwayat + 3 log) | 2,8 dtk |
+| Tambah 1 baris ke Log 300.000 | 1,5 dtk |
+| Baca 300 log terakhir | 0,12 dtk |
+| Filter Log setahun per user | 18,4 dtk |
+| Cache 1,6 MB (19 potong) simpan + ambil | 1,45 dtk, utuh |
+| Pindah 300 kontrak ke arsip / kembali | 28,8 / 26,7 dtk |
+| Reopen 1 kontrak dari arsip | 5,0 dtk |
+
+| Dari browser | Median |
+|---|---|
+| Panggilan kosong | 0,91 dtk |
+| Halaman daftar | 2,3 dtk |
+| Detail aktif | 3,0 dtk |
+| Cari & buka arsip | 4,1 dtk |
+| Simpan | 3,8 dtk |
+| 15 buka daftar di detik yang sama | median 4,2 · maks 7,2 dtk |
+| 15 simpan di detik yang sama | median 15,0 · maks 29,8 dtk (antre maks 26 dtk) |
+
+Kesimpulan: arsip per tahun terbukti perlu (baca 4× lebih cepat). Platform lebih lambat dari perkiraan awal bila setiap
+klik memanggil server, sehingga diusulkan: data aktif dimuat sekali ke browser, simpan optimis di latar, Log per bulan,
+bagian simpan yang dikunci dipersingkat.
