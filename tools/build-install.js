@@ -115,7 +115,7 @@ PHASES.f2 = {
       ['Ganti isi 2 file terpisah', 'Klik <span class="mono">appsscript.json</span> → <kbd>Ctrl</kbd>+<kbd>A</kbd> → hapus → tempel hasil <b>Salin appsscript.json</b>. Lalu klik <span class="mono">Code.gs</span> → <kbd>Ctrl</kbd>+<kbd>A</kbd> → hapus → tempel hasil <b>Salin Code.gs</b>. Simpan dengan <kbd>Ctrl</kbd>+<kbd>S</kbd>. <b>Jangan digabung dalam satu file.</b>'],
       S_IZIN_F2, S_SETUP_F2,
       ['Perbarui deployment', '<b>Deploy › Manage deployments</b> → deployment yang ada → ikon pensil (<b>Edit</b>) → Version: <b>New version</b> → Description <span class="mono">F2</span> → <b>Deploy</b>. URL web app tetap sama.'],
-      ['Buka aplikasi', 'Buka Web app URL dan login. Setelah login muncul layar <b>Memuat data aktif</b>, lalu Beranda dengan kotak angka. Di kiri bawah tertulis <b>Versi 2.0.0 · F2</b>.']],
+      ['Buka aplikasi', 'Buka Web app URL dan login. Setelah login muncul layar <b>Memuat data aktif</b>, lalu Beranda dengan kotak angka. Di kiri bawah tertulis <b>Versi {{VERSI}} · F2</b>. Bila masih versi lama: deployment belum diperbarui (langkah sebelumnya), lalu muat ulang dengan <kbd>Ctrl</kbd>+<kbd>F5</kbd>.']],
     'Akun ini belum punya project SKM': [S_BARU, S_MANIFEST, S_TEMPEL, S_IZIN_F2, S_SETUP, S_CATAT,
       ['Deploy sebagai Web app', '<b>Deploy › New deployment</b> → ikon roda gigi → <b>Web app</b>. Execute as: <b>Me</b> · Who has access: <b>Anyone with Google account</b> → <b>Deploy</b> → salin <b>Web app URL</b>.'],
       ['Login pertama', 'Buka Web app URL → masuk dengan <span class="mono">admin</span> + password sementara → buat password baru.']]
@@ -205,5 +205,5 @@ document.querySelectorAll('[data-seg]').forEach(function(b){b.addEventListener('
 `;
 fs.mkdirSync(path.join(root, 'install'), { recursive: true });
 const outFile = path.join(root, 'install', `install-${phase}.html`);
-fs.writeFileSync(outFile, html);
+fs.writeFileSync(outFile, html.split('{{VERSI}}').join(versi));
 console.log('ditulis:', path.relative(root, outFile));
