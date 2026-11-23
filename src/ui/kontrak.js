@@ -114,14 +114,14 @@ function viewKontrak() {
     ${can('kontrak.daftar') ? `<button class="btn pri" id="addK">${ic('add', 's')}Tambah kontrak</button><button class="btn ton" data-go2="upload">${ic('up2', 's')}Upload Excel</button>` : ''}
    </div>
    <div class="row">${QUICK.map(([k, l, fn]) => `<button class="chipf ${f.quick === k ? 'on' : ''}" data-kq="${k}">${l} <b>${base.filter(fn).length}</b></button>`).join('')}</div>
-   <div class="row">
+   <div class="filters">
     ${sel('kft', 'Tahap', D.ref.tahap.map(t => [t.Kode, t.Label]), f.tahap)}
     ${sel('kfku', 'Kendala Umum', [...new Set(D.ref.push.filter(p => p.Aktif).map(p => p.Nilai))], f.ku)}
     <select class="inp" id="kfp" aria-label="PIC">${opsi(picList().concat([['__none', '(Tanpa PIC)']]), f.pic, 'PIC: semua')}</select>
     ${sel('kfc', 'Jenis customer', [['DIRECT', 'DIRECT'], ['INDIRECT', 'INDIRECT'], ['BELUM', 'BELUM TERDEFINISI']], f.cust)}
     ${sel('kfpop', 'Populasi', uniq('Populasi'), f.pop)}${sel('kfseg', 'Segment', uniq('Segment'), f.seg)}
-    <span class="sp"></span><span class="muted tnum" style="font-weight:600" id="kcount">${rows.length.toLocaleString('id-ID')} kontrak</span>
    </div>
+   <div class="row" style="margin-top:-4px">${Object.keys(S.kf).some(x => x !== 'st' && S.kf[x]) ? '<button class="btn sm ghost" id="kreset">Hapus semua filter</button>' : ''}<span class="sp"></span><span class="muted tnum" style="font-weight:600" id="kcount">${rows.length.toLocaleString('id-ID')} kontrak</span></div>
    <div class="tbl-wrap"><table class="t"><thead><tr>${bolehPilih ? '<th style="width:30px"><input type="checkbox" class="chk" id="kselAll" aria-label="Pilih semua yang tampil"></th>' : ''}<th>Kontrak</th><th>Tahap</th><th>Kendala Umum (di sheet)</th><th>PIC</th><th>Aging</th><th class="num">Nilai</th><th>Status</th></tr></thead><tbody>
    ${tampil.map(b => { const k = b.k, nb = KD.hidup(b.bast).length, j = jc(k), pending = D.antre.some(a => a.kid === k.KontrakID);
      return `<tr class="click ${S.drawer === k.KontrakID ? 'sel' : ''} ${D.flash[k.KontrakID] && Date.now() - D.flash[k.KontrakID] < 4000 ? 'flash' : ''}" data-k="${esc(k.KontrakID)}">
@@ -161,6 +161,7 @@ function bindKontrak() {
   $$c('[data-kq]').forEach(b => b.onclick = () => { S.kf.quick = S.kf.quick === b.dataset.kq ? '' : b.dataset.kq; rerenderKontrak(); });
   [['kft', 'tahap'], ['kfku', 'ku'], ['kfp', 'pic'], ['kfc', 'cust'], ['kfpop', 'pop'], ['kfseg', 'seg']].forEach(([id, key]) => { const el = $c('#' + id); if (el) el.onchange = () => { S.kf[key] = el.value; rerenderKontrak(); }; });
   if ($c('#addK')) $c('#addK').onclick = () => openKontrakForm(null);
+  if ($c('#kreset')) $c('#kreset').onclick = () => { Object.assign(S.kf, { q: '', quick: '', tahap: '', ku: '', pic: '', pop: '', seg: '', cust: '' }); S.arsQ = ''; rerenderKontrak(); };
   if ($c('#kmore')) $c('#kmore').onclick = () => { S.batas += 200; rerenderKontrak(); };
   $$c('tr[data-k]').forEach(tr => tr.onclick = e => { if (e.target.closest('input')) return; openDrawer(tr.dataset.k, terfilter().map(b => b.k.KontrakID)); });
   $$c('.rowchk').forEach(c => c.onchange = () => { c.checked ? S.sel.add(c.dataset.id) : S.sel.delete(c.dataset.id); rerenderKontrak(); });
