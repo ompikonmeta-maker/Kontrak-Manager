@@ -472,7 +472,7 @@ mark{background:color-mix(in oklab,var(--warn) 35%,transparent);color:inherit;bo
 <div id="drawer-root"></div>
 <div id="sheet-root"></div>
 <div id="overlay-root"></div>
-<details class="mpanel" id="mpanel" open><summary>⚙ Panel mockup <span style="margin-left:auto;font-weight:600;text-transform:none;letter-spacing:0;color:var(--muted)">tidak ada di aplikasi</span></summary><div class="mb"><div><div class="lbl">Login sebagai</div><div class="chips" id="asRole"></div></div><div class="muted" style="font-size:12px">Ganti peran untuk melihat apa yang bisa dilakukan ADMIN, STAFF, dan VIEWER. F3 menambah Dashboard, Perlu Perhatian, Ctrl+K, dan Import data lama (Kontrak → Upload Excel → Import sheet FF lama). Sinkron ke sheet unit tetap mulai F4a.</div></div></details>
+<details class="mpanel" id="mpanel" open><summary>⚙ Panel mockup <span style="margin-left:auto;font-weight:600;text-transform:none;letter-spacing:0;color:var(--muted)">tidak ada di aplikasi</span></summary><div class="mb"><div><div class="lbl">Login sebagai</div><div class="chips" id="asRole"></div></div><div class="muted" style="font-size:12px">Ganti peran untuk melihat apa yang bisa dilakukan ADMIN, STAFF, dan VIEWER. STAFF Edo diberi izin tambahan Upload/Import (lihat Pengaturan → Users). F3 menambah Dashboard, Perlu Perhatian, Ctrl+K, dan Import data lama (Kontrak → Upload Excel → Import sheet FF lama). Sinkron ke sheet unit tetap mulai F4a.</div></div></details>
 
 <script>
 /* ================= Ikon ================= */
@@ -538,10 +538,10 @@ const RULES=[
 const DOKTAGIH=[{kode:'BAST',label:'BAST',ket:'Berita Acara Serah Terima'},{kode:'BAA',label:'BAA',ket:'Berita Acara Aktivasi, dipakai sebagai dokumen tagih'}];
 const CONFIG=[['APP_NAMA','Status Kontrak Manager'],['ARSIP_SETELAH_HARI','90'],['SINKRON_KLIEN_DETIK','30'],['SYNC_INTERVAL_MENIT','15'],['TAHAP_REOPEN','DRAFTING'],['AGING_BATAS','7,14,30'],['KENDALA_BATAS_HARI','14'],['FIELD_WAJIB','Customer,EndCustomer,NilaiKontrak,Segment,Populasi,OrderInternal'],['DOKTAGIH_DEFAULT_DIRECT','BAA'],['DOKTAGIH_DEFAULT_INDIRECT','BAST'],['DOKTAGIH_DEFAULT_BELUM','BAST'],['KONFIRMASI_TAB_BARU','TRUE'],['BACKUP_SIMPAN','8'],['SKEMA_VERSI','1']];
 const AGING=[7,14,30]; const KBATAS=14;
-const PERMS=['dashboard.lihat','kontrak.lihat','export','kontrak.update','kontrak.daftar','kontrak.arsip','pic.atur','sinkron.jalankan','target.kelola','pengaturan.kelola','user.kelola','log.semua'];
+const PERMS=['dashboard.lihat','kontrak.lihat','export','kontrak.update','kontrak.daftar','kontrak.import','kontrak.arsip','pic.atur','sinkron.jalankan','target.kelola','pengaturan.kelola','user.kelola','log.semua'];
 const ROLES={ADMIN:PERMS.slice(),STAFF:PERMS.slice(0,5),VIEWER:PERMS.slice(0,3)};
 const USERS=[
- {u:'ompik',nama:'omPik',alias:'omPik',role:'ADMIN',last:'15 Nov 09:12'},{u:'edo',nama:'Edo Pratama',alias:'Edo',role:'STAFF',last:'15 Nov 08:55'},
+ {u:'ompik',nama:'omPik',alias:'omPik',role:'ADMIN',last:'15 Nov 09:12'},{u:'95210101',nama:'Edo Pratama',alias:'Edo',role:'STAFF',last:'15 Nov 08:55',extra:['kontrak.import']},
  {u:'unggul',nama:'Unggul Wicaksono',alias:'Unggul',role:'STAFF',last:'15 Nov 08:40'},{u:'baim',nama:'Ibrahim',alias:'Baim',role:'STAFF',last:'14 Nov 16:22'},
  {u:'alif',nama:'Alif Ramadhan',alias:'Alif',role:'STAFF',last:'15 Nov 07:58'},{u:'manajer',nama:'Manajer FF',alias:'',role:'VIEWER',last:'12 Nov 10:03',ganti:true}];
 const PICS=['Edo','Unggul','Baim','Alif'];
@@ -678,7 +678,7 @@ const NAV=[['dashboard','Dashboard','dash'],['kontrak','Kontrak','doc'],['perhat
 const SOON=[['Antrian','inbox','F4b'],['Google Sheet','sync','F4a']];
 const AKUN={ADMIN:{u:'ompik',nama:'omPik',alias:'omPik'},STAFF:{u:'95210101',nama:'Edo Pratama',alias:'Edo'},VIEWER:{u:'manajer.ff',nama:'Manajer FF',alias:''}};
 S.role='ADMIN';
-const can=p=>ROLES[S.role].includes(p);
+const can=p=>ROLES[S.role].includes(p)||((USERS.find(u=>u.u===me())||{}).extra||[]).includes(p);
 const me=()=>AKUN[S.role].u, meName=()=>AKUN[S.role].nama, meAlias=()=>AKUN[S.role].alias;
 const route=()=>(location.hash||'#dashboard').slice(1);
 const themeIc=()=>({system:'auto',light:'sun',dark:'moon'})[S.theme];
@@ -754,8 +754,8 @@ function renderPage(animate){
   if(['antrian','gsheet','wizard'].includes(base)||(base==='pengaturan'&&!can('pengaturan.kelola'))){location.hash='#kontrak';return;}
   let title='',crumb='',body='';
   if(base==='dashboard'){title='Selamat pagi, '+meName();crumb='Senin, 23 November 2026 · ringkasan tim FF';body=viewDash();}
-  else if(base==='kontrak'&&r==='kontrak-import'&&can('kontrak.daftar')){base='import';title='Import data lama';crumb='Kontrak · sheet FF format lama → SKM';body=viewImport();}
-  else if(base==='kontrak'&&r==='kontrak-upload'&&can('kontrak.daftar')){base='upload';title='Upload Excel';crumb='Kontrak · tambah banyak kontrak sekaligus';body=viewUpload();}
+  else if(base==='kontrak'&&r==='kontrak-import'&&can('kontrak.import')){base='import';title='Import data lama';crumb='Kontrak · sheet FF format lama → SKM';body=viewImport();}
+  else if(base==='kontrak'&&r==='kontrak-upload'&&can('kontrak.import')){base='upload';title='Upload Excel';crumb='Kontrak · tambah banyak kontrak sekaligus';body=viewUpload();}
   else if(base==='kontrak'){title='Kontrak';crumb=K.length+' kontrak terdaftar';body=viewKontrak();}
   else if(base==='perhatian'){title='Perlu Perhatian';crumb='Hal yang perlu ditindaklanjuti hari ini';body=viewPerhatian();}
   else if(base==='antrian'){title='Antrian Kontrak Baru';crumb='Nomor dari sheet unit yang belum terdaftar';body=viewAntrian();}
@@ -774,7 +774,7 @@ function renderPage(animate){
   c.innerHTML=body;
   [...c.children].forEach((el,i)=>el.style.setProperty('--i',i));
   if(animate&&!REDUCED){c.classList.remove('enter');void c.offsetWidth;c.classList.add('enter');clearTimeout(c._t);c._t=setTimeout(()=>c.classList.remove('enter'),1800);}
-  bindView(base);if(base==='upload')bindUpload();if(base==='import')bindImport();if(base==='perhatian')bindPerhatian();if(base==='dashboard')bindDash();if(base==='kontrak')bindArsip();syncChip();const sc=document.getElementById('syncChip');if(sc)sc.onclick=infoSync;
+  bindView(base);if(base==='upload')bindUpload();if(base==='import')bindImport();if(base==='perhatian')bindPerhatian();if(base==='dashboard')bindDash();if(base==='pengaturan')bindUsersF3();if(base==='kontrak')bindArsip();syncChip();const sc=document.getElementById('syncChip');if(sc)sc.onclick=infoSync;
   requestAnimationFrame(placeInd);
   if(base==='dashboard'&&animate)countUp(c);
 }
@@ -901,7 +901,7 @@ function viewKontrak(){
    <div class="row">
     <div class="search">${ic('search','s')}<input id="q" placeholder="Cari nomor kontrak, pelanggan, judul…" value="${esc(f.q)}"></div>
     <div class="seg" role="group" aria-label="Status">${[['OPEN','OPEN'],['CLOSE','CLOSE'],['','Semua'],...(can('kontrak.arsip')?[['ARSIP','Arsip']]:[])].map(([v,l])=>`<button data-st="${v}" class="${f.st===v?'on':''}">${l}</button>`).join('')}</div>
-    ${can('kontrak.daftar')?`<button class="btn pri" id="addK">${ic('add','s')}Tambah kontrak</button><a class="btn ton" href="#kontrak-upload" id="upK">${ic('up2','s')}Upload Excel</a>`:''}
+    ${can('kontrak.daftar')?`<button class="btn pri" id="addK">${ic('add','s')}Tambah kontrak</button>`:''}${can('kontrak.import')?`<a class="btn ton" href="#kontrak-upload" id="upK">${ic('up2','s')}Upload Excel</a>`:''}
     <button class="btn" disabled title="Dibangun di F5">${ic('dl','s')}Export · F5</button>
    </div>
    <div class="row">${QUICK.map(([k,l,fn])=>`<button class="chipf ${f.quick===k?'on':''}" data-quick="${k}">${l} <b>${base.filter(fn).length}</b></button>`).join('')}</div>
@@ -1253,7 +1253,7 @@ function viewWizard(){
 
 /* ================= Pengaturan ================= */
 function viewSet(){
-  const T=[['tahap','Tahap'],['kendala','Kendala'],['push','Nilai Push'],['ref','Referensi'],['config','Config']];   // Users, Role, Sistem sudah di F1; Import F3; Backup F5
+  const T=[['tahap','Tahap'],['kendala','Kendala'],['push','Nilai Push'],['ref','Referensi'],['config','Config'],['users','Users'],['role','Role']];   // Users, Role, Sistem sudah di F1; Import F3; Backup F5
   const tab=S.setTab;let b='';
   if(tab==='tahap'){const ts=TAHAP.slice().sort((a,b)=>a.urut-b.urut);
     b=`<div class="card"><h2>Tahapan BAST <small>urutan menentukan maju/mundur</small><span class="sp"></span><button class="btn sm pri" id="addTahap">${ic('add','s')}Tambah tahap</button></h2>
@@ -1275,7 +1275,7 @@ function viewSet(){
   if(tab==='ref')b=`<div class="grid g2">${[['Dokumen tagih',DOKTAGIH.map(d=>d.kode+' — '+d.ket)],['Jenis dokumen kontrak',['KL','WO','SPK','PO','Nota Pesanan','Surat Pesanan']],['Populasi',['TREG','SDA','PRM','DIRECT']],['Segment',['LBCS','GOS','ENS','OLOS']]].map(([l,xs])=>`<div class="card"><h2>${l}<span class="sp"></span><button class="btn sm">${ic('add','s')}Tambah</button></h2><div style="display:flex;flex-direction:column;gap:8px">${xs.map(x=>`<div class="row" style="flex-wrap:nowrap"><span style="flex:1;font-size:13px">${esc(x)}</span><button class="toggle on" aria-label="Aktif"></button></div>`).join('')}</div></div>`).join('')}</div>`;
   if(tab==='role')b=`<div class="card"><h2>Role &amp; izin <small>draft §6, bisa diubah tanpa ubah kode</small><span class="sp"></span><button class="btn sm">${ic('add','s')}Role baru</button></h2><div class="tbl-wrap"><table class="t matrix"><thead><tr><th>Izin</th>${Object.keys(ROLES).map(r=>`<th>${r}</th>`).join('')}</tr></thead><tbody>
     ${PERMS.map(p=>`<tr><td class="mono" style="font-size:12px">${p}</td>${Object.keys(ROLES).map(r=>`<td><input type="checkbox" class="chk" aria-label="${r} ${p}" ${ROLES[r].includes(p)?'checked':''} ${r==='ADMIN'&&p==='user.kelola'?'disabled title="Minimal harus ada satu admin dengan user.kelola"':''}></td>`).join('')}</tr>`).join('')}</tbody></table></div></div>`;
-  if(tab==='users')b=`<div class="card"><h2>Users<span class="sp"></span><button class="btn sm pri">${ic('add','s')}Tambah user</button></h2><div class="tbl-wrap"><table class="t"><thead><tr><th>User</th><th>Alias PIC</th><th>Role</th><th>Status</th><th>Login terakhir</th><th></th></tr></thead><tbody>
+  if(tab==='users')b=viewUsersF3();if(false)b=`<div class="card"><h2>Users<span class="sp"></span><button class="btn sm pri">${ic('add','s')}Tambah user</button></h2><div class="tbl-wrap"><table class="t"><thead><tr><th>User</th><th>Alias PIC</th><th>Role</th><th>Status</th><th>Login terakhir</th><th></th></tr></thead><tbody>
     ${USERS.map(u=>`<tr><td><div class="row" style="flex-wrap:nowrap">${avatar(u.nama,1)}<div><b>${esc(u.nama)}</b><div class="mono dim" style="font-size:11px">${u.u}</div></div></div></td><td>${esc(u.alias)||'<span class="dim">—</span>'}</td><td><span class="pill ${u.role==='ADMIN'?'p-acc':'p-dim'}">${u.role}</span></td><td>${u.ganti?'<span class="pill p-warn">Wajib ganti password</span>':'<span class="pill p-ok">Aktif</span>'}</td><td class="tnum muted">${u.last}</td><td><button class="btn sm">Reset password</button></td></tr>`).join('')}</tbody></table></div></div>`;
   if(tab==='config')b=`<div class="card"><h2>Config</h2><div class="tbl-wrap"><table class="t"><thead><tr><th>Key</th><th>Nilai</th><th>Arti</th></tr></thead><tbody>${CONFIG.map(([k,v])=>`<tr><td class="mono" style="font-size:12px">${k}</td><td><input class="inp" value="${esc(v)}" aria-label="${k}" ${k==='SKEMA_VERSI'?'disabled':''}></td><td class="muted" style="font-size:12.5px">${{APP_NAMA:'Nama aplikasi',SYNC_INTERVAL_MENIT:'Jeda sinkron terjadwal',TAHAP_REOPEN:'Tahap default saat reopen',AGING_BATAS:'Batas Fresh / Warm / Stale (hari)',FIELD_WAJIB:'Field yang harus terisi; yang kosong muncul di Perlu Perhatian',KENDALA_BATAS_HARI:'Kendala aktif lebih lama dari ini masuk Perlu Perhatian (aging tetap jalan)',KONFIRMASI_TAB_BARU:'Tab bulan baru perlu dikonfirmasi admin',DOKTAGIH_DEFAULT_DIRECT:'Usulan dokumen tagih untuk BAST baru bila customer DIRECT',DOKTAGIH_DEFAULT_INDIRECT:'Usulan dokumen tagih untuk BAST baru bila customer INDIRECT',DOKTAGIH_DEFAULT_BELUM:'Usulan dokumen tagih selama jenis customer belum terdefinisi',BACKUP_SIMPAN:'Jumlah salinan backup yang disimpan',SKEMA_VERSI:'Diatur otomatis oleh migrasi'}[k]}</td></tr>`).join('')}</tbody></table></div></div>`;
   if(tab==='import'){const rows=[['TEL.0317-0016/…/2017','BANK PERMATA','Edo','BAST PARSIAL','BAST REVISI','KOMPULIR · parsial · kendala REV_DOKUMEN','REVISI DOKUMEN'],['TEL.0719-0488/…/2020','BANK DANAMON INDONESIA Tbk','Unggul','KOMPULIR EVIDENCE','BAST ON REVIEW','REVIEW_CUST','DRAFT REVIEW CUSTOMER'],['TEL.0219-0003/…/2019','PT HEXINDO ADI PERKASA','Baim','KOMPULIR EVIDENCE','KOMPULIR EVIDEN','KOMPULIR','KOMPULIR EVIDEN'],['TEL.0418-0152/…/2018','PT Wananugraha Bima Lestari','Alif','KOMPULIR EVIDENCE','BAST DONE','BAST_DONE (paling maju)','BAST DONE']];
@@ -2016,6 +2016,7 @@ function perhatianItems() {
   return it;
 }
 function viewPerhatian() {
+  syncScope();
   const it = perhatianItems();
   const G = [['aging', 'BAST melewati batas aging tahap', 'var(--stale)'], ['kend', `Kendala aktif lebih dari ${KBATAS} hari`, 'var(--crit)'], ['pic', 'Kontrak tanpa PIC', 'var(--warn)'],
              ['verif', 'Data import belum diverifikasi', 'var(--info)'], ['lengkap', 'Data kontrak belum lengkap', 'var(--warn)']];
@@ -2046,8 +2047,8 @@ function openPalette() {
   d.innerHTML = `<div class="modal" role="dialog" aria-label="Cari"><div class="ps">${ic('search')}<input id="palq" placeholder="Nomor kontrak, nomor lama, SO/MI, pelanggan, atau perintah…" autocomplete="off" aria-label="Cari"><kbd>Esc</kbd></div><div class="pr" id="palr"></div><div class="pf"><span><kbd>↑</kbd><kbd>↓</kbd> pilih</span><span><kbd>Enter</kbd> buka</span><span>kontrak lama ikut dicari</span></div></div>`;
   document.getElementById('overlay-root').appendChild(d); const q = d.querySelector('#palq'), r = d.querySelector('#palr');
   const close = () => { d.classList.add('closing'); setTimeout(() => d.remove(), 200); }; d._close = close;
-  const CMD = [['cmd-add', 'Tambah kontrak', 'add', () => openKontrakForm(null), 'kontrak.daftar'], ['cmd-up', 'Upload Excel (template SKM)', 'up2', () => { location.hash = '#kontrak-upload'; }, 'kontrak.daftar'],
-    ['cmd-imp', 'Import data lama (sheet FF)', 'dl', () => { location.hash = '#kontrak-import'; }, 'kontrak.daftar'], ['dashboard', 'Dashboard', 'dash'], ['kontrak', 'Kontrak', 'doc'], ['perhatian', 'Perlu Perhatian', 'warn'],
+  const CMD = [['cmd-add', 'Tambah kontrak', 'add', () => openKontrakForm(null), 'kontrak.daftar'], ['cmd-up', 'Upload Excel (template SKM)', 'up2', () => { location.hash = '#kontrak-upload'; }, 'kontrak.import'],
+    ['cmd-imp', 'Import data lama (sheet FF)', 'dl', () => { location.hash = '#kontrak-import'; }, 'kontrak.import'], ['dashboard', 'Dashboard', 'dash'], ['kontrak', 'Kontrak', 'doc'], ['perhatian', 'Perlu Perhatian', 'warn'],
     ['pengaturan', 'Pengaturan', 'gear', null, 'pengaturan.kelola']].filter(c => !c[4] || can(c[4]));
   const pick = () => { const it = items[idx]; if (!it) return; close(); if (it.type === 'k') openDrawer(it.id); else if (it.type === 'lama') openLama(it.id); else if (it.fn) it.fn(); else location.hash = '#' + it.id; };
   const draw = () => {
@@ -2147,6 +2148,7 @@ function hasilImport() {
       else if (m.jenis === 'lain') { o.kend.push({ j: 'LAINNYA', ket: x }); asal.push(x + ' → kendala lainnya'); }
     });
     o.tahap = tahap || TAHAP[0].kode; o.asal = asal;
+    if (tah(o.tahap).penutup) o.info.push('Langsung CLOSE saat diimport · tanggal close = tanggal import');
     o.kAda = { id: 'BARU', no: o.no, pel: o.pel, end: o.end, judul: o.judul, lok: null, pic: o.pic, nilai: o.nilai, orders: [], verif: true,
       bast: [{ n: 1, doc: jenisCust({ pel: o.pel, end: o.end }) === 'DIRECT' ? 'BAA' : 'BAST', t: o.tahap, s: 1, cak: null, order: '', hari: 0, ket: o.kend.length ? '' : o.detil, dok: '' }],
       kend: o.kend.map((x, j) => ({ id: 'KD-I' + i + j, b: 1, j: x.j, ket: x.ket, st: 'AKTIF', hari: 0, oleh: 'import' })) };
@@ -2184,6 +2186,7 @@ function viewImport() {
     const tile = (f, n, l, cls) => `<button class="utile ${cls} ${I.f === f ? 'on' : ''}" data-if="${f}"><b class="tnum">${n}</b><span>${l}</span></button>`;
     return `<div class="card" style="display:flex;flex-direction:column;gap:14px">${st(3)}
      <div class="utiles">${tile('all', H.length, 'Semua baris', '')}${tile('baru', c('baru'), 'Siap diimport', 'ok')}${tile('peringatan', c('peringatan'), 'Diimport dengan catatan', 'warn')}${tile('ada', c('ada'), 'Sudah ada · dilewati', 'dim')}${tile('error', c('error'), 'Error', 'crit')}</div>
+     <div class="note info">${ic('hist', 's')}<span class="tx">Sheet lama tidak punya tanggal masuk tahap, jadi <b>aging semua BAST hasil import mulai dihitung dari tanggal import</b> (hari 0). Baris dengan status Sertim AR / BAST Takeout langsung CLOSE.</span></div>
      <div class="tbl-wrap"><table class="t utbl"><thead><tr><th>Baris</th><th>Hasil</th><th style="min-width:240px">Kontrak</th><th>Dari status lama</th><th>Jadi di SKM</th><th style="min-width:220px">Catatan</th></tr></thead><tbody>
       ${flt.map(o => `<tr class="u-${o.st}"><td class="tnum muted">${o.baris}</td><td><span class="pill ${{ baru: 'p-ok', peringatan: 'p-warn', ada: 'p-dim', error: 'p-crit' }[o.st]}">${{ baru: 'Baru', peringatan: 'Baru · catatan', ada: 'Dilewati', error: 'Error' }[o.st]}</span></td>
         <td><span class="no">${esc(o.no) || '<span class="muted">(kosong)</span>'}</span><span class="sub">${esc(o.end || '')} · ${esc(o.judul || '')}</span>${o.pic ? `<span class="sub">PIC ${esc(o.pic)}</span>` : ''}</td>
@@ -2234,10 +2237,45 @@ function bindImport() {
   };
 }
 
+/* ---------- Izin tambahan per user (keputusan F3: kontrak.import) ---------- */
+const IZIN_TAMBAHAN = [['kontrak.import', 'Upload Excel & import data lama', 'Menambah banyak kontrak sekaligus dari file. Bawaan hanya ADMIN.']];
+const izinUser = u => [...new Set(ROLES[u.role].concat(u.extra || []))];
+// Dashboard & Perlu Perhatian: user yang punya Alias PIC dan tidak mengatur PIC orang lain dibuka dengan "Milik saya"
+S.scopeRole = null;
+function syncScope() { if (S.scopeRole !== S.role) { S.scopeRole = S.role; S.dMine = S.pMine = !!meAlias() && !can('pic.atur'); } }
+function viewUsersF3() {
+  return `<div class="card"><h2>Users<span class="sp"></span><button class="btn sm pri">${ic('add', 's')}Tambah user</button></h2><div class="tbl-wrap"><table class="t"><thead><tr><th>User</th><th>Alias PIC</th><th>Role</th><th>Izin tambahan</th><th>Status</th><th></th></tr></thead><tbody>
+    ${USERS.map((u, i) => `<tr><td><div class="row" style="flex-wrap:nowrap">${avatar(u.nama, 1)}<div><b>${esc(u.nama)}</b><div class="mono dim" style="font-size:11px">${u.u}</div></div></div></td><td>${esc(u.alias) || '<span class="dim">—</span>'}</td><td><span class="pill ${u.role === 'ADMIN' ? 'p-acc' : 'p-dim'}">${u.role}</span></td>
+     <td>${(u.extra || []).filter(p => !ROLES[u.role].includes(p)).map(p => `<span class="pill p-info">${esc(IZIN_TAMBAHAN.find(x => x[0] === p)[1])}</span>`).join(' ') || '<span class="dim">—</span>'}</td>
+     <td>${u.ganti ? '<span class="pill p-warn">Wajib ganti password</span>' : '<span class="pill p-ok">Aktif</span>'}</td><td><button class="btn sm" data-uedit="${i}">${ic('edit', 's')}Ubah</button></td></tr>`).join('')}</tbody></table></div>
+    <div class="muted" style="font-size:12px;margin-top:10px">Izin user = izin role-nya + izin tambahan yang dicentang di panel user. Izin tambahan dipakai untuk pengecualian satu-dua orang tanpa membuat role baru.</div></div>`;
+}
+function bindUsersF3() {
+  document.querySelectorAll('#content [data-uedit]').forEach(b => b.onclick = () => {
+    const u = USERS[+b.dataset.uedit];
+    const baris = () => IZIN_TAMBAHAN.map(([p, l, d]) => { const dariRole = ROLES[u.role].includes(p); return `<label class="row" style="flex-wrap:nowrap;align-items:flex-start;gap:10px;cursor:${dariRole ? 'default' : 'pointer'};padding:10px 12px;border:1px solid var(--line);border-radius:12px">
+      <input type="checkbox" class="chk" data-ux="${p}" ${dariRole || (u.extra || []).includes(p) ? 'checked' : ''} ${dariRole ? 'disabled' : ''} style="margin-top:2px"><span><b>${l}</b> <span class="mono dim" style="font-size:11px">${p}</span><div class="muted" style="font-size:12.5px">${dariRole ? 'Sudah termasuk role ' + u.role + '.' : d}</div></span></label>`; }).join('');
+    modal('Ubah user · ' + esc(u.nama), `<div class="grid g2"><label class="of"><span>Nama</span><input class="inp" value="${esc(u.nama)}"></label><label class="of"><span>Alias PIC</span><input class="inp" value="${esc(u.alias)}"></label></div>
+      <label class="of"><span>Role</span><select class="inp" id="mRole">${Object.keys(ROLES).map(r => `<option ${r === u.role ? 'selected' : ''}>${r}</option>`).join('')}</select></label>
+      <div class="lbl" style="margin-top:6px">Izin tambahan <span class="muted" style="font-weight:500;text-transform:none;letter-spacing:0">di luar role</span></div><div id="mX" style="display:flex;flex-direction:column;gap:8px">${baris()}</div>`,
+      [{ l: 'Batal' }, { l: 'Simpan', pri: true, fn: d => {
+        const lama = (u.extra || []).join(',');
+        u.role = d.querySelector('#mRole').value;
+        u.extra = [...d.querySelectorAll('[data-ux]')].filter(c => c.checked && !c.disabled).map(c => c.dataset.ux);
+        log(me(), 'UBAH_USER', 'Users', u.u, 'IzinTambahan', lama, u.extra.join(','));
+        if (u.u === me()) shellBuilt = false;
+        renderPage(false); toast(`${u.nama}: izin tersimpan. Berlaku saat ${u.u === me() ? 'ini juga' : 'user itu memuat ulang / sinkron berikutnya'}.`);
+      } }]);
+    const rs = document.querySelector('#overlay-root #mRole');
+    rs.onchange = () => { const r = u.role; u.role = rs.value; document.querySelector('#overlay-root #mX').innerHTML = baris(); u.role = r; };
+  });
+}
+
 /* ---------- Dashboard (§5.5) — dihitung di browser dari data aktif ---------- */
 S.dMine = false;
 QUICK.push(['kurang', 'Data belum lengkap', k => missingFields(k).length > 0]);
 function viewDash() {
+  syncScope();
   const mineF = k => !S.dMine || k.pic === meAlias();
   const AK = K.filter(k => !k.arsip && mineF(k)), open = AK.filter(k => statusK(k).st === 'OPEN');
   const bastOpen = AK.reduce((a, k) => a + k.bast.filter(b => !bastClose(b)).length, 0);

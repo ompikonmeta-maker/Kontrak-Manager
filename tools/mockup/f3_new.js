@@ -17,6 +17,7 @@ function perhatianItems() {
   return it;
 }
 function viewPerhatian() {
+  syncScope();
   const it = perhatianItems();
   const G = [['aging', 'BAST melewati batas aging tahap', 'var(--stale)'], ['kend', `Kendala aktif lebih dari ${KBATAS} hari`, 'var(--crit)'], ['pic', 'Kontrak tanpa PIC', 'var(--warn)'],
              ['verif', 'Data import belum diverifikasi', 'var(--info)'], ['lengkap', 'Data kontrak belum lengkap', 'var(--warn)']];
@@ -47,8 +48,8 @@ function openPalette() {
   d.innerHTML = `<div class="modal" role="dialog" aria-label="Cari"><div class="ps">${ic('search')}<input id="palq" placeholder="Nomor kontrak, nomor lama, SO/MI, pelanggan, atau perintah…" autocomplete="off" aria-label="Cari"><kbd>Esc</kbd></div><div class="pr" id="palr"></div><div class="pf"><span><kbd>↑</kbd><kbd>↓</kbd> pilih</span><span><kbd>Enter</kbd> buka</span><span>kontrak lama ikut dicari</span></div></div>`;
   document.getElementById('overlay-root').appendChild(d); const q = d.querySelector('#palq'), r = d.querySelector('#palr');
   const close = () => { d.classList.add('closing'); setTimeout(() => d.remove(), 200); }; d._close = close;
-  const CMD = [['cmd-add', 'Tambah kontrak', 'add', () => openKontrakForm(null), 'kontrak.daftar'], ['cmd-up', 'Upload Excel (template SKM)', 'up2', () => { location.hash = '#kontrak-upload'; }, 'kontrak.daftar'],
-    ['cmd-imp', 'Import data lama (sheet FF)', 'dl', () => { location.hash = '#kontrak-import'; }, 'kontrak.daftar'], ['dashboard', 'Dashboard', 'dash'], ['kontrak', 'Kontrak', 'doc'], ['perhatian', 'Perlu Perhatian', 'warn'],
+  const CMD = [['cmd-add', 'Tambah kontrak', 'add', () => openKontrakForm(null), 'kontrak.daftar'], ['cmd-up', 'Upload Excel (template SKM)', 'up2', () => { location.hash = '#kontrak-upload'; }, 'kontrak.import'],
+    ['cmd-imp', 'Import data lama (sheet FF)', 'dl', () => { location.hash = '#kontrak-import'; }, 'kontrak.import'], ['dashboard', 'Dashboard', 'dash'], ['kontrak', 'Kontrak', 'doc'], ['perhatian', 'Perlu Perhatian', 'warn'],
     ['pengaturan', 'Pengaturan', 'gear', null, 'pengaturan.kelola']].filter(c => !c[4] || can(c[4]));
   const pick = () => { const it = items[idx]; if (!it) return; close(); if (it.type === 'k') openDrawer(it.id); else if (it.type === 'lama') openLama(it.id); else if (it.fn) it.fn(); else location.hash = '#' + it.id; };
   const draw = () => {
@@ -148,6 +149,7 @@ function hasilImport() {
       else if (m.jenis === 'lain') { o.kend.push({ j: 'LAINNYA', ket: x }); asal.push(x + ' → kendala lainnya'); }
     });
     o.tahap = tahap || TAHAP[0].kode; o.asal = asal;
+    if (tah(o.tahap).penutup) o.info.push('Langsung CLOSE saat diimport · tanggal close = tanggal import');
     o.kAda = { id: 'BARU', no: o.no, pel: o.pel, end: o.end, judul: o.judul, lok: null, pic: o.pic, nilai: o.nilai, orders: [], verif: true,
       bast: [{ n: 1, doc: jenisCust({ pel: o.pel, end: o.end }) === 'DIRECT' ? 'BAA' : 'BAST', t: o.tahap, s: 1, cak: null, order: '', hari: 0, ket: o.kend.length ? '' : o.detil, dok: '' }],
       kend: o.kend.map((x, j) => ({ id: 'KD-I' + i + j, b: 1, j: x.j, ket: x.ket, st: 'AKTIF', hari: 0, oleh: 'import' })) };
@@ -185,6 +187,7 @@ function viewImport() {
     const tile = (f, n, l, cls) => `<button class="utile ${cls} ${I.f === f ? 'on' : ''}" data-if="${f}"><b class="tnum">${n}</b><span>${l}</span></button>`;
     return `<div class="card" style="display:flex;flex-direction:column;gap:14px">${st(3)}
      <div class="utiles">${tile('all', H.length, 'Semua baris', '')}${tile('baru', c('baru'), 'Siap diimport', 'ok')}${tile('peringatan', c('peringatan'), 'Diimport dengan catatan', 'warn')}${tile('ada', c('ada'), 'Sudah ada · dilewati', 'dim')}${tile('error', c('error'), 'Error', 'crit')}</div>
+     <div class="note info">${ic('hist', 's')}<span class="tx">Sheet lama tidak punya tanggal masuk tahap, jadi <b>aging semua BAST hasil import mulai dihitung dari tanggal import</b> (hari 0). Baris dengan status Sertim AR / BAST Takeout langsung CLOSE.</span></div>
      <div class="tbl-wrap"><table class="t utbl"><thead><tr><th>Baris</th><th>Hasil</th><th style="min-width:240px">Kontrak</th><th>Dari status lama</th><th>Jadi di SKM</th><th style="min-width:220px">Catatan</th></tr></thead><tbody>
       ${flt.map(o => `<tr class="u-${o.st}"><td class="tnum muted">${o.baris}</td><td><span class="pill ${{ baru: 'p-ok', peringatan: 'p-warn', ada: 'p-dim', error: 'p-crit' }[o.st]}">${{ baru: 'Baru', peringatan: 'Baru · catatan', ada: 'Dilewati', error: 'Error' }[o.st]}</span></td>
         <td><span class="no">${esc(o.no) || '<span class="muted">(kosong)</span>'}</span><span class="sub">${esc(o.end || '')} · ${esc(o.judul || '')}</span>${o.pic ? `<span class="sub">PIC ${esc(o.pic)}</span>` : ''}</td>

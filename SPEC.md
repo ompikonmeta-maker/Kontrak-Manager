@@ -1,7 +1,14 @@
 # SPEC — Status Kontrak Manager
 
-Versi 1.14 · 22 Nov 2026 · Pemilik: omPik (Unit Fulfillment)
+Versi 1.15 · 23 Nov 2026 · Pemilik: omPik (Unit Fulfillment)
 Referensi konsep: BAA.flow (BAA Generator). Mockup UI yang disetujui: `mockup/mockup.html` (desain "Orbit").
+
+**Perubahan v1.15** (review mockup F3, `mockup/f3.html`)
+- Izin baru **`kontrak.import`**: Upload Excel (§11.0) dan Import data lama (§11.1). Bawaan hanya ADMIN. Admin bisa memberikannya ke user tertentu lewat **izin tambahan per user** (`Users.IzinTambahan`, centang di panel user) tanpa membuat role baru (§6, D19).
+- Import data lama: aging BAST hasil import dihitung **mulai tanggal import**; baris berstatus BAST TAKEOUT / SERTIM AR **langsung CLOSE** saat diimport (TglClose = tanggal import) (§11.1).
+- Dashboard dan Perlu Perhatian punya pilihan **Tim FF / Milik saya**. User yang punya Alias PIC tetapi tidak punya `pic.atur` (STAFF) dibuka dengan "Milik saya"; ADMIN dengan Tim FF (§5.6, §10).
+- "Update 7 hari" di tabel tim diringkas server dari Log **sekali per jam** (boleh telat ≤ 1 jam) (§10).
+- Log audit hanya untuk admin, dibuka dari Pengaturan → Sistem (sudah berlaku sejak F2 v2.0.1).
 
 **Perubahan v1.14** (build F2)
 - Kolom yang ditambahkan saat build: `Kontrak.TglClose`, `Kontrak.AlasanArsip`; `OrderInternal.Dihapus` & `BAST.Dihapus` (hapus = ditandai, baris tidak bergeser); `Kendala.CatatanSelesai`, `Kendala.Version`; `RiwayatTahap.KontrakID`. `RiwayatTahap` hanya ditambah: waktu keluar tahap = waktu masuk baris berikutnya (kolom `Keluar` tidak disimpan).
@@ -297,15 +304,16 @@ Isi awal (**sudah disetujui FF**). Teks, urutan, dan jumlah aturan tetap bisa di
 - **PIC** berfungsi sebagai penanggung jawab untuk delegasi dan pemantauan, bukan pembatas edit. Log mencatat siapa yang benar-benar meng-update. Dashboard menampilkan berapa update yang dilakukan seseorang pada kontrak di luar PIC-nya, dengan label "bantu".
 - Hak akses berupa **data**: tab `Ref_Role` memetakan role ke daftar izin, dan admin bisa mengubahnya tanpa ubah kode.
 
-Daftar izin: `dashboard.lihat`, `kontrak.lihat`, `kontrak.update`, `kontrak.daftar` (buat kontrak, proses antrian, import), `kontrak.arsip`, `pic.atur`, `sinkron.jalankan`, `target.kelola`, `pengaturan.kelola` (tahap, kendala, nilai push, referensi, config), `user.kelola`, `log.semua`, `export`.
+Daftar izin: `dashboard.lihat`, `kontrak.lihat`, `kontrak.update`, `kontrak.daftar` (buat kontrak satu per satu, proses antrian), `kontrak.import` (Upload Excel dan Import data lama), `kontrak.arsip`, `pic.atur`, `sinkron.jalankan`, `target.kelola`, `pengaturan.kelola` (tahap, kendala, nilai push, referensi, config), `user.kelola`, `log.semua`, `export`.
 
 | Izin | ADMIN | STAFF | VIEWER |
 |---|:-:|:-:|:-:|
 | dashboard.lihat, kontrak.lihat, export | ✓ | ✓ | ✓ |
 | kontrak.update, kontrak.daftar | ✓ | ✓ | |
-| kontrak.arsip, pic.atur, sinkron.jalankan, target.kelola, pengaturan.kelola, user.kelola, log.semua | ✓ | | |
+| kontrak.import, kontrak.arsip, pic.atur, sinkron.jalankan, target.kelola, pengaturan.kelola, user.kelola, log.semua | ✓ | | |
 
 - Sistem menolak perubahan yang membuat tidak ada lagi admin dengan `user.kelola`.
+- **Izin tambahan per user** (D19): izin efektif user = izin role-nya + `Users.IzinTambahan`. Di panel user ada bagian "Izin tambahan (di luar role)" berisi centang; saat ini hanya `kontrak.import` yang bisa diberikan per user. Izin yang sudah ada di role tampil tercentang dan terkunci. Perubahan dicatat di Log (`UBAH_USER`, field IzinTambahan) dan berlaku saat user itu memuat ulang atau pada sinkron berikutnya.
 
 ### 6.1 Akun (pola mirip BAA.flow)
 - Akun milik aplikasi, bukan akun Google. **Username bebas**: NIK, nama, atau apa pun; 3–32 karakter (huruf, angka, titik, garis bawah, strip), disimpan huruf kecil, dan menjadi ID tetap yang tidak bisa diganti.
@@ -344,7 +352,7 @@ Aturan umum: baris 1 berisi header. ID dibuat server dan tidak pernah berubah. T
 | `Kendala` | KendalaID, BASTID, KontrakID, Jenis, Keterangan, Status, Mulai, DibuatOleh, Selesai, DiselesaikanOleh |
 | `Log` | Timestamp, Username, Aksi, Entitas, EntitasID, Field, NilaiLama, NilaiBaru, Catatan, Hasil (`BERHASIL`/`GAGAL`/`DITOLAK`) *(hanya ditambah)* |
 | `_Meta` | Key, Nilai *(SKEMA_VERSI, DB_DIBUAT, RIWAYAT_MIGRASI)* |
-| `Users` | Username, Nama, AliasPIC, Role, PasswordHash, Salt, Aktif, WajibGantiPassword, GagalLogin, TerkunciSampai, LoginTerakhir, PunyaAktivitas, SesiVersi, CreatedAt/By, UpdatedAt/By, Version *(PasswordHash = `sha256$<iterasi>$<hex>`)* |
+| `Users` | Username, Nama, AliasPIC, Role, IzinTambahan *(daftar izin dipisah koma)*, PasswordHash, Salt, Aktif, WajibGantiPassword, GagalLogin, TerkunciSampai, LoginTerakhir, PunyaAktivitas, SesiVersi, CreatedAt/By, UpdatedAt/By, Version *(PasswordHash = `sha256$<iterasi>$<hex>`)* |
 | `Ref_Role` | Role, Izin (dipisah koma) |
 | `Ref_Tahap`, `Ref_Kendala`, `Ref_NilaiPush` | §5 |
 | `Ref_JenisDok`, `Ref_Populasi`, `Ref_Segment`, `Ref_DokTagih` | Kode, Label, Aktif |
@@ -471,17 +479,19 @@ Tampilan mengikuti mockup `mockup/mockup.html` (desain "Orbit"): **tema terang d
 
 1. **Login.** Username + password. Password wajib diganti saat login pertama.
 2. **Dashboard**
+   - Pilihan **Tim FF / Milik saya** (STAFF dibuka dengan Milik saya). Semua angka dihitung di browser dari data aktif.
    - KPI: kontrak OPEN, BAST OPEN, nilai kontrak OPEN, kendala aktif, close bulan ini.
-   - Jumlah kontrak per tahap dan per Kendala Umum.
-   - **Tabel tim** per PIC: open, kendala, bar aging Fresh/Warm/Stale/Cold, jumlah update 7 hari (termasuk yang "bantu"), dan perubahan terakhir.
-   - Status sinkron per target.
+   - Jumlah kontrak per tahap dan per Kendala Umum (klik membuka daftar terfilter).
+   - **Tabel tim** per PIC: open, kendala, lewat batas aging, bar aging Fresh/Warm/Stale/Cold, jumlah update 7 hari. Jumlah update diringkas server dari Log sekali per jam.
+   - **Kualitas data**: tanpa PIC, data belum lengkap, perlu verifikasi, BAST lewat batas, ada kendala (klik membuka daftar terfilter).
+   - Status sinkron per target (mulai F4a).
 3. **Kontrak**
    - Tabel dengan filter (tahap, Kendala Umum, PIC, populasi, segment, pelanggan, status) dan pencarian, dikerjakan di browser (§4.4).
    - Pencarian juga mencari **kontrak lama** di arsip lewat Indeks (bagian "Kontrak lama" di bawah tabel, ±1–3 dtk); kontrak lama dibuka hanya-baca dengan tombol **Buka kembali (reopen)**.
    - **Detail** dibuka sebagai panel geser dari kanan (daftar tetap terlihat; pindah kontrak dengan panah atau J/K; Esc menutup) dengan tab Proses · Data kontrak · Sheet unit · Riwayat. Isinya: data kontrak beserta kelengkapannya, SO/MI, daftar BAST (tambah BAST parsial, ubah tahap, cakupan), kendala (buka/tutup), pratinjau nilai yang akan muncul di sheet unit, data dari setiap sheet unit (§8.7), riwayat perubahan, dan riwayat di sheet unit.
    - Aksi massal: atur PIC.
-   - Pencarian cepat **Ctrl+K** dari halaman mana pun.
-4. **Perlu Perhatian** (§5.6).
+   - Pencarian cepat **Ctrl+K** dari halaman mana pun: kontrak aktif, kontrak lama (arsip, diberi label tahunnya), dan perintah (tambah kontrak, Upload Excel, Import data lama, pindah halaman) sesuai izin.
+4. **Perlu Perhatian** (§5.6): kartu per kelompok dengan aksi cepat (atur PIC, verifikasi, lengkapi); pilihan Semua / Milik saya (STAFF dibuka dengan Milik saya).
 5. **Antrian** (§9).
 6. **Google Sheet**
    - Daftar target, tombol **Tes koneksi**, **Cek saja**, dan **Update ke GSheet**, alarm, dan tabel Update log.
@@ -506,7 +516,7 @@ Tampilan mengikuti mockup `mockup/mockup.html` (desain "Orbit"): **tema terang d
 - **Pratinjau** per baris: Baru, Baru dengan peringatan (tetap disimpan, mis. Customer kosong → BELUM TERDEFINISI, PIC tidak dikenal → tanpa PIC, referensi tidak dikenal → dikosongkan), Sudah ada (cocok lewat nomor atau nomor lama), Error (tidak disimpan: nomor/judul kosong, nomor dobel di file, nilai/lokasi/tanggal tidak terbaca, tanggal masa depan, tahap/kendala/dok tagih tidak dikenal, kendala tanpa keterangan). Baris SO_MI diperiksa juga (kontrak harus ada, jenis SO/MI, nomor order tidak dobel/terpakai).
 - **Nomor sudah ada**: pilihan *Lewati* (default) atau *Perbarui kolom yang diisi* (sel kosong tidak menghapus; tahap & kendala kontrak lama tidak diubah).
 - **Simpan**: bertahap per 50 baris di dalam kunci; upload ulang file yang sama aman (yang sudah tersimpan terbaca Sudah ada). Setiap kontrak baru mendapat BAST-1 (tahap & tanggal dari file, dok tagih dari file atau usulan otomatis), `SumberAwal = UPLOAD`, tidak diberi PerluVerifikasi. Log: `BUAT_KONTRAK`/`UBAH_KONTRAK` per baris + satu `UPLOAD_EXCEL` ringkasan. Laporan baris error bisa diunduh (.xlsx).
-- Izin `kontrak.daftar`. User tanpa `pic.atur`: kolom PIC diabaikan, PIC = dirinya. Maksimal 1.000 baris per file.
+- Izin `kontrak.import` (bawaan hanya ADMIN; bisa diberikan per user, §6). User tanpa `pic.atur`: kolom PIC diabaikan, PIC = dirinya. Maksimal 1.000 baris per file.
 
 ### 11.1 Import sheet FF format lama (F3)
 Alurnya: unggah sheet FF lama (xlsx) → pemetaan kolom → **pratinjau + validasi per baris** → simpan. Semua hasil import diberi `PerluVerifikasi = TRUE`.
@@ -530,7 +540,11 @@ Alurnya: unggah sheet FF lama (xlsx) → pemetaan kolom → **pratinjau + valida
 | nilai lain | tahap KOMPULIR + kendala LAINNYA (keterangan = nilai asli) |
 
 - Kalau STATUS AWAL dan KENDALA UMUM menunjuk tahap yang berbeda, pakai tahap yang paling maju.
-- Nomor yang sudah ada dilewati dan dilaporkan.
+- Nomor yang sudah ada dilewati dan dilaporkan (dicocokkan lewat nomor, nomor lama, dan Indeks arsip). Baris tanpa nomor = error, tidak disimpan.
+- Sheet lama tidak punya tanggal masuk tahap: **aging BAST hasil import dimulai dari tanggal import** (hari 0).
+- Tahap hasil pemetaan = tahap penutup (BAST TAKEOUT / SERTIM AR) → kontrak **langsung CLOSE** saat diimport, `TglClose` = tanggal import. Kontrak tetap ditandai PerluVerifikasi.
+- Layar import: pilih file → pemetaan kolom (dikenali dari judul, bisa diubah) → pemetaan nilai STATUS AWAL/KENDALA UMUM (usulan dari tabel di atas; nilai di luar tabel diberi tanda "tebakan" atau "tidak dikenal", bisa diubah), pemetaan PIC ke Alias PIC, dan centang referensi baru (populasi/segment yang tidak dicentang dikosongkan) → pratinjau per baris → simpan → ringkasan. Masuk dari halaman Upload Excel atau Ctrl+K.
+- Izin `kontrak.import`. Log: `BUAT_KONTRAK` per baris + satu `IMPORT_DATA_LAMA` ringkasan.
 
 ---
 
@@ -631,6 +645,7 @@ Setiap fase: mockup → disetujui → **build** (atas perintah pemilik) → unit
 | D16 | Cara memuat & menyimpan | ✔ Data aktif dimuat sekali ke browser; simpan optimis di latar; feed perubahan tiap ±30 dtk |
 | D17 | Log | ✔ `SKM_LOG_<tahun>`, satu tab per bulan (Log, RiwayatPush, SyncLog) |
 | D18 | Excel tanpa CDN | ✔ Baca .xlsx di browser dengan kode sendiri; template & laporan dibuat di server lalu diekspor |
+| D19 | Siapa boleh Upload Excel & Import data lama | ✔ Izin `kontrak.import`, bawaan hanya ADMIN; bisa diberikan per user lewat izin tambahan di panel user |
 
 Sudah dikonfirmasi:
 - BAST ON REVIEW → tahap Draft Review Customer.

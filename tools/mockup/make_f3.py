@@ -39,7 +39,20 @@ rep('<div class="row"><button class="btn ghost sm" id="coba">${ic(\'eye\',\'s\')
     '<div class="row"><button class="btn ghost sm" id="coba">${ic(\'eye\',\'s\')}Coba dengan file contoh</button><span class="sp"></span><a class="btn ghost sm" href="#kontrak">Kembali ke daftar kontrak</a></div>\n'
     '   <div class="ucard" style="align-items:center"><div class="uic">${ic(\'dl\')}</div><div style="flex:1"><h3>Punya sheet FF format lama?</h3><div class="muted">Untuk memindahkan data lama sekali jalan (kolom STATUS AWAL, KENDALA UMUM, dst.) tidak perlu menyalin ke template. Pakai <b>Import data lama</b>.</div></div><a class="btn ton" href="#kontrak-import">Import sheet FF lama ${ic(\'chevR\',\'s\')}</a></div>')
 
-NEW = open(ROOT + 'tools/mockup/f3_new.js', encoding='utf-8').read()
+# ---------- izin kontrak.import (Upload Excel + Import data lama), bisa diberikan per user ----------
+rep("const PERMS=['dashboard.lihat','kontrak.lihat','export','kontrak.update','kontrak.daftar',","const PERMS=['dashboard.lihat','kontrak.lihat','export','kontrak.update','kontrak.daftar','kontrak.import',")
+rep("{u:'edo',nama:'Edo Pratama',alias:'Edo',role:'STAFF',last:'15 Nov 08:55'}","{u:'95210101',nama:'Edo Pratama',alias:'Edo',role:'STAFF',last:'15 Nov 08:55',extra:['kontrak.import']}")
+rep("const can=p=>ROLES[S.role].includes(p);","const can=p=>ROLES[S.role].includes(p)||((USERS.find(u=>u.u===me())||{}).extra||[]).includes(p);")
+rep("r==='kontrak-import'&&can('kontrak.daftar')","r==='kontrak-import'&&can('kontrak.import')")
+rep("r==='kontrak-upload'&&can('kontrak.daftar')","r==='kontrak-upload'&&can('kontrak.import')")
+rep('''${can('kontrak.daftar')?`<button class="btn pri" id="addK">${ic('add','s')}Tambah kontrak</button><a class="btn ton" href="#kontrak-upload" id="upK">${ic('up2','s')}Upload Excel</a>`:''}''',
+    '''${can('kontrak.daftar')?`<button class="btn pri" id="addK">${ic('add','s')}Tambah kontrak</button>`:''}${can('kontrak.import')?`<a class="btn ton" href="#kontrak-upload" id="upK">${ic('up2','s')}Upload Excel</a>`:''}''')
+rep("const T=[['tahap','Tahap'],['kendala','Kendala'],['push','Nilai Push'],['ref','Referensi'],['config','Config']];","const T=[['tahap','Tahap'],['kendala','Kendala'],['push','Nilai Push'],['ref','Referensi'],['config','Config'],['users','Users'],['role','Role']];")
+rep("  if(tab==='users')b=`","  if(tab==='users')b=viewUsersF3();if(false)b=`")
+rep("if(base==='dashboard')bindDash();","if(base==='dashboard')bindDash();if(base==='pengaturan')bindUsersF3();")
+rep("Ganti peran untuk melihat apa yang bisa dilakukan ADMIN, STAFF, dan VIEWER.","Ganti peran untuk melihat apa yang bisa dilakukan ADMIN, STAFF, dan VIEWER. STAFF Edo diberi izin tambahan Upload/Import (lihat Pengaturan → Users).")
+
+NEW = open(ROOT + 'tools/mockup/f3_new.js', encoding='utf-8').read() + '\n' + open(ROOT + 'tools/mockup/f3_users.js', encoding='utf-8').read()
 DASH = open(ROOT + 'tools/mockup/f3_dash.js', encoding='utf-8').read()
 rep("\nrenderPage(true);layarBuka();\n</script>", "\n" + NEW + "\n" + DASH + "\nrenderPage(true);layarBuka();\n</script>")
 open(ROOT + 'mockup/f3.html', 'w', encoding='utf-8').write(s)

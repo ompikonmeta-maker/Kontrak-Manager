@@ -2,6 +2,7 @@
 S.dMine = false;
 QUICK.push(['kurang', 'Data belum lengkap', k => missingFields(k).length > 0]);
 function viewDash() {
+  syncScope();
   const mineF = k => !S.dMine || k.pic === meAlias();
   const AK = K.filter(k => !k.arsip && mineF(k)), open = AK.filter(k => statusK(k).st === 'OPEN');
   const bastOpen = AK.reduce((a, k) => a + k.bast.filter(b => !bastClose(b)).length, 0);
