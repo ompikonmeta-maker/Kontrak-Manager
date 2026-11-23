@@ -181,6 +181,8 @@ var KOLOM_TEMPLATE_ = [
   ['Segment', 0, 11, 'Pilih dari daftar.', 'segment'],
   ['Nilai Kontrak', 0, 18, 'Angka rupiah. Teks seperti "Rp 95,352,000.00" juga dibaca.'],
   ['Jumlah Lokasi', 0, 12, 'Total lokasi di kontrak.'],
+  ['No. SO', 0, 26, 'Nomor SO. Lebih dari satu: pisahkan dengan koma, mis. SO-2026-001, SO-2026-002.'],
+  ['No. MI', 0, 22, 'Nomor MI. Lebih dari satu: pisahkan dengan koma.'],
   ['PIC', 0, 12, 'Alias PIC sesuai menu Users. Kosong = tanpa PIC.', 'pic'],
   ['Dok Tagih BAST-1', 0, 14, 'BAST atau BAA. Kosong = otomatis (DIRECT → BAA, lainnya → BAST).', 'dokTagih'],
   ['Tahap Awal BAST-1', 0, 24, 'Kosong = tahap pertama.', 'tahap'],
@@ -200,7 +202,7 @@ function isiTemplate_(f) {
     pic: daftarUserPic_().filter(function (u) { return u.aktif && u.alias; }).map(function (u) { return u.alias; }), order: ['SO', 'MI']
   };
   var pet = f.getSheets()[0]; pet.setName('Petunjuk');
-  var kon = f.insertSheet('Kontrak'), so = f.insertSheet('SO_MI'), rf = f.insertSheet('Referensi');
+  var kon = f.insertSheet('Kontrak'), rf = f.insertSheet('Referensi');
   var rng = {}, kolRef = Object.keys(daftar);
   rf.getRange(1, 1).setValue('Daftar pilihan dropdown, dibuat dari Pengaturan SKM saat template diunduh. Jangan diubah.');
   kolRef.forEach(function (k, i) {
@@ -224,17 +226,18 @@ function isiTemplate_(f) {
     });
     sh.setFrozenRows(1);
   };
-  tabel(kon, KOLOM_TEMPLATE_); tabel(so, KOLOM_SO_);
+  tabel(kon, KOLOM_TEMPLATE_);
   var langkah = [['Template upload kontrak — Status Kontrak Manager', ''], ['Versi', 'SKM-UPLOAD-1 · diunduh ' + Repo.sekarang().slice(0, 10) + ' · jangan ubah judul kolom (baris 1)'], ['', ''],
     ['1. Isi tab Kontrak', 'Satu baris = satu kontrak. Kolom merah (*) wajib: No. Kontrak dan Judul Kontrak.'],
-    ['2. Isi tab SO_MI (opsional)', 'Satu baris = satu SO/MI, dihubungkan lewat No. Kontrak.'],
     ['3. Upload di SKM', 'Menu Kontrak → Upload Excel. SKM memeriksa setiap baris SEBELUM ada data yang disimpan.'],
+    ['SO / MI', 'Tulis di kolom No. SO dan No. MI pada baris kontraknya. Satu kontrak banyak SO/MI: pisahkan dengan koma. Detail layanan per SO/MI bisa dilengkapi di SKM.'],
     ['4. Periksa pratinjau', 'Baris Error tidak disimpan. Baris Peringatan tetap disimpan (mis. Customer kosong → BELUM TERDEFINISI).'],
     ['5. Simpan', 'Kontrak dibuat dengan BAST-1 otomatis dan tercatat di Log atas nama Anda.'], ['', ''],
     ['Nomor sudah ada', 'Default dilewati. Pilihan "Perbarui": hanya kolom yang DIISI yang menimpa data SKM.'],
     ['Nomor lama', 'Nomor lama yang sudah dikoreksi dikenali sebagai kontrak yang sudah ada.'],
     ['Penulisan nomor', 'Beda spasi, huruf besar/kecil, jenis tanda strip, atau titik di akhir dianggap nomor yang sama.'],
-    ['Batas', 'Maksimal 1.000 kontrak per file.']];
+    ['Batas', 'Maksimal 1.000 kontrak per file.'],
+    ['Template lama', 'Dropdown template mengikuti Pengaturan SKM saat diunduh. Bila sejak itu ada tahap/kendala/referensi yang diganti atau dinonaktifkan, baris yang memakai nilai lama ditandai di pratinjau (tidak membuat error sistem). Unduh template baru bila ragu.']];
   pet.getRange(1, 1, langkah.length, 2).setValues(langkah);
   pet.getRange(1, 1).setFontWeight('bold').setFontSize(14);
   pet.setColumnWidth(1, 200); pet.setColumnWidth(2, 640);
@@ -368,8 +371,9 @@ AKSI['upload.simpan'] = { izin: 'kontrak.daftar', ubah: true, fn: function (ctx)
   var semuaB = null;
   hasil.forEach(function (o) {
     if (o.st === 'error') { out.gagal.push({ baris: o.baris, no: o.no, err: o.err }); return; }
-    var orders = so.filter(function (x) { return x.st === 'ok' && x.kontrak && KD.normKey(x.kontrak.no) === KD.normKey(o.no); })
-      .map(function (x) { return { JenisOrder: x.j, NoOrder: x.ono, JenisLayanan: x.lay, JenisPekerjaan: x.pek, JumlahLokasi: x.lok, Keterangan: x.ket }; });
+    var orders = (o.orders || []).concat(so.filter(function (x) { return x.st === 'ok' && x.kontrak && KD.normKey(x.kontrak.no) === KD.normKey(o.no); })
+      .map(function (x) { return { JenisOrder: x.j, NoOrder: x.ono, JenisLayanan: x.lay, JenisPekerjaan: x.pek, JumlahLokasi: x.lok, Keterangan: x.ket }; }));
+    var dlm = {}; orders = orders.filter(function (x) { var k = KD.normKey(x.NoOrder); if (dlm[k]) return false; dlm[k] = 1; return true; });
     if (o.st === 'ada') {
       if (mode !== 'perbarui' || !o.ada || o.ada.lokasi !== 'AKTIF') { out.dilewati++; return; }
       semuaB = semuaB || bundleSemua_();

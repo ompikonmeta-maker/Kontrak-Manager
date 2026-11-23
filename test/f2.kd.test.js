@@ -212,3 +212,12 @@ test('periksa upload: baru, peringatan, sudah ada (termasuk nomor lama), error',
   assert.equal(so[1].err.length, 3);
   assert.deepEqual(KD.perubahanUpload({ pel: 'BANK', judul: 'C', nilai: '' }, { NamaPelanggan: '', JudulKontrak: 'C' }), [['NamaPelanggan', '', 'BANK']]);
 });
+
+test('upload: SO/MI di tab Kontrak, banyak nomor dipisah koma (C18)', () => {
+  const aoa = [['No. Kontrak *', 'Judul Kontrak *', 'No. SO', 'No. MI'], ['KL.1', 'A', 'SO-1, SO-2;SO-2', 'MI-9'], ['KL.2', 'B', 'SO-1', '']];
+  const rows = KD.barisDariAoa(aoa, KD.KOL_UPLOAD);
+  const h = KD.periksaUpload(rows, { ref, cfg, pic: [], bolehPic: true, alias: '', hariIni: '2026-11-20', cariNomor: () => null });
+  assert.deepEqual(h[0].orders, [{ JenisOrder: 'SO', NoOrder: 'SO-1' }, { JenisOrder: 'SO', NoOrder: 'SO-2' }, { JenisOrder: 'MI', NoOrder: 'MI-9' }]);
+  assert.equal(h[1].st, 'error');
+  assert.match(h[1].err[0], /SO SO-1 juga ada di baris 2/);
+});

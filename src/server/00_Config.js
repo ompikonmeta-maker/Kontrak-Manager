@@ -7,7 +7,7 @@
 // Konstanta kode (bukan nilai bisnis). Nilai bisnis disimpan di database (§3).
 var APP = {
   NAMA: 'Status Kontrak Manager',
-  VERSI: '2.0.0',
+  VERSI: '2.0.1',
   FASE: 'F2',
   SKEMA: 2,                 // versi skema database yang dibutuhkan kode ini
   TZ: 'Asia/Jakarta',

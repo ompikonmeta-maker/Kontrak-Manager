@@ -313,7 +313,7 @@ var AKSI = {
     var riwayat = []; try { riwayat = JSON.parse(Repo.meta('RIWAYAT_MIGRASI') || '[]'); } catch (e) { riwayat = []; }
     var akun = ''; try { akun = Session.getEffectiveUser().getEmail(); } catch (e) { akun = ''; }
     var pemicu = false; try { pemicu = pemicuArsip_().length > 0; } catch (e) { pemicu = null; }
-    return { app: infoApp_(), skemaDb: Repo.meta('SKEMA_VERSI'), dibuat: Repo.meta('DB_DIBUAT'), riwayat: riwayat, db: Repo.infoDatabase(),
+    return { app: infoApp_(), skemaDb: Repo.meta('SKEMA_VERSI'), dibuat: Repo.meta('DB_DIBUAT'), riwayat: riwayat, db: Repo.infoDatabase(true),
              akunFF: akun, config: Repo.semua('Config').map(function (c) { return { key: c.Key, nilai: c.Nilai, ket: c.Keterangan }; }),
              arsip: { pemicu: pemicu, terakhir: Repo.meta('ARSIP_TERAKHIR'), setelahHari: Repo.config('ARSIP_SETELAH_HARI', '90') }, seq: Repo.seq() };
   } },

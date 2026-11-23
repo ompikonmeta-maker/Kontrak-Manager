@@ -22,7 +22,7 @@ function viewPengaturan() {
   const t = S.set.tab, dirty = t !== 'config' && dirtySet();
   return `<div class="dtabs" role="tablist" style="margin-bottom:4px">${TAB_SET.map(([v, l]) => `<button role="tab" data-stab="${v}" class="${t === v ? 'on' : ''}">${l}</button>`).join('')}</div>
    ${t === 'tahap' ? setTahap() : t === 'kendala' ? setKendala() : t === 'push' ? setPush() : t === 'ref' ? setRef() : setConfig()}
-   ${dirty ? `<div class="bulk" style="position:sticky;bottom:12px"><b>Ada perubahan belum disimpan</b><span class="sp"></span><button class="btn sm" id="setBatal">Batal</button><button class="btn sm pri" id="setSimpan">Simpan</button></div>` : ''}`;
+   ${t !== 'config' ? `<div class="bulk" id="setBar" style="position:sticky;bottom:12px" ${dirty ? '' : 'hidden'}><b>Ada perubahan belum disimpan</b><span class="sp"></span><button class="btn sm" id="setBatal">Batal</button><button class="btn sm pri" id="setSimpan">Simpan</button></div>` : ''}`;
 }
 function jumlahOpenPerTahap() { const n = {}; semuaKontrak().forEach(b => KD.bastOpen(b, D.ref).forEach(x => { n[x.KodeTahap] = (n[x.KodeTahap] || 0) + 1; })); return n; }
 function setTahap() {
@@ -51,6 +51,20 @@ function opsiKondisi() {
   D.ref.tahap.forEach(t => o.push(['TAHAP:' + t.Kode, 'TAHAP:' + t.Kode + ' · ' + t.Label]));
   return o;
 }
+function hitungPush(L) {
+  const refUji = KD.siapkanRef(Object.assign({}, D.refRaw, { push: L.map((x, i) => Object.assign({}, x, { Urutan: String(i + 1) })) })), hit = {}, tanpa = [];
+  semuaKontrak().filter(b => !KD.bool(b.k.Arsip)).forEach(b => { const p = KD.evalPush(b, refUji); if (p.cocok) hit[p.kondisi] = (hit[p.kondisi] || 0) + 1; else tanpa.push(b); });
+  return { hit, tanpa, celah: KD.celahAturan(refUji) };
+}
+function catatanCelahPush(c) {
+  return c.celah.length ? `<div class="note warn" style="margin-top:12px">${ic('warn', 's')}<span class="tx">Tidak tercakup aturan mana pun: <b>${esc(c.celah.join(', '))}</b>. Sel Kendala Umum kontrak seperti itu tidak diubah dan muncul alarm <span class="mono">TANPA_ATURAN</span>.</span></div>` : `<div class="note ok" style="margin-top:12px">${ic('check', 's')}<span class="tx">Semua tahap dan kendala aktif tercakup.${c.tanpa.length ? ' ' + c.tanpa.length + ' kontrak tetap tanpa aturan.' : ''}</span></div>`;
+}
+/** Perbarui angka "Kontrak terkena" & catatan celah tanpa menggambar ulang (supaya kursor tidak hilang). */
+function segarHitungPush() {
+  const L = S.set.draft, c = hitungPush(L);
+  document.querySelectorAll('#content [data-hit]').forEach(td => { const x = L[+td.dataset.hit]; td.innerHTML = x && KD.bool(x.Aktif) ? String(c.hit[x.Kondisi] || 0) : '<span class="muted">—</span>'; });
+  const n = document.getElementById('pushCelah'); if (n) n.innerHTML = catatanCelahPush(c);
+}
 function setPush() {
   const L = S.set.draft, refUji = KD.siapkanRef(Object.assign({}, D.refRaw, { push: L.map((x, i) => Object.assign({}, x, { Urutan: String(i + 1) })) })), celah = KD.celahAturan(refUji), hit = {}, tanpa = [];
   semuaKontrak().filter(b => !KD.bool(b.k.Arsip)).forEach(b => { const p = KD.evalPush(b, refUji); if (p.cocok) hit[p.kondisi] = (hit[p.kondisi] || 0) + 1; else tanpa.push(b); });
@@ -58,10 +72,10 @@ function setPush() {
   return `<div class="card"><h2>Nilai Push · Kendala Umum <small>dibaca dari atas; aturan pertama yang cocok dipakai</small><span class="sp"></span><button class="btn sm" id="pAdd">${ic('add', 's')}Aturan</button></h2>
    <div class="tbl-wrap"><table class="t"><thead><tr><th>#</th><th>Kondisi</th><th>Teks di sheet unit (Kendala Umum)</th><th>Aktif</th><th class="num">Kontrak terkena</th><th></th></tr></thead><tbody>
    ${L.map((x, i) => `<tr><td class="row" style="gap:6px;flex-wrap:nowrap"><b class="tnum" style="width:20px">${i + 1}</b>${geser(i, L.length)}</td><td><select class="inp" data-tf="Kondisi" data-i="${i}" style="max-width:330px">${opsi(ops, x.Kondisi)}</select></td>
-     <td><input class="inp mono" data-tf="Nilai" data-i="${i}" value="${esc(x.Nilai)}" maxlength="80" style="font-size:12.5px"></td><td>${tog('aktif', i, x.Aktif, 'Aktif')}</td><td class="num tnum">${KD.bool(x.Aktif) ? (hit[x.Kondisi] || 0) : '<span class="muted">—</span>'}</td>
+     <td><input class="inp mono" data-tf="Nilai" data-i="${i}" value="${esc(x.Nilai)}" maxlength="80" style="font-size:12.5px"></td><td>${tog('aktif', i, x.Aktif, 'Aktif')}</td><td class="num tnum" data-hit="${i}">${KD.bool(x.Aktif) ? (hit[x.Kondisi] || 0) : '<span class="muted">—</span>'}</td>
      <td><button class="iconbtn" data-phapus="${i}" aria-label="Hapus aturan">${ic('x', 's')}</button></td></tr>`).join('')}
    </tbody></table></div>
-   ${celah.length ? `<div class="note warn" style="margin-top:12px">${ic('warn', 's')}<span class="tx">Tidak tercakup aturan mana pun: <b>${esc(celah.join(', '))}</b>. Sel Kendala Umum kontrak seperti itu tidak diubah dan muncul alarm <span class="mono">TANPA_ATURAN</span>.</span></div>` : `<div class="note ok" style="margin-top:12px">${ic('check', 's')}<span class="tx">Semua tahap dan kendala aktif tercakup.${tanpa.length ? ' ' + tanpa.length + ' kontrak tetap tanpa aturan.' : ''}</span></div>`}
+   <div id="pushCelah">${catatanCelahPush({ celah, tanpa })}</div>
    <div class="muted" style="font-size:12px;margin-top:10px">Kolom "Kontrak terkena" dihitung langsung dari draft di layar. Menyimpan aturan menghitung ulang Kendala Umum semua kontrak aktif; sinkron berikutnya (F4a) menyeragamkan semua sheet unit.</div></div>`;
 }
 function setRef() {
@@ -76,7 +90,13 @@ function setConfig() {
   if (!S.set.cfg) { call('sistem.info').then(r => { S.set.cfg = r.config; rerenderSet(); }).catch(gagal); return '<div class="loading"><div class="spinner"></div>Memuat config…</div>'; }
   return `<div class="card"><h2>Config</h2><div class="tbl-wrap"><table class="t"><thead><tr><th>Key</th><th>Nilai</th><th>Arti</th><th></th></tr></thead><tbody>${S.set.cfg.map(c => `<tr><td class="mono" style="font-size:12px">${esc(c.key)}</td><td><input class="inp" data-cfg="${esc(c.key)}" value="${esc(c.nilai)}" aria-label="${esc(c.key)}" style="max-width:280px"></td><td class="muted" style="font-size:12.5px">${esc(c.ket)}</td><td><button class="btn sm" data-cfgsave="${esc(c.key)}">Simpan</button></td></tr>`).join('')}</tbody></table></div></div>`;
 }
-function rerenderSet() { const c = document.getElementById('content'); if (!c || S.page !== 'pengaturan') return; const sc = window.scrollY; c.innerHTML = viewPengaturan(); bindPengaturan(); window.scrollTo(0, sc); }
+function rerenderSet() {
+  const c = document.getElementById('content'); if (!c || S.page !== 'pengaturan') return;
+  const sc = window.scrollY, a = document.activeElement, fokus = a && a.dataset && a.dataset.tf ? [a.dataset.tf, a.dataset.i, a.selectionStart] : null;
+  c.innerHTML = viewPengaturan(); bindPengaturan(); window.scrollTo(0, sc);
+  if (fokus) { const el = c.querySelector(`[data-tf="${fokus[0]}"][data-i="${fokus[1]}"]`); if (el) { el.focus({ preventScroll: true }); if (el.setSelectionRange && fokus[2] != null) try { el.setSelectionRange(fokus[2], fokus[2]); } catch (e) { /* select */ } } }
+}
+function perbaruiBarSet() { const bar = document.getElementById('setBar'); if (bar) bar.hidden = !dirtySet(); }
 function bindPengaturan() {
   const $p = s => document.querySelector('#content ' + s), $$p = s => document.querySelectorAll('#content ' + s), L = S.set.draft;
   if (!D.siap) { muatData(false).then(rerenderSet).catch(gagal); return; }
@@ -85,9 +105,12 @@ function bindPengaturan() {
     S.set.tab = b.dataset.stab; S.set.draft = null; rerenderSet();
   });
   $$p('[data-rj]').forEach(b => b.onclick = () => { if (dirtySet() && !confirm('Perubahan belum disimpan akan dibuang. Lanjut?')) return; S.set.refJenis = b.dataset.rj; S.set.draft = null; rerenderSet(); });
+  // mengetik TIDAK menggambar ulang halaman (C23): data draft diubah, bilah Simpan & angka diperbarui di tempat
   $$p('[data-tf]').forEach(el => el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', () => {
-    L[+el.dataset.i][el.dataset.tf] = el.dataset.tf === 'Kode' ? el.value.toUpperCase().replace(/\s+/g, '_') : el.value;
-    if (el.tagName === 'SELECT' || S.set.tab === 'push') rerenderSet(); else { const bar = document.querySelector('#content .bulk'); if (!bar && dirtySet()) rerenderSet(); }
+    if (el.dataset.tf === 'Kode') { const pos = el.selectionStart, v = el.value.toUpperCase().replace(/\s+/g, '_'); if (v !== el.value) { el.value = v; try { el.setSelectionRange(pos, pos); } catch (e) { /* abaikan */ } } }
+    L[+el.dataset.i][el.dataset.tf] = el.value;
+    perbaruiBarSet();
+    if (S.set.tab === 'push') segarHitungPush();
   }));
   const flip = (attr, key) => $$p(`[data-${attr}]`).forEach(b => b.onclick = () => { const x = L[+b.dataset[attr]]; x[key] = KD.bool(x[key]) ? 'FALSE' : 'TRUE'; rerenderSet(); });
   flip('aktif', 'Aktif'); flip('wajib', 'WajibKeterangan'); flip('reopen', 'MemicuReopen');

@@ -408,7 +408,7 @@ var KD = (function () {
   var KOL_UPLOAD = { no: ['no kontrak', 'nomor kontrak', 'no wo/spk/kl'], judul: ['judul kontrak', 'judul'], jenis: ['jenis dok'], tahun: ['tahun project', 'tahun'],
     pop: ['populasi', 'pop'], pel: ['customer', 'direct customer'], end: ['end customer', 'nama pelanggan', 'pelanggan'], seg: ['segment', 'seg'], nilai: ['nilai kontrak', 'nilai'],
     lok: ['jumlah lokasi'], pic: ['pic'], doc: ['dok tagih bast-1', 'dok tagih'], tahap: ['tahap awal bast-1', 'tahap awal', 'tahap'], tgl: ['tgl masuk tahap', 'tanggal masuk tahap'],
-    kend: ['kendala'], ket: ['keterangan kendala'], cat: ['catatan'] };
+    kend: ['kendala'], ket: ['keterangan kendala'], cat: ['catatan'], so: ['no so', 'so'], mi: ['no mi', 'mi'] };
   var KOL_SO = { no: ['no kontrak', 'nomor kontrak'], j: ['jenis'], ono: ['no order'], lay: ['jenis layanan'], pek: ['jenis pekerjaan'], lok: ['jumlah lokasi'], ket: ['keterangan'] };
   function hNorm(h) { return s(h).toLowerCase().replace(/\*/g, '').replace(/\./g, '').replace(/[^a-z0-9\/-]+/g, ' ').trim(); }
   function petaKolom(header, def) {
@@ -434,8 +434,10 @@ var KD = (function () {
    * Periksa baris upload. ctx: {ref, cfg, cariNomor(normKey) → {KontrakID, NoKontrak, viaAlias, lokasi} | null, pic[] (alias PIC aktif),
    *   bolehPic, alias (PIC user), hariIni ('yyyy-MM-dd')}
    */
+  /** "SO-1, SO-2; SO-3" → ['SO-1','SO-2','SO-3'] (koma, titik koma, atau baris baru). */
+  function pecahNomor(v) { return s(v).split(/[,;\n]+/).map(t).filter(Boolean); }
   function periksaUpload(rows, ctx) {
-    var seen = {};
+    var seen = {}, seenOrder = {};
     return rows.map(function (r) {
       var o = { baris: r.baris, err: [], warn: [], info: [], st: 'baru' }, v = function (f) { return t(r[f]); };
       o.no = v('no'); o.judul = v('judul');
@@ -479,6 +481,17 @@ var KD = (function () {
         else { o.kend = kj.Kode; if (kj.WajibKeterangan && !o.ket) o.err.push('Keterangan kendala wajib diisi bila Kendala diisi'); }
       }
       o.cat = v('cat');
+      // SO/MI ditulis di tab Kontrak, banyak nomor dipisah koma (C18)
+      o.orders = [];
+      [['so', 'SO'], ['mi', 'MI']].forEach(function (x) {
+        var dalam = {};
+        pecahNomor(r[x[0]]).forEach(function (no) {
+          var on = normKey(no);
+          if (dalam[on]) return; dalam[on] = 1;
+          if (seenOrder[on] && seenOrder[on] !== r.baris) o.err.push('No. ' + x[1] + ' ' + no + ' juga ada di baris ' + seenOrder[on]); else seenOrder[on] = r.baris;
+          o.orders.push({ JenisOrder: x[1], NoOrder: no });
+        });
+      });
       if (!ada) {
         o.jc = jenisCustomer(o.pel, o.end);
         if (!o.pel) o.warn.push('Customer kosong → jenis customer BELUM TERDEFINISI (masuk "Data belum lengkap")');
@@ -522,7 +535,7 @@ var KD = (function () {
     evalPush: evalPush, celahAturan: celahAturan, turunan: turunan, terapkanTurunan: terapkanTurunan, KOL_TURUNAN: KOL_TURUNAN, fieldKurang: fieldKurang,
     bacaRupiah: bacaRupiah, bacaTanggal: bacaTanggal, tebakJenisDok: tebakJenisDok, FIELD_KONTRAK: FIELD_KONTRAK, LABEL: LABEL,
     jalankan: jalankan, beda: beda, KUNCI_TAB: KUNCI_TAB, TAB_BUNDLE: TAB_BUNDLE,
-    KOL_UPLOAD: KOL_UPLOAD, KOL_SO: KOL_SO, petaKolom: petaKolom, barisDariAoa: barisDariAoa, periksaUpload: periksaUpload, perubahanUpload: perubahanUpload, periksaSO: periksaSO
+    KOL_UPLOAD: KOL_UPLOAD, KOL_SO: KOL_SO, pecahNomor: pecahNomor, petaKolom: petaKolom, barisDariAoa: barisDariAoa, periksaUpload: periksaUpload, perubahanUpload: perubahanUpload, periksaSO: periksaSO
   };
 })();
 if (typeof module !== 'undefined') module.exports = KD;

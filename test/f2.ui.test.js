@@ -120,8 +120,9 @@ test('UI F2: muat data → daftar → detail → simpan optimis → form → fee
     await page.click('[data-go="pengaturan"]'); await page.click('[data-stab="push"]'); await page.waitForSelector('[data-tf="Nilai"]');
     const idx = await page.evaluate(() => S.set.draft.findIndex(x => x.Kondisi === 'TAHAP:KOMPULIR'));
     await page.fill(`[data-tf="Nilai"][data-i="${idx}"]`, 'KOMPULIR EVIDENCE');
-    await page.waitForSelector('#setSimpan'); await page.click('#setSimpan');
-    await tunggu(page, () => !document.querySelector('#setSimpan'), null, 15000);
+    assert.equal(await page.evaluate(() => document.activeElement.dataset.tf), 'Nilai', 'kursor tetap di kolom saat mengetik (C23)');
+    await page.waitForSelector('#setBar:not([hidden])'); await page.click('#setSimpan');
+    await tunggu(page, () => document.getElementById('setBar') && document.getElementById('setBar').hidden, null, 15000);
     assert.equal(g.tab('Ref_NilaiPush')[idx].Nilai, 'KOMPULIR EVIDENCE');
     assert.ok(g.tab('Kontrak').filter(k => k.KendalaUmum === 'KOMPULIR EVIDENCE').length >= 5);
     assert.ok(await page.evaluate(() => semuaKontrak().some(b => b.k.KendalaUmum === 'KOMPULIR EVIDENCE')));

@@ -163,6 +163,11 @@ test('upload: buat banyak, SO ikut, peringatan & error, ulang = sudah ada, mode 
   const kh = g.tab('Kontrak').find(x => x.NoKontrak === 'TEL.0219-0003/2019');
   assert.equal(kh.NamaPelanggan, 'PT HEXINDO'); assert.equal(kh.JudulKontrak, 'lama');
   assert.ok(g.tab('OrderInternal').some(o => o.NoOrder === 'SO-BARU' && o.KontrakID === kh.KontrakID));
+  // SO/MI di kolom tab Kontrak (C18)
+  const r4 = ok(g.api(t, 'upload.simpan', { mode: 'lewati', file: 'baru.xlsx', rows: [{ baris: 2, no: 'KL.SOMI/2026', judul: 'SO MI', so: 'SO-A, SO-B', mi: 'MI-A' }], so: [] }));
+  assert.equal(r4.so, 3);
+  assert.deepEqual(g.tab('OrderInternal').filter(o => o.KontrakID === r4.dibuat[0].KontrakID).map(o => o.JenisOrder + ' ' + o.NoOrder), ['SO SO-A', 'SO SO-B', 'MI MI-A']);
+  assert.equal(g.tab('BAST').find(b => b.KontrakID === r4.dibuat[0].KontrakID).CakupanOrder, 'SO-A, SO-B, MI-A');
   // cek nomor untuk pratinjau browser
   const c = ok(g.api(t, 'upload.cekNomor', { nomor: ['WO/0377/TSAT/X/2026', 'TIDAK/ADA'] }));
   assert.deepEqual(Object.keys(c.ada), ['WO/0377/TSAT/X/2026']);
@@ -263,7 +268,7 @@ test('template & laporan Excel dibuat lewat Google Sheet sementara yang langsung
   assert.match(Buffer.from(r.base64, 'base64').toString(), /^XLSX:https:\/\/docs\.google\.com\/spreadsheets\/d\/.+\/export\?format=xlsx$/);
   assert.equal(g.fetches[0][1].headers.Authorization, 'Bearer token-uji');
   const tmp = Object.values(g.files).find(f => /^SKM_sementara_template/.test(f.name));
-  assert.deepEqual(tmp.sheets.map(s => s.name), ['Petunjuk', 'Kontrak', 'SO_MI', 'Referensi']);
+  assert.deepEqual(tmp.sheets.map(s => s.name), ['Petunjuk', 'Kontrak', 'Referensi'], 'SO/MI ada di tab Kontrak, bukan tab sendiri');
   assert.ok(tmp.getSheetByName('Kontrak').validations >= 8, 'dropdown terpasang');
   assert.equal(g.drive[tmp.id].trashed, true);
   const l = ok(g.api(t, 'upload.laporan', { tabs: [{ nama: 'Kontrak error', aoa: [['Baris', 'Masalah'], [6, 'Judul kosong']] }] }));

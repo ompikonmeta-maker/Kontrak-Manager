@@ -56,7 +56,7 @@ pre{margin:0;white-space:pre-wrap;font:12px/1.6 var(--mono);font-variant-ligatur
 </style>
 
 <div class="wrap">
- <div><div class="eyebrow">Status Kontrak Manager · F2 v2.0.0</div><h1>Panduan uji F2</h1>
+ <div><div class="eyebrow">Status Kontrak Manager · F2 v2.0.1</div><h1>Panduan uji F2</h1>
   <p class="muted">Ikuti langkah dari atas ke bawah. Setiap langkah punya <b>hasil yang diharapkan</b>; tandai <b>OK</b> atau <b>Gagal</b> dan isi catatan bila perlu. Di akhir, klik <b>Salin laporan</b> lalu tempel di chat. Centang Anda tersimpan di browser ini saja.</p></div>
 
  <div class="card"><h2>Persiapan</h2>
@@ -100,13 +100,13 @@ var F2=[
  ['Bentrok perubahan','Admin dan staff membuka kontrak yang sama. Staff pindah tahap. Sebelum 30 detik, admin juga pindah tahap kontrak itu.','Salah satu mendapat jendela <b>Perubahan tidak tersimpan</b>: "baru saja diubah orang lain", dan tampilannya kembali ke data terbaru.'],
  ['Izin STAFF','Staff menambah kontrak (isi PIC orang lain bila bisa). Coba ganti PIC dan cari tombol Arsipkan.','PIC kontrak baru = staff itu sendiri. Pilihan PIC terkunci; tidak ada tombol Arsipkan.'],
  ['PIC massal','Admin: centang beberapa kontrak di daftar → pilih PIC → <b>Atur PIC</b>.','Semua kontrak terpilih ganti PIC; tercatat ATUR_PIC di Log.'],
- ['Unduh template','Kontrak → <b>Upload Excel</b> → <b>Unduh template</b>.','File <span class="mono">Template_Upload_Kontrak_SKM.xlsx</span> terunduh. Di Excel ada tab Petunjuk, Kontrak, SO_MI, Referensi; kolom Populasi/PIC/Tahap punya dropdown.'],
- ['Pratinjau upload','Isi template: 3 kontrak baru, 1 baris tanpa judul, 1 nomor yang sudah ada di SKM, 1 SO untuk salah satu kontrak baru. Upload.','Pratinjau: 3 Baru (atau peringatan), 1 Error "Judul kontrak wajib diisi", 1 Sudah ada. Belum ada yang tersimpan.'],
+ ['Unduh template','Kontrak → <b>Upload Excel</b> → <b>Unduh template</b>.','File <span class="mono">Template_Upload_Kontrak_SKM.xlsx</span> terunduh. Di Excel ada tab Petunjuk, Kontrak, Referensi (tanpa tab SO_MI). Tab Kontrak punya kolom <b>No. SO</b> dan <b>No. MI</b>; kolom Populasi/PIC/Tahap punya dropdown.'],
+ ['Pratinjau upload','Isi template: 3 kontrak baru, 1 baris tanpa judul, 1 nomor yang sudah ada di SKM; satu kontrak diisi 2 SO dipisah koma di kolom No. SO. Upload.','Pratinjau: 3 Baru (atau peringatan), 1 Error "Judul kontrak wajib diisi", 1 Sudah ada. Belum ada yang tersimpan.'],
  ['Simpan upload','Klik <b>Simpan</b>. Lalu upload file yang sama sekali lagi.','Selesai: 3 dibuat, kontrak langsung muncul di daftar dengan BAST-1. Upload kedua: semuanya "Sudah ada", tidak dobel.'],
  ['Laporan error','Di pratinjau atau layar selesai, klik <b>Unduh laporan error</b>.','File Excel berisi baris yang error beserta alasannya.',true],
  ['Ubah Nilai Push','Tahap &amp; aturan → Nilai Push → ubah teks aturan <span class="mono">TAHAP:KOMPULIR</span> → Simpan. Kembalikan seperti semula setelahnya.','Kolom "Kontrak terkena" menghitung di layar. Setelah simpan: kontrak di Kompulir menampilkan teks baru di daftar.'],
  ['Tahap baru','Tab Tahap → <b>Tahap baru</b> (mis. VERIF_AR) → Simpan. Lalu coba nonaktifkan tahap yang masih dipakai BAST OPEN.','Muncul peringatan kuning "belum ada aturan Nilai Push untuk …". Menonaktifkan tahap yang dipakai ditolak dengan tawaran <b>Pindahkan BAST</b>. (Nonaktifkan tahap uji setelahnya.)'],
- ['Log per bulan','Buka <b>Log</b>. Coba pilihan periode dan kotak cari.','Default 30 hari terakhir; ada pilihan bulan. Semua aksi di atas tercatat (BUAT_KONTRAK, UBAH_TAHAP, BUKA_KENDALA, REOPEN, UPLOAD_EXCEL, …).'],
+ ['Log audit','Menu <b>Sistem</b> → kartu Log audit → <b>Buka log audit</b>. Coba pilihan periode dan kotak cari.','Log tidak lagi di menu utama. Default 30 hari terakhir; ada pilihan bulan. Semua aksi di atas tercatat (BUAT_KONTRAK, UBAH_TAHAP, BUKA_KENDALA, REOPEN, UPLOAD_EXCEL, …).'],
  ['Sistem','<b>Sistem → Jalankan</b>. Lalu di kartu Arsip tahunan klik <b>Jalankan pindah arsip sekarang</b>.','Semua pemeriksaan hijau (±10). Pemicu bulanan <b>terpasang</b>. Pindah arsip: "Tidak ada kontrak yang perlu dipindah".'],
  ['Rasa kecepatan','Catat di kolom catatan: berapa detik buka aplikasi sampai Beranda? Apakah klik kontrak, filter, dan simpan terasa langsung?','Daftar/filter/detail instan; simpan langsung berubah di layar, tersimpan ±3–4 detik kemudian.'],
  ['Ponsel','Buka di ponsel: daftar kontrak, panel detail, form tambah.','Tidak ada yang terpotong; menu di tombol ☰.',true]
@@ -131,7 +131,7 @@ function paint(){
   document.getElementById('rep').textContent=report();
 }
 function report(){
-  var lines=['Laporan uji SKM F2 v2.0.0'];
+  var lines=['Laporan uji SKM F2 v2.0.1'];
   [['C','F2',F2]].forEach(function(x){lines.push('','['+x[1]+']');x[2].forEach(function(s,i){var k=x[0]+'-'+(i+1),e=st[k]||{};lines.push(x[0]+(i+1)+' '+s[0]+': '+(e.v||'belum')+(e.n?' — '+e.n:''));});});
   return lines.join('\n');
 }

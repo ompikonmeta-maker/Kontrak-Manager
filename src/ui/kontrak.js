@@ -20,6 +20,8 @@ function statusPill(b) {
   if (KD.bool(b.k.Arsip)) return '<span class="pill p-dim">Diarsipkan</span>';
   if (s.status === 'CLOSE') return '<span class="pill p-ok"><span class="dot"></span>CLOSE</span>';
   if (s.menunggu) return '<span class="pill p-warn"><span class="dot"></span>Menunggu BAST lanjutan</span>';
+  const h = hitungBast(b);
+  if (h.close > 0) return `<span class="pill p-info" title="${h.close} dari ${h.n} BAST sudah close"><span class="dot"></span>Parsial ${h.close}/${h.n} close</span>`;
   return '<span class="pill p-dim">OPEN</span>';
 }
 function custPill(k) { const j = jc(k); return `<span class="pill ${j === 'DIRECT' ? 'p-dim' : j === 'INDIRECT' ? 'p-vio' : 'p-warn'}">${KD.LABEL_JC[j]}</span>`; }
@@ -56,12 +58,24 @@ const QUICK = [
   ['lewat', 'Lewat batas aging', b => KD.bastOpen(b, D.ref).some(x => { const h = KD.hariSejak(x.TglTahapMulai, D.hariIni); return h !== null && h > ((T(x.KodeTahap) || {}).BatasAgingHari || 14); })],
   ['nopic', 'Tanpa PIC', b => !b.k.PIC],
   ['kurang', 'Data belum lengkap', b => KD.fieldKurang(b, D.cfg).length > 0],
+  ['parsial', 'Parsial', b => KD.hidup(b.bast).length > 1 || KD.statusKontrak(b, D.ref).menunggu],
   ['verif', 'Perlu verifikasi', b => KD.bool(b.k.PerluVerifikasi)]
 ];
+/** Jumlah BAST close & total (BAST yang dihapus tidak dihitung). */
+function hitungBast(b) { const l = KD.hidup(b.bast); return { n: l.length, close: l.filter(x => KD.bastClose(x, D.ref)).length }; }
+/** Parsial berjalan: kontrak masih OPEN tetapi sudah ada BAST yang close (C10). */
+const parsialJalan = b => { const h = hitungBast(b); return b.k.StatusKontrak === 'OPEN' && h.close > 0; };
 function lolosStatus(b, st) {
   if (st === 'ARSIP') return KD.bool(b.k.Arsip);
   if (KD.bool(b.k.Arsip)) return false;
+  if (st === 'CLOSE') return b.k.StatusKontrak === 'CLOSE' || parsialJalan(b);   // parsial tampil di OPEN dan CLOSE
   return !st || b.k.StatusKontrak === st;
+}
+/** Kolom Tahap: satu kontrak banyak BAST → status setiap BAST terlihat tanpa diklik (C10). */
+function tahapSel(b) {
+  const l = KD.hidup(b.bast).slice().sort((x, y) => Number(x.Urutan) - Number(y.Urutan));
+  if (l.length <= 1) return tahapPill(b.k.TahapKontrak);
+  return `<div class="bchips">${l.map(x => { const c = KD.bastClose(x, D.ref); return `<span class="bchip ${c ? 'cl' : ''}" title="${esc(x.BASTID)} · ${esc(x.DokTagih)} · ${esc(labelTahap(x.KodeTahap))}${x.CakupanLokasi !== '' ? ' · ' + esc(x.CakupanLokasi) + ' lokasi' : ''}"><b>B${esc(x.Urutan)}</b>${c ? '✓ close' : esc(labelTahap(x.KodeTahap))}</span>`; }).join('')}</div>`;
 }
 function terfilter() {
   const f = S.kf, q = f.q.trim();
@@ -113,7 +127,7 @@ function viewKontrak() {
      return `<tr class="click ${S.drawer === k.KontrakID ? 'sel' : ''} ${D.flash[k.KontrakID] && Date.now() - D.flash[k.KontrakID] < 4000 ? 'flash' : ''}" data-k="${esc(k.KontrakID)}">
      ${bolehPilih ? `<td><input type="checkbox" class="chk rowchk" data-id="${esc(k.KontrakID)}" ${S.sel.has(k.KontrakID) ? 'checked' : ''} aria-label="Pilih ${esc(k.KontrakID)}"></td>` : ''}
      <td><span class="no">${esc(k.NoKontrak)}${pending ? ' <span class="bspin" title="Sedang disimpan" style="width:10px;height:10px"></span>' : ''}</span><span class="sub"><b style="color:var(--fg);font-weight:600">${esc(custName(k))}</b>${j === 'INDIRECT' ? ' <span class="pill p-vio" style="font-size:10.5px;padding:0 7px">INDIRECT</span>' : j === 'BELUM' ? ' <span class="pill p-warn" style="font-size:10.5px;padding:0 7px">jenis belum terdefinisi</span>' : ''} · ${esc(k.JudulKontrak)}</span>${aliasHit(b)}</td>
-     <td>${tahapPill(k.TahapKontrak)}${nb > 1 ? ` <span class="pill p-dim">${nb}×</span>` : ''}</td>
+     <td>${tahapSel(b)}</td>
      <td>${kuChip(b)}</td>
      <td><div class="row" style="flex-wrap:nowrap;gap:6px">${avatarPic(k.PIC, 1)}<span>${k.PIC ? esc(k.PIC) : '<span style="color:var(--warn)">—</span>'}</span></div></td>
      <td>${ageChip(agingKontrak(b))}</td><td class="num">${rp(k.NilaiKontrak)}</td>
@@ -453,12 +467,24 @@ function openKontrakForm(b) {
                Populasi: k.Populasi, Segment: k.Segment, NilaiKontrak: k.NilaiKontrak, JumlahLokasi: k.JumlahLokasi, PIC: k.PIC, alasan: '' }
             : { NoKontrak: '', JenisDok: '', NamaPelanggan: '', EndCustomer: '', JudulKontrak: '', TahunProject: String(new Date().getFullYear()), Populasi: '', Segment: '', NilaiKontrak: '', JumlahLokasi: '',
                 PIC: can('pic.atur') ? '' : (S.me.alias || ''), orders: [{ JenisOrder: 'SO', NoOrder: '', JenisLayanan: '', JenisPekerjaan: '', JumlahLokasi: '' }], buatBast: true, dokTagih: '' };
+  S.kfmAwal = isiKForm(S.kfm);
+  if (!b && S.kfmDraft) { S.kfm = S.kfmDraft; S.kfmDraft = null; setTimeout(() => toast('Melanjutkan isian kontrak baru yang belum disimpan.'), 200); }
   S.kfmOrig = b || null; S.kfmErr = '';
   const keep = S.drawer; S.drawerSimpan = keep;
   renderKForm(true);
   setTimeout(() => { const el = document.querySelector('#overlay-root #fNo'); if (el) el.focus(); }, 80);
 }
 function closeKForm() { const r = document.getElementById('kform-root'); if (r) r.remove(); }
+function goyang(el) { if (!el) return; el.classList.remove('goyang'); void el.offsetWidth; el.classList.add('goyang'); toast('Klik Batal atau ✕ untuk menutup. Isian tidak hilang bila diklik di luar.'); }
+const isiKForm = F => JSON.stringify(F);
+/** Tutup form kontrak: konfirmasi bila isian berubah; isian kontrak BARU yang belum disimpan diingat untuk dibuka lagi (C12). */
+function tutupKFormTanya() {
+  const F = S.kfm; if (!F) { closeKForm(); return; }
+  const berubah = isiKForm(F) !== S.kfmAwal;
+  if (berubah && !S.kfmOrig) { S.kfmDraft = KD.salin(F); closeKForm(); toast('Isian kontrak baru disimpan sementara. Klik Tambah kontrak untuk melanjutkan.'); return; }
+  if (berubah && !confirm('Perubahan data kontrak belum disimpan. Tutup dan buang perubahan?')) return;
+  closeKForm();
+}
 function dupeLokal(no) {
   const nk = KD.normKey(no); if (!nk) return null;
   const own = S.kfmOrig ? S.kfmOrig.k.KontrakID : null;
@@ -506,7 +532,8 @@ function renderKForm(opening) {
 }
 function bindKForm() {
   const root = document.getElementById('kform-root'), q = s => root.querySelector(s), F = S.kfm;
-  q('#kfClose').onclick = q('#kfCancel').onclick = q('#kfScrim').onclick = closeKForm;
+  q('#kfClose').onclick = q('#kfCancel').onclick = tutupKFormTanya;
+  q('#kfScrim').onclick = () => goyang(root.querySelector('.drawer'));
   const upd = (sel, key, render) => { const el = q(sel); if (!el) return; el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', () => { F[key] = el.value; if (render) render(); }); };
   const segarJc = () => { const j = KD.jenisCustomer(F.NamaPelanggan, F.EndCustomer); q('#fJc').innerHTML = `${custPill({ NamaPelanggan: F.NamaPelanggan, EndCustomer: F.EndCustomer })} <span class="muted" style="font-size:12px">· usulan dokumen tagih <b>${KD.dokDefault(j, D.cfg)}</b></span>`; };
   const segarNo = () => { const pos = q('#fNo').selectionStart; const berubah = S.kfmOrig && (KD.normKey(F.NoKontrak) !== S.kfmOrig.k.NoKontrakNorm) !== !!q('#fAlasan'); if (berubah) { renderKForm(false); const n = q('#fNo'); n.focus(); n.setSelectionRange(pos, pos); return; } const d = dupeLokal(F.NoKontrak); q('#fDupe').innerHTML = d ? `<div class="dupe">${ic('warn', 's')} Nomor ini sudah terdaftar sebagai <b>${esc(d.k.KontrakID)}</b> (${esc(custName(d.k))}). <button type="button" class="btn sm ghost" data-buka="${esc(d.k.KontrakID)}">Buka</button></div>` : F.NoKontrak ? `<div class="muted" style="font-size:11.5px;margin-top:4px">Kunci pencocokan: <span class="mono">${esc(KD.normKey(F.NoKontrak))}</span>. Kontrak lama di arsip dicek saat menyimpan.</div>` : ''; bindBuka(); };
@@ -529,7 +556,7 @@ function simpanKontrak() {
   try {
     if (!O) {
       const kid = jalankanOp('kontrak.buat', null, { f, orders: F.orders, buatBast: F.buatBast, dokTagih: F.buatBast ? (F.dokTagih || '') : '' }, { lempar: true });
-      closeKForm(); S.kf.st = 'OPEN'; S.kf.q = ''; if (S.page !== 'kontrak') go('kontrak'); else rerenderKontrak();
+      closeKForm(); S.kfmDraft = null; S.kf.st = 'OPEN'; S.kf.q = ''; if (S.page !== 'kontrak') go('kontrak'); else rerenderKontrak();
       setTimeout(() => openDrawer(kid), 320); toast('Kontrak didaftarkan. Nomor kontrak lama di arsip dicek server; bila dobel, Anda diberi tahu.');
     } else {
       const ch = KD.FIELD_KONTRAK.filter(c => String(f[c] ?? '') !== String(O.k[c] ?? ''));

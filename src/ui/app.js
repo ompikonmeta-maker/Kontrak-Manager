@@ -100,7 +100,7 @@ const PAGES = {
   users: { title: () => 'Users', crumb: 'Akun tim FF', izin: 'user.kelola' },
   role: { title: () => 'Role & izin', crumb: 'Hak akses berupa data, bisa diubah tanpa ubah kode', izin: 'user.kelola' },
   sistem: { title: () => 'Sistem', crumb: 'Database, skema, dan kesehatan aplikasi', izin: 'user.kelola' },
-  log: { title: () => can('log.semua') ? 'Log' : 'Log saya', crumb: () => can('log.semua') ? 'Semua aksi, hanya ditambah' : 'Aksi yang Anda lakukan' }
+  log: { title: () => 'Log audit', crumb: 'Catatan teknis semua aksi (hanya ditambah). Riwayat per kontrak ada di tab Riwayat kontrak.', izin: 'log.semua', nav: 'sistem' }
 };
 const SOON = [['dashboard', 'Dashboard', 'dash', 'F3'], ['perhatian', 'Perlu Perhatian', 'warn', 'F3'], ['antrian', 'Antrian', 'inbox', 'F4b'], ['gsheet', 'Google Sheet', 'sync', 'F4a']];
 
@@ -125,11 +125,22 @@ async function loadPage(page) {
     if (page === 'kontrak') { show(viewKontrak()); bindKontrak(); if (S.kf.q) cariArsip(); return; }
     if (page === 'upload') { show(viewUpload()); bindUpload(); return; }
     if (page === 'pengaturan') { show(viewPengaturan()); bindPengaturan(); return; }
-    c.innerHTML = '<div class="loading"><div class="spinner"></div>Memuat…</div>';
-    if (page === 'users') { S.users = await call('users.list'); show(viewUsers()); bindUsers(); }
-    else if (page === 'role') { S.roles = await call('roles.list'); S.roleDraft = null; show(viewRole()); bindRole(); }
-    else if (page === 'sistem') { S.sistem = await call('sistem.info'); show(viewSistem()); bindSistem(); }
-    else if (page === 'log') { S.log = await call('log.list', S.logF); show(viewLog()); bindLog(); }
+    // halaman admin tampil langsung dari data terakhir, lalu diperbarui di latar (C26)
+    const latar = async (key, aksi, payload, view, bind, sebelum) => {
+      const ada = S[key];
+      if (ada) { if (sebelum) sebelum(); show(view()); bind(); } else c.innerHTML = '<div class="loading"><div class="spinner"></div>Memuat…</div>';
+      const r = await call(aksi, payload);
+      if (S.page !== page) return;
+      const beda = JSON.stringify(r) !== JSON.stringify(ada);
+      S[key] = r;
+      if (!ada) { if (sebelum) sebelum(); show(view()); bind(); return; }
+      const sibuk = document.querySelector('#sheet-root .drawer, #overlay-root .scrim, .menu') || (document.activeElement && /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName));
+      if (beda && !sibuk) { c.innerHTML = view(); [...c.children].forEach((el, i) => el.style.setProperty('--i', i)); bind(); }
+    };
+    if (page === 'users') await latar('users', 'users.list', {}, viewUsers, bindUsers);
+    else if (page === 'role') await latar('roles', 'roles.list', {}, viewRole, bindRole, () => { S.roleDraft = null; });
+    else if (page === 'sistem') await latar('sistem', 'sistem.info', {}, viewSistem, bindSistem);
+    else if (page === 'log') { c.innerHTML = '<div class="loading"><div class="spinner"></div>Memuat…</div>'; S.log = await call('log.list', S.logF); show(viewLog()); bindLog(); }
   } catch (e) {
     if (e.kode === 'IZIN_DITOLAK') show(viewDenied(e.pesan));
     else if (e.kode !== 'SESI_HABIS' && e.kode !== 'WAJIB_GANTI') show(`<div class="note crit">${ic('warn', 's')}<span class="tx">${esc(e.pesan || String(e))}</span></div>`);
@@ -157,7 +168,6 @@ function shell(title, crumb) {
     <div class="brand">${LOGO}<div><b>Status Kontrak<br>Manager</b><span>Unit Fulfillment</span></div></div>
     <nav class="nav">${a('beranda', 'Beranda', 'home')}${can('kontrak.lihat') ? a('kontrak', 'Kontrak', 'doc') : ''}
      ${can('user.kelola') || can('pengaturan.kelola') ? `<div class="eyebrow" style="padding:16px 12px 6px;font-size:10.5px">Pengaturan</div>${can('pengaturan.kelola') ? a('pengaturan', 'Tahap & aturan', 'gear') : ''}${can('user.kelola') ? a('users', 'Users', 'users') + a('role', 'Role & izin', 'shield') + a('sistem', 'Sistem', 'db') : ''}` : ''}
-     <div style="height:8px"></div>${a('log', can('log.semua') ? 'Log' : 'Log saya', 'log')}
      <div class="eyebrow" style="padding:16px 12px 6px;font-size:10.5px">Fase berikutnya</div>${SOON.map(soon).join('')}</nav>
     <div class="side-foot"><span class="live"><span class="pulse"></span>Versi ${esc(S.app.versi)} · ${esc(S.app.fase)}</span><span>Skema database v${S.app.skema}</span><span class="dim">Menu redup dibangun di fase berikutnya</span></div>
    </aside>
@@ -429,7 +439,8 @@ function renderSheet(opening) {
 }
 function bindSheet() {
   const q = s => document.querySelector('#sheet-root ' + s), F = S.form, refresh = () => { q('#idcard').innerHTML = idcardHtml(); };
-  q('#sclose').onclick = q('#scancel').onclick = q('#sscrim').onclick = () => closeSheet();
+  q('#sclose').onclick = q('#scancel').onclick = () => closeSheet();
+  q('#sscrim').onclick = () => goyang(document.querySelector('#sheet-root .drawer'));
   q('#fu').oninput = e => { F.username = e.target.value.trim().toLowerCase(); refresh(); };
   q('#fn').oninput = e => { F.nama = e.target.value; refresh(); };
   q('#fa').oninput = e => { F.alias = e.target.value.trim(); refresh(); };
@@ -513,7 +524,7 @@ function viewLog() {
    <select class="inp" id="lfb" aria-label="Periode"><option value="">30 hari terakhir</option>${(L.daftarBulan || []).map(b => `<option value="${esc(b)}" ${b === f.bulan ? 'selected' : ''}>${esc(bln(b))}</option>`).join('')}</select>
    <div class="search" style="max-width:260px">${ic('search', 's')}<input id="lfq" placeholder="Cari ID, nilai, catatan…" value="${esc(f.q || '')}"></div>
    ${L.semua ? sel('lfu', 'User', L.users, f.user) : ''}${sel('lfa', 'Aksi', L.aksi, f.aksi)}${sel('lfr', 'Hasil', ['BERHASIL', 'GAGAL', 'DITOLAK'], f.hasil)}
-   <span class="sp"></span><span class="muted tnum">${L.entri.length < L.total ? `${L.entri.length} terbaru dari ${L.total}` : L.total + ' entri'}</span><button class="btn" disabled title="Dibangun di F5">${ic('dl', 's')}Export xlsx · F5</button></div>
+   <span class="sp"></span><span class="muted tnum">${L.entri.length < L.total ? `${L.entri.length} terbaru dari ${L.total}` : L.total + ' entri'}</span><button class="btn sm" data-go2="sistem">Kembali ke Sistem</button></div>
    <div class="tbl-wrap"><table class="t"><thead><tr><th>Waktu</th><th>User</th><th>Aksi</th><th>Entitas</th><th>Detail</th><th>Hasil</th></tr></thead><tbody>
    ${L.entri.map(l => `<tr><td class="tnum" style="white-space:nowrap">${esc(l.waktu)}</td><td class="mono">${esc(l.user)}</td><td><span class="pill p-dim">${esc(l.aksi)}</span></td><td>${esc(l.entitas)} <span class="mono" style="font-size:12px">${esc(l.id)}</span></td>
      <td class="muted">${l.field ? `<span class="mono">${esc(l.field)}</span>: ${esc(l.lama)} → ${esc(l.baru)} ` : ''}${esc(l.catatan)}</td><td class="${l.hasil === 'BERHASIL' ? 'res-ok' : 'res-no'}">${esc(l.hasil)}</td></tr>`).join('') || '<tr><td colspan="6" class="muted" style="text-align:center;padding:24px">Tidak ada entri.</td></tr>'}
@@ -536,6 +547,7 @@ function viewSistem() {
      <dt>Pindah setelah</dt><dd>${esc(I.arsip.setelahHari)} hari sejak CLOSE</dd><dt>Terakhir jalan</dt><dd>${esc(I.arsip.terakhir) || '<span class="muted">belum pernah</span>'}</dd>
      <dt>File arsip & log</dt><dd>${(I.db.files || []).map(f => `<div class="mono" style="font-size:11.5px">${esc(f.nama)} ${f.hilang ? '<span class="pill p-crit">tidak bisa dibuka</span>' : f.akses.length > 2 ? '<span class="pill p-crit">' + f.akses.length + ' akun</span>' : ''}</div>`).join('') || '<span class="muted">belum ada</span>'}</dd></dl>
     ${can('pengaturan.kelola') ? `<div class="row" style="margin-top:12px">${I.arsip.pemicu ? '' : '<button class="btn sm pri" id="arsPemicu">Pasang pemicu arsip</button>'}<button class="btn sm" id="arsJalan">Jalankan pindah arsip sekarang</button></div>` : ''}</div>
+   ${can('log.semua') ? `<div class="card"><h2>${ic('log', 's')} Log audit</h2><p class="muted" style="margin:0 0 12px">Semua aksi tetap dicatat (login, perubahan, penolakan izin) di file <span class="mono">SKM_LOG_&lt;tahun&gt;</span> sebagai bukti bila diperlukan. Untuk kerja harian, riwayat siapa mengubah apa ada di tab <b>Riwayat</b> setiap kontrak.</p><button class="btn sm" data-go2="log">Buka log audit</button></div>` : ''}
    <div class="card"><h2>Tab di database</h2><div class="tbl-wrap"><table class="t"><thead><tr><th>Tab</th><th class="num">Baris data</th></tr></thead><tbody>${I.db.tabs.map(t => `<tr><td class="mono">${esc(t.tab)}</td><td class="num">${t.baris}</td></tr>`).join('')}</tbody></table></div>
     <div class="muted" style="font-size:12px;margin-top:8px">Tab baru ditambahkan otomatis oleh migrasi. Log ada di file SKM_LOG_&lt;tahun&gt;; kontrak lama di SKM_ARSIP_&lt;tahun&gt;.</div></div>
    <div class="card"><h2>Riwayat migrasi</h2><div class="tl">${I.riwayat.slice().reverse().map(e => `<div class="e"><span class="b"></span><span class="w">${esc(e.waktu)}</span><span><b>v${e.dari} → v${e.ke}</b> · ${esc(e.oleh)}<br><span class="muted" style="font-size:12px">${esc(e.langkah.join(' · '))}</span></span></div>`).join('')}</div>
@@ -567,8 +579,18 @@ function modal(title, body, acts) {
   const d = document.createElement('div'); d.className = 'scrim';
   d.innerHTML = `<div class="modal" role="dialog" aria-modal="true"><h3>${title}</h3>${body}<div class="acts">${acts.map((a, i) => `<button class="btn ${a.pri ? 'pri' : ''}" data-a="${i}">${a.l}</button>`).join('')}</div></div>`;
   document.getElementById('overlay-root').appendChild(d);
-  const close = () => { d.classList.add('closing'); setTimeout(() => d.remove(), 200); }; d._close = close;
-  d.addEventListener('click', e => { if (e.target === d) { close(); return; } const b = e.target.closest('[data-a]'); if (b) { const a = acts[+b.dataset.a]; if (!a.fn || a.fn(d) !== false) close(); } });
+  const close = () => { d.classList.add('closing'); setTimeout(() => d.remove(), 200); };
+  // jendela berisi isian: klik di luar tidak menutup; Esc/Batal minta konfirmasi bila isian sudah diubah (C12)
+  const isian = () => [...d.querySelectorAll('input:not([type=checkbox]):not([type=radio]),select,textarea')].map(x => x.value).join('\u0001');
+  const awal = isian(), adaIsian = !!d.querySelector('input,select,textarea'), berubah = () => adaIsian && isian() !== awal;
+  d._close = () => { if (berubah() && !confirm('Isian di jendela ini belum disimpan. Tutup dan buang isian?')) return; close(); };
+  d.addEventListener('click', e => {
+    if (e.target === d) { if (adaIsian) { const m = d.querySelector('.modal'); m.classList.remove('goyang'); void m.offsetWidth; m.classList.add('goyang'); } else close(); return; }
+    const b = e.target.closest('[data-a]'); if (!b) return;
+    const a = acts[+b.dataset.a];
+    if (!a.fn && !a.pri && berubah() && !confirm('Isian di jendela ini belum disimpan. Tutup dan buang isian?')) return;
+    if (!a.fn || a.fn(d) !== false) close();
+  });
   setTimeout(() => { const f = d.querySelector('input:not([disabled]),select,.btn.pri'); if (f) f.focus(); }, 60);
 }
 let toastT;
@@ -582,7 +604,7 @@ document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   if (document.querySelector('.menu')) { closeMenu(); return; }
   const m = [...document.querySelectorAll('#overlay-root .scrim:not(.closing)')].pop(); if (m) { m._close(); return; }
-  if (document.getElementById('kform-root')) { closeKForm(); return; }
+  if (document.getElementById('kform-root')) { tutupKFormTanya(); return; }
   if (S.drawer) { closeDrawer(); return; }
   closeSheet();
 });

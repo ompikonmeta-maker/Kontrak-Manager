@@ -345,12 +345,15 @@ var Repo = (function () {
     return out;
   }
   function daftarBulanLog() {
+    var c = cache().get('bulanLog'); if (c) return JSON.parse(c);
     var out = [];
     semua('_Meta').forEach(function (m) {
       if (!/^FILE_LOG_\d{4}$/.test(m.Key)) return;
       try { SpreadsheetApp.openById(m.Nilai).getSheets().forEach(function (sh) { var n = sh.getName(); if (/^Log-\d{4}-\d{2}$/.test(n)) out.push(n.slice(4)); }); } catch (e) { /* file hilang */ }
     });
-    return out.sort().reverse();
+    out = out.sort().reverse();
+    cache().put('bulanLog', JSON.stringify(out), 3600);
+    return out;
   }
 
   // ---------- arsip tahunan (§4.3) ----------
@@ -565,13 +568,15 @@ var Repo = (function () {
     editors.concat(viewers).forEach(function (e) { e = String(e || '').toLowerCase(); if (e && akses.indexOf(e) < 0) akses.push(e); });
     return { editors: editors, viewers: viewers, akses: akses };
   }
-  function infoDatabase() {
-    var f = ss(), tabs = f.getSheets().map(function (sh) { return { tab: sh.getName(), baris: Math.max(sh.getLastRow() - 1, 0) }; });
+  /** Info file database. ringan=true (halaman Sistem): jumlah baris di-cache 10 menit, akses file arsip/log tidak dibuka. */
+  function infoDatabase(ringan) {
+    var f = ss(), tabs = ringan ? JSON.parse(cache().get('infoTabs') || 'null') : null;
+    if (!tabs) { tabs = f.getSheets().map(function (sh) { return { tab: sh.getName(), baris: Math.max(sh.getLastRow() - 1, 0) }; }); cache().put('infoTabs', JSON.stringify(tabs), 600); }
     var a = aksesFile(f), files = [];
     semua('_Meta').forEach(function (m) {
       if (!/^FILE_/.test(m.Key)) return;
       var info = { kunci: m.Key.slice(5), nama: 'SKM_' + m.Key.slice(5), akses: [] };
-      try { var g = SpreadsheetApp.openById(m.Nilai); info.nama = g.getName(); info.akses = aksesFile(g).akses; } catch (e) { info.hilang = true; }
+      if (!ringan) { try { var g = SpreadsheetApp.openById(m.Nilai); info.nama = g.getName(); info.akses = aksesFile(g).akses; } catch (e) { info.hilang = true; } }
       files.push(info);
     });
     return { nama: f.getName(), tabs: tabs, editors: a.editors, viewers: a.viewers, akses: a.akses, files: files };

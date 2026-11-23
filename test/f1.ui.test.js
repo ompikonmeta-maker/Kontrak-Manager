@@ -112,7 +112,8 @@ test('UI F1: login pertama → ganti password → kelola user → role → log �
     await page.click('[data-go="role"]'); await page.waitForSelector('[data-perm="STAFF|pic.atur"]');
 
     // --- log & sistem
-    await page.click('[data-go="log"]'); await page.waitForSelector('#lfr');
+    assert.equal(await page.$$eval('.nav [data-go="log"]', e => e.length), 0, 'Log tidak lagi di menu utama');
+    await page.click('[data-go="sistem"]'); await page.waitForSelector('[data-go2="log"]'); await page.click('[data-go2="log"]'); await page.waitForSelector('#lfr');
     const aksiLog = await page.$$eval('tbody .pill', els => els.map(e => e.textContent));
     for (const a of ['UBAH_IZIN', 'HAPUS_USER', 'BUAT_USER', 'GANTI_PASSWORD', 'LOGIN']) assert.ok(aksiLog.includes(a), 'log berisi ' + a);
     await page.selectOption('#lfr', 'GAGAL'); await page.waitForTimeout(300);
@@ -131,8 +132,7 @@ test('UI F1: login pertama → ganti password → kelola user → role → log �
     await page.fill('#pw1', 'Edo2026ok'); await page.fill('#pw2', 'Edo2026ok'); await page.click('#gsave');
     await page.waitForSelector('.top h1');
     assert.equal(await page.$$eval('[data-go="users"]', e => e.length), 0, 'menu Pengaturan tidak tampil untuk STAFF');
-    await page.click('[data-go="log"]'); await page.waitForSelector('.top h1');
-    assert.equal(await teks(page, '.top h1'), 'Log saya');
+    assert.equal(await page.$$eval('[data-go="log"]', e => e.length), 0, 'STAFF tidak melihat menu Log');
 
     // --- staff memaksa membuka Users → ditolak server
     await page.evaluate(() => go('users'));
