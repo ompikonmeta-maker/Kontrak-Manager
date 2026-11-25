@@ -90,9 +90,21 @@ Kesimpulan: arsip per tahun terbukti perlu (baca 4× lebih cepat). Platform lebi
 klik memanggil server, sehingga diusulkan: data aktif dimuat sekali ke browser, simpan optimis di latar, Log per bulan,
 bagian simpan yang dikunci dipersingkat.
 
-## F2 v2.0.0 — dibangun 22 Nov 2026 (menunggu uji di akun FF)
+## F2 v2.0.0–2.0.2 — dibangun 22 Nov 2026, diuji di akun FF (C1–C27 OK, termasuk C24 log audit)
 
 - Tes otomatis: aturan bersama (`f2.kd`), server dari ujung ke ujung (`f2.server`: kontrak, konflik versi, feed, izin,
   indeks pulih sendiri, upload, arsip/reopen, pengaturan, template Excel, migrasi Log F1), UI browser (`f2.ui`).
 - Pindah tahap ≤ 14 operasi Sheet; membuka/memuat ulang halaman = 1 panggilan server (`boot` membawa data aktif).
 - Panduan uji: install/uji-f2.html (27 langkah). Halaman pasang: install/install-f2.html.
+
+## F3 v3.0.0 — dibangun 25 Nov 2026 (menunggu uji di akun FF)
+
+- Fitur: Dashboard (angka utama, alur per tahap, tim per PIC + update 7 hari, Kendala Umum, kualitas data), Perlu Perhatian
+  (5 kelompok + aksi cepat), Tim FF / Milik saya (STAFF dibuka Milik saya), Ctrl+K (kontrak aktif, kontrak lama di arsip, perintah),
+  Import data lama (§11.1), izin `kontrak.import` + izin tambahan per user (D19), migrasi skema v2 → v3.
+- Tes otomatis: `f3.server` (izin & izin tambahan, migrasi v2→v3, pemetaan Lampiran A, import langsung CLOSE + aging dari tanggal import,
+  impor ulang aman, PIC untuk STAFF, ringkasan dashboard + cache), `f3.ui` (alur lengkap admin & STAFF, ponsel). Semua 91 tes lulus.
+- Membuka halaman tetap 1 panggilan yang ditunggu (`boot`); ringkasan "update 7 hari" ikut di `boot` bila ada di cache 1 jam,
+  bila belum diminta di latar.
+- Contoh file: mockup/Contoh_Data_FF_Lama.xlsx (tools/mockup/make_ff_lama.py).
+- Panduan uji: install/uji-f3.html (21 langkah). Halaman pasang: install/install-f3.html.

@@ -128,6 +128,39 @@ PHASES.f2 = {
       <div><i></i><span>Tanda di bilah atas lama tertulis <b>Mencoba lagi…</b> → koneksi terputus; perubahan tetap antre dan dikirim ulang otomatis. Jangan tutup tab sampai tertulis <b>Tersimpan</b>.</span></div>
       <div><i></i><span>Ada error merah saat <b>Run</b> atau halaman tidak tampil → kirim screenshot-nya di chat.</span></div></div></div>`
 };
+const MOCK_F3 = 'https://claude.ai/artifact/FEw7zDeptPgLgBLUcLskeT';
+const CONTOH_FF = 'mockup/Contoh_Data_FF_Lama.xlsx';
+PHASES.f3 = {
+  dir: 'dist', judul: 'Instalasi SKM F3', h1: 'Pasang F3: dashboard, perlu perhatian, import data lama',
+  versi: code => (code.match(/VERSI: '([^']+)'/) || [])[1],
+  intro: 'F3 menambahkan Dashboard, Perlu Perhatian, pencarian cepat Ctrl+K, Import data lama (sheet FF format lama), dan izin tambahan per user. Data F2 tetap dipakai. Butuh sekitar 10 menit.',
+  pre: `<div class="card warn"><h2>Sebelum mulai</h2><p class="muted" style="margin-top:8px">Pakai <b>akun Gmail khusus FF</b> dan project <b>Status Kontrak Manager</b> yang sudah berjalan (F2). Pilih <b>Update project yang sudah ada</b>. Migrasi skema <b>v2 → v3</b> berjalan otomatis dan <b>hanya menambah</b>: kolom <span class="mono">IzinTambahan</span> di tab Users, dan izin <span class="mono">kontrak.import</span> untuk role admin. Tidak perlu izin Google baru.</p></div>
+    <div class="card warn"><h2>Perubahan akses</h2><p class="muted" style="margin-top:8px"><b>Upload Excel</b> dan <b>Import data lama</b> sekarang memakai izin <span class="mono">kontrak.import</span>, bawaan <b>hanya ADMIN</b>. Setelah F3 terpasang, STAFF tidak lagi melihat tombol Upload Excel, kecuali user yang Anda centang izin tambahannya di <b>Users</b> (panel user → Izin tambahan di luar role). Tambah kontrak satu per satu tetap boleh untuk STAFF.</p></div>
+    <div class="card"><h2>Yang baru di F3</h2><div class="checks">
+      <div><i></i><span>Dashboard: angka utama, alur per tahap, tim per PIC (update 7 hari), Kendala Umum, kualitas data</span></div>
+      <div><i></i><span>Perlu Perhatian: aging lewat batas, kendala lama, tanpa PIC, perlu verifikasi, data belum lengkap, dengan aksi cepat</span></div>
+      <div><i></i><span>Tim FF / Milik saya; STAFF dibuka dengan Milik saya</span></div>
+      <div><i></i><span>Ctrl+K: cari kontrak aktif, kontrak lama di arsip, dan perintah</span></div>
+      <div><i></i><span>Import data lama: pemetaan kolom & nilai status, pratinjau, semua ditandai perlu verifikasi</span></div>
+      <div><i></i><span>Izin tambahan per user (Upload Excel & import data lama)</span></div></div></div>`,
+  steps: {
+    'Update project yang sudah ada': [
+      ['Buka project yang sama', 'Login dengan <b>akun Gmail khusus FF</b>, buka <b>script.google.com</b> → project <b>Status Kontrak Manager</b>.'],
+      ['Ganti isi 2 file terpisah', 'Klik <span class="mono">appsscript.json</span> → <kbd>Ctrl</kbd>+<kbd>A</kbd> → hapus → tempel hasil <b>Salin appsscript.json</b>. Lalu klik <span class="mono">Code.gs</span> → <kbd>Ctrl</kbd>+<kbd>A</kbd> → hapus → tempel hasil <b>Salin Code.gs</b>. Simpan dengan <kbd>Ctrl</kbd>+<kbd>S</kbd>. <b>Jangan digabung dalam satu file.</b>'],
+      ['Jalankan setup()', 'Pilih fungsi <span class="mono">setup</span> → <b>Run</b>. Log menulis migrasi skema <span class="mono">v2 → v3</span>: <span class="mono">Tab Users: kolom ditambah IzinTambahan</span> dan <span class="mono">Role ADMIN: izin kontrak.import ditambahkan</span>. Tidak ada error merah.'],
+      ['Perbarui deployment', '<b>Deploy › Manage deployments</b> → deployment yang ada → ikon pensil (<b>Edit</b>) → Version: <b>New version</b> → Description <span class="mono">F3</span> → <b>Deploy</b>. URL web app tetap sama.'],
+      ['Buka aplikasi', 'Buka Web app URL dan login. Setelah memuat data aktif muncul <b>Dashboard</b> (Selamat pagi/siang/…). Di kiri bawah tertulis <b>Versi {{VERSI}} · F3</b>. Bila masih versi lama: deployment belum diperbarui, lalu muat ulang dengan <kbd>Ctrl</kbd>+<kbd>F5</kbd>.']],
+    'Akun ini belum punya project SKM': [S_BARU, S_MANIFEST, S_TEMPEL, S_IZIN_F2, S_SETUP, S_CATAT,
+      ['Deploy sebagai Web app', '<b>Deploy › New deployment</b> → ikon roda gigi → <b>Web app</b>. Execute as: <b>Me</b> · Who has access: <b>Anyone with Google account</b> → <b>Deploy</b> → salin <b>Web app URL</b>.'],
+      ['Login pertama', 'Buka Web app URL → masuk dengan <span class="mono">admin</span> + password sementara → buat password baru.']]
+  },
+  fileDesc: ['Pengaturan project: zona Asia/Jakarta dan mode Web app. Izin dideteksi otomatis oleh Google.', 'Seluruh aplikasi (server + tampilan) dalam satu file.'],
+  post: `<div class="card"><h2>Kalau ada masalah</h2><div class="checks one">
+      <div><i></i><span>Kiri bawah masih <b>Versi 2.0.x</b> → deployment belum di-<i>New version</i>, atau browser memakai halaman lama (<kbd>Ctrl</kbd>+<kbd>F5</kbd>).</span></div>
+      <div><i></i><span>Admin tidak melihat tombol <b>Upload Excel</b> → buka <b>Role &amp; izin</b>, pastikan kolom role Anda mencentang <span class="mono">kontrak.import</span> (migrasi menambahkannya ke role yang punya <span class="mono">user.kelola</span>).</span></div>
+      <div><i></i><span>Kolom <b>Update 7 hari</b> di Dashboard masih berputar lama → server sedang meringkas Log sekali per jam; tunggu sebentar atau klik <b>Segarkan</b>.</span></div>
+      <div><i></i><span>Ada error merah saat <b>Run</b> atau halaman tidak tampil → kirim screenshot-nya di chat.</span></div></div></div>`
+};
 const P = PHASES[phase];
 if (!P) { console.error('Fase tidak dikenal: ' + phase); process.exit(1); }
 const src = path.join(root, P.dir);

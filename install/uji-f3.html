@@ -1,0 +1,141 @@
+<title>Panduan Uji F3</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: satu kolom; atas = persiapan & tautan, lalu dua bagian uji (F0, F1) berisi kartu langkah bernomor dengan hasil yang diharapkan + OK/Gagal + catatan; bawah = laporan yang bisa disalin. */
+:root{--bg:#edf2f5;--surface:#fff;--surface2:#f3f7f9;--line:#d9e3e9;--line2:#c3d1d9;--fg:#0c1a24;--muted:#4d606d;--dim:#7b8d99;--accent:#07857b;--on-accent:#fff;--accent-bg:rgba(7,133,123,.10);--ok:#14905a;--ok-bg:rgba(20,144,90,.11);--crit:#cc3b3b;--crit-bg:rgba(204,59,59,.10);--warn:#9c6205;--warn-bg:rgba(214,150,30,.15);
+  --font:"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif;--mono:"JetBrains Mono",Consolas,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#060b14;--surface:#0d1522;--surface2:#121d2e;--line:#1b293d;--line2:#2a3c57;--fg:#e4edf6;--muted:#93a6bb;--dim:#617490;--accent:#37e2cb;--on-accent:#022320;--accent-bg:rgba(55,226,203,.12);--ok:#4fd897;--ok-bg:rgba(79,216,151,.12);--crit:#ff7c78;--crit-bg:rgba(255,124,120,.12);--warn:#f4c552;--warn-bg:rgba(244,197,82,.12);color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#060b14;--surface:#0d1522;--surface2:#121d2e;--line:#1b293d;--line2:#2a3c57;--fg:#e4edf6;--muted:#93a6bb;--dim:#617490;--accent:#37e2cb;--on-accent:#022320;--accent-bg:rgba(55,226,203,.12);--ok:#4fd897;--ok-bg:rgba(79,216,151,.12);--crit:#ff7c78;--crit-bg:rgba(255,124,120,.12);--warn:#f4c552;--warn-bg:rgba(244,197,82,.12);color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font);line-height:1.55;font-size:14px}
+.wrap{max-width:900px;margin:0 auto;padding-block:36px 72px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:22px}
+.eyebrow{font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--accent)}
+h1{font-size:clamp(26px,4vw,38px);margin:4px 0 8px;font-weight:800;letter-spacing:-.03em;line-height:1.1;text-wrap:balance}
+h2{font-size:20px;margin:0;font-weight:800;letter-spacing:-.02em}
+h3{font-size:15px;margin:0;font-weight:700}
+p{margin:0;max-width:70ch}
+a{color:var(--accent);font-weight:600}
+.muted{color:var(--muted)} .mono{font-family:var(--mono);font-size:.92em;font-variant-ligatures:none}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:20px}
+.links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}
+.lk{display:flex;flex-direction:column;gap:4px;padding:14px;border-radius:14px;background:var(--surface2);border:1px solid var(--line);text-decoration:none;color:var(--fg)}
+.lk:hover{border-color:var(--accent)}
+.lk b{font-size:14px} .lk span{font-size:12.5px;color:var(--muted);font-weight:400}
+.lk.main{background:var(--accent-bg);border-color:transparent}
+.files{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.files a{font-family:var(--mono);font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--line2);text-decoration:none}
+.prep{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}
+.prep div{padding:12px 14px;border-radius:14px;background:var(--surface2);font-size:13px}
+.prep b{display:block}
+.sec{display:flex;flex-direction:column;gap:12px}
+.sechead{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.sechead .sp{flex:1}
+.prog{font-size:12.5px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
+.step{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px 18px;display:grid;grid-template-columns:40px minmax(0,1fr);gap:14px;transition:border-color .2s,background .2s}
+.step.ok{border-color:color-mix(in srgb,var(--ok) 45%,transparent)} .step.fail{border-color:color-mix(in srgb,var(--crit) 55%,transparent);background:var(--crit-bg)}
+.num{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:12.5px;background:var(--surface2);border:1.5px solid var(--line2);color:var(--muted)}
+.step.ok .num{background:var(--ok);border-color:var(--ok);color:var(--on-accent)} .step.fail .num{background:var(--crit);border-color:var(--crit);color:#fff}
+.body{display:flex;flex-direction:column;gap:8px;min-width:0}
+.do{font-size:13.5px}
+.exp{font-size:13px;padding:9px 12px;border-radius:10px;background:var(--surface2);border-left:3px solid var(--accent)}
+.exp b{color:var(--accent)}
+.ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ctl button{font:inherit;font-weight:700;font-size:12.5px;border:1.5px solid var(--line2);background:var(--surface);color:var(--fg);border-radius:999px;padding:5px 14px;cursor:pointer}
+.ctl button.on.okb{background:var(--ok);border-color:var(--ok);color:var(--on-accent)}
+.ctl button.on.failb{background:var(--crit);border-color:var(--crit);color:#fff}
+.ctl input{flex:1 1 220px;min-width:0;font:inherit;font-size:13px;border:1px solid var(--line2);border-radius:10px;padding:6px 10px;background:var(--surface);color:var(--fg)}
+.opt{font-size:11px;font-weight:700;color:var(--warn);background:var(--warn-bg);border-radius:999px;padding:1px 8px;margin-left:6px;vertical-align:2px}
+kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line2);border-bottom-width:2px;border-radius:6px;padding:0 6px;background:var(--surface2)}
+pre{margin:0;white-space:pre-wrap;font:12px/1.6 var(--mono);font-variant-ligatures:none;background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:14px;color:var(--muted);max-height:320px;overflow:auto}
+.btn{font:inherit;font-weight:700;font-size:13.5px;border:0;border-radius:999px;padding:10px 18px;background:var(--accent);color:var(--on-accent);cursor:pointer}
+.btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--line2)}
+.note{padding:12px 14px;border-radius:14px;font-size:13px;background:var(--warn-bg)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (max-width:700px){.links,.prep{grid-template-columns:minmax(0,1fr)}.step{grid-template-columns:minmax(0,1fr)}}
+</style>
+
+<div class="wrap">
+ <div><div class="eyebrow">Status Kontrak Manager · F3 v3.0.0</div><h1>Panduan uji F3</h1>
+  <p class="muted">Ikuti langkah dari atas ke bawah. Setiap langkah punya <b>hasil yang diharapkan</b>; tandai <b>OK</b> atau <b>Gagal</b> dan isi catatan bila perlu. Di akhir, klik <b>Salin laporan</b> lalu tempel di chat. Centang Anda tersimpan di browser ini saja.</p></div>
+
+ <div class="card"><h2>Persiapan</h2>
+  <div class="prep">
+   <div><b>Akun Gmail khusus FF</b>Project Status Kontrak Manager yang sudah lulus F2.</div>
+   <div><b>Akun admin + 1 akun STAFF</b>Akun STAFF dengan Alias PIC terisi (mis. Edo). Siapkan jendela <i>Incognito</i> untuk akun STAFF.</div>
+   <div><b>±40 menit</b>Pasang ±10 menit, uji ±30 menit. Boleh dicicil; centang tersimpan di browser ini.</div>
+  </div>
+  <div class="links">
+   <a class="lk main" href="https://claude.ai/artifact/KV4Jym4MJjuFpKSCb5ZszB" target="_blank" rel="noopener"><b>① Halaman pasang F3 →</b><span>Update project + tombol Salin untuk 2 file F3</span></a>
+   <div class="lk"><b>② Contoh sheet FF lama</b><span>File <span class="mono">Contoh_Data_FF_Lama.xlsx</span> dikirim di chat. 9 baris: Lampiran A + kasus khusus, untuk langkah D9–D14</span></div>
+   <a class="lk" href="https://claude.ai/artifact/FEw7zDeptPgLgBLUcLskeT" target="_blank" rel="noopener"><b>Mockup F3 →</b><span>Pembanding tampilan yang disetujui</span></a>
+  </div>
+  <p class="muted" style="font-size:12.5px;margin-top:12px">Contoh sheet FF lama berisi nomor kontrak dari Lampiran A SPEC. Bila nomor-nomor itu sudah Anda masukkan sebelumnya, barisnya terbaca <b>Sudah ada · dilewati</b>; itu juga perilaku yang benar. Kontrak hasil uji bisa diarsipkan setelah selesai (Kontrak → detail → Arsipkan).</p>
+ </div>
+
+ <section class="sec" id="secF3"></section>
+
+ <div class="card" style="display:flex;flex-direction:column;gap:12px"><h2>Laporan</h2>
+  <p class="muted">Laporan berisi status setiap langkah dan catatan Anda. Tempel di chat; kalau ada langkah gagal, sertakan screenshot.</p>
+  <pre id="rep"></pre>
+  <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="copy">Salin laporan</button><button class="btn ghost" id="reset">Kosongkan semua centang</button><span id="msg" class="muted" style="align-self:center;font-size:13px"></span></div>
+ </div>
+</div>
+
+<script>
+var F3=[
+ ['Pasang F3','Buka halaman pasang <b>①</b>, pilih <b>Update project yang sudah ada</b>, ikuti 5 langkahnya (ganti 2 file, setup, New version).','Log setup menulis migrasi <span class="mono">v2 → v3</span>, <span class="mono">Tab Users: kolom ditambah IzinTambahan</span>, dan <span class="mono">Role ADMIN: izin kontrak.import ditambahkan</span>. Bila aplikasi sudah dibuka duluan, migrasi sudah berjalan otomatis dan log setup boleh menulis "tidak ada perubahan". Tidak ada error merah.'],
+ ['Buka aplikasi (ADMIN)','Buka Web app URL dan login sebagai admin.','Muncul <b>Dashboard</b> berjudul <i>Selamat pagi/siang/sore/malam, nama Anda</i>. Kiri bawah <b>Versi 3.0.0 · F3</b>. Menu: Dashboard, Kontrak, <b>Perlu Perhatian</b> (dengan angka), Pengaturan. Antrian & Google Sheet masih redup.'],
+ ['Angka Dashboard','Bandingkan kotak angka dengan menu Kontrak (tab OPEN).','<b>Kontrak OPEN</b> sama dengan jumlah di tab OPEN. Pilihan <b>Tim FF</b> menyala untuk admin. Nilai kontrak OPEN, kendala aktif, close bulan ini masuk akal.'],
+ ['Alur per tahap','Klik salah satu lingkaran tahap di "Kontrak OPEN per tahap".','Pindah ke Kontrak dengan filter Tahap terisi tahap itu. Jumlah baris sama dengan angka di lingkaran.'],
+ ['Tabel Tim','Lihat kartu Tim di Dashboard, lalu klik satu baris PIC.','Setiap PIC tampil dengan Open, Kendala, Lewat batas, bar aging, dan <b>Update 7 hari</b> (grafik kecil + angka; bisa berputar sebentar saat pertama). Klik baris → daftar Kontrak terfilter PIC itu.'],
+ ['Kualitas data','Klik kotak <b>Tanpa PIC</b> atau <b>Data belum lengkap</b> di kartu Kualitas data.','Pindah ke Kontrak dengan tombol cepat yang sama menyala; jumlahnya sama dengan angka di kotak.'],
+ ['Perlu Perhatian','Buka menu <b>Perlu Perhatian</b>.','Kartu: BAST lewat batas aging, Kendala aktif > 14 hari, Kontrak tanpa PIC, Data import belum diverifikasi, Data kontrak belum lengkap. Angka di menu = jumlah semua hal. Klik satu baris → panel detail kontrak terbuka.'],
+ ['Aksi cepat','Di kartu <b>Kontrak tanpa PIC</b>, pilih PIC di dropdown <b>Atur PIC…</b> pada satu kontrak.','Kontrak hilang dari kartu, tanda di bilah atas jadi <b>Tersimpan</b>, dan di Kontrak kolom PIC sudah terisi. Tombol <b>Lengkapi</b> membuka form ubah kontrak.'],
+ ['Import: pilih file','Kontrak → <b>Upload Excel</b> → kartu <b>Import sheet FF lama</b>. Pilih file contoh <b>②</b>.','Muncul layar Pemetaan: <i>tab STATUS FF · judul kolom di baris 3 · 9 baris data</i>. Kolom dikenali otomatis (NAMA PELANGGAN → End customer).'],
+ ['Import: pemetaan nilai','Lihat kartu <b>2. Nilai status lama</b>, <b>3. PIC</b>, <b>4. Referensi baru</b>.','BAST ON REVIEW → Tahap Draft Review Customer · BAST REVISI → Kendala Revisi Dokumen · BAST PARSIAL → Tandai BAST parsial · SERTIM AR → Tahap BAST Takeout · SIRKULIR bertanda <i>tebakan, cek</i> · NUNGGU TTD bertanda <i>tidak dikenal</i>. PIC Rina <i>tidak dikenal</i>. TELKOMSEL dan MARITIM tercentang di Referensi baru.'],
+ ['Import: pratinjau','Hilangkan centang <b>MARITIM</b>, lalu klik <b>Lihat pratinjau</b>.','Kotak angka: 9 baris · 4 siap · 3 dengan catatan · 0 sudah ada · 2 error (nomor kosong, nomor dobel). Catatan biru: aging dimulai hari ini, <b>1 kontrak langsung CLOSE</b>. Baris Permata: Kompulir Eviden + <i>parsial</i> + Revisi Dokumen. Baris Wananugraha: BAST Done (tahap paling maju).'],
+ ['Import: simpan','Klik <b>Import 7 kontrak</b> → konfirmasi.','Layar Selesai: 7 kontrak masuk · 1 langsung CLOSE · 2 error · 1 referensi baru. Di Kontrak, kontrak hasil import bertanda <b>verif</b>; WO/0188/TSAT/IX/2025 berstatus CLOSE.'],
+ ['Import: verifikasi','Klik <b>Buka Perlu Perhatian</b>. Di kartu Data import belum diverifikasi, klik <b>Periksa</b> pada kontrak Permata, lalu di panel klik <b>Tandai terverifikasi</b>.','Baris Permata menulis <i>BAST parsial: lengkapi cakupan…</i>. Setelah ditandai, kontrak hilang dari kartu dan angka menu berkurang 1.'],
+ ['Import ulang','Import file contoh yang sama sekali lagi sampai pratinjau.','Kotak angka: 0 siap · 7 sudah ada · 2 error. Tidak ada kontrak dobel. Di Pengaturan › Referensi, Populasi TELKOMSEL ada, MARITIM tidak.'],
+ ['Ctrl+K','Di halaman mana pun tekan <kbd>Ctrl</kbd>+<kbd>K</kbd> (atau klik kotak <b>Cari kontrak, perintah…</b> di atas). Ketik sebagian nomor kontrak, lalu Enter.','Daftar muncul seketika; Enter membuka panel detail kontrak itu. Ketik <i>import</i> → muncul perintah <b>Import data lama</b>.'],
+ ['Ctrl+K: kontrak lama','Tekan Ctrl+K lalu ketik nomor kontrak yang sudah di arsip (bila ada) atau nomor lama/alias.','Setelah ±1–3 dtk muncul baris berlabel <b>arsip 20xx</b>; Enter membuka kontrak lama hanya-baca. Bila belum ada arsip, cukup pastikan tulisan <i>Mencari juga di kontrak lama…</i> muncul lalu hilang tanpa error.'],
+ ['Izin tambahan','Menu <b>Users</b> → klik akun STAFF → bagian <b>Izin tambahan di luar role</b>: centang <b>Upload Excel &amp; import data lama</b> → <b>Simpan</b>.','Di daftar Users, akun itu bertanda <b>+ Upload Excel &amp; import data lama</b>. Buka akun ADMIN: centang yang sama tampil tercentang dan terkunci (sudah termasuk role).'],
+ ['STAFF: Milik saya','Di jendela Incognito, login sebagai STAFF itu.','Dashboard dan Perlu Perhatian langsung dibuka dengan <b>Milik saya</b>; judul kecil menulis <i>kontrak milik Anda</i>; tabel Tim hanya baris PIC-nya. Pilihan Tim FF tetap bisa diklik.'],
+ ['STAFF: upload','Masih sebagai STAFF, buka menu Kontrak.','Tombol <b>Upload Excel</b> tampil (karena izin tambahan). Di Users (admin), hilangkan centangnya lalu muat ulang jendela STAFF: tombol Upload Excel hilang, <b>Tambah kontrak</b> tetap ada.'],
+ ['Ponsel','Buka Web app URL di HP (atau perkecil jendela).','Dashboard, Perlu Perhatian, dan Import tampil rapi tanpa geser ke samping (kecuali alur tahap dan tabel yang memang bisa digeser). Kotak Cari menjadi ikon kaca pembesar.'],
+ ['Log','Pengaturan › Sistem › <b>Buka log audit</b>, pilih bulan ini.','Ada baris <span class="mono">IMPORT_DATA_LAMA</span> (7 diimport, 2 error), <span class="mono">BUAT_KONTRAK</span> dengan catatan <i>import data lama … baris …</i>, dan <span class="mono">UBAH_USER</span> dengan catatan <i>izin tambahan</i>.']
+];
+var KEY='skm-uji-f3';
+var st={};try{st=JSON.parse(localStorage.getItem(KEY)||'{}');}catch(e){st={};}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(st));}catch(e){}}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function sec(id,kode,judul,intro,list){
+  var el=document.getElementById(id);
+  el.innerHTML='<div class="sechead"><div><div class="eyebrow">Bagian '+kode+'</div><h2>'+judul+'</h2><p class="muted" style="margin-top:4px">'+intro+'</p></div><span class="sp"></span><span class="prog" id="prog'+kode+'"></span></div>'+
+   list.map(function(s,i){var k=kode+'-'+(i+1);return '<div class="step" id="st-'+k+'"><div class="num">'+kode+(i+1)+'</div><div class="body"><h3>'+s[0]+(s[3]?'<span class="opt">opsional</span>':'')+'</h3><div class="do">'+s[1]+'</div><div class="exp"><b>Harusnya:</b> '+s[2]+'</div>'+
+    '<div class="ctl"><button type="button" class="okb" data-k="'+k+'" data-v="OK">OK</button><button type="button" class="failb" data-k="'+k+'" data-v="GAGAL">Gagal</button><input type="text" data-n="'+k+'" placeholder="Catatan (opsional)" aria-label="Catatan '+k+'"></div></div></div>';}).join('');
+}
+sec('secF3','D','Uji F3: dashboard, perlu perhatian, Ctrl+K, import data lama','Jalankan setelah F3 terpasang. D18–D19 butuh akun STAFF di jendela Incognito.',F3);
+function paint(){
+  document.querySelectorAll('[data-k]').forEach(function(b){var v=(st[b.dataset.k]||{}).v;b.classList.toggle('on',v===b.dataset.v);});
+  document.querySelectorAll('[data-n]').forEach(function(i){if(document.activeElement!==i)i.value=(st[i.dataset.n]||{}).n||'';});
+  document.querySelectorAll('.step').forEach(function(s){var k=s.id.slice(3),v=(st[k]||{}).v;s.classList.toggle('ok',v==='OK');s.classList.toggle('fail',v==='GAGAL');});
+  [['D',F3]].forEach(function(x){var n=x[1].length,ok=0,f=0;for(var i=1;i<=n;i++){var v=(st[x[0]+'-'+i]||{}).v;if(v==='OK')ok++;if(v==='GAGAL')f++;}
+    document.getElementById('prog'+x[0]).textContent=ok+' OK · '+f+' gagal · '+(n-ok-f)+' belum';});
+  document.getElementById('rep').textContent=report();
+}
+function report(){
+  var lines=['Laporan uji SKM F3 v3.0.0'];
+  [['D','F3',F3]].forEach(function(x){lines.push('','['+x[1]+']');x[2].forEach(function(s,i){var k=x[0]+'-'+(i+1),e=st[k]||{};lines.push(x[0]+(i+1)+' '+s[0]+': '+(e.v||'belum')+(e.n?' — '+e.n:''));});});
+  return lines.join('\n');
+}
+document.addEventListener('click',function(e){var b=e.target.closest('[data-k]');if(!b)return;var k=b.dataset.k;st[k]=st[k]||{};st[k].v=st[k].v===b.dataset.v?'':b.dataset.v;save();paint();});
+document.addEventListener('input',function(e){var i=e.target.closest('[data-n]');if(!i)return;st[i.dataset.n]=st[i.dataset.n]||{};st[i.dataset.n].n=i.value;save();document.getElementById('rep').textContent=report();});
+document.getElementById('copy').onclick=function(){var t=report(),m=document.getElementById('msg');
+  var pilih=function(){var r=document.createRange();r.selectNodeContents(document.getElementById('rep'));getSelection().removeAllRanges();getSelection().addRange(r);m.textContent='Teks dipilih, tekan Ctrl+C.';};
+  try{navigator.clipboard.writeText(t).then(function(){m.textContent='Laporan tersalin. Tempel di chat.';},pilih);}catch(err){pilih();}};
+var resetArmed=false;document.getElementById('reset').onclick=function(){var b=this,m=document.getElementById('msg');if(!resetArmed){resetArmed=true;b.textContent='Klik lagi untuk mengosongkan';m.textContent='';setTimeout(function(){resetArmed=false;b.textContent='Kosongkan semua centang';},4000);return;}
+  st={};save();paint();resetArmed=false;b.textContent='Kosongkan semua centang';m.textContent='Semua centang dikosongkan.';};
+paint();
+</script>
