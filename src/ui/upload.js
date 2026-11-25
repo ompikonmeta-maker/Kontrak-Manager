@@ -32,7 +32,7 @@ async function bacaFileUpload(file) {
     lp.langkah(1);
     const cari = (nama, def) => { const s = sheets.find(x => x.nama.toLowerCase() === nama) || sheets.find(x => KD.barisDariAoa(x.aoa, def)); return s ? KD.barisDariAoa(s.aoa, def) : null; };
     const rows = cari('kontrak', KD.KOL_UPLOAD);
-    if (!rows) { lp.selesai(); modal('Bukan template SKM', `<div class="note warn">${ic('warn', 's')}<span class="tx">Tidak ada tab <b>Kontrak</b> dengan kolom <b>No. Kontrak</b> di file <span class="mono">${esc(file.name)}</span>. Unduh template dari halaman ini, isi, lalu upload lagi.</span></div><div class="muted" style="font-size:12px">Sheet FF format lama (kolom NO WO/SPK/KL, STATUS AWAL, …) dibaca lewat Import data lama di F3.</div>`, [{ l: 'Mengerti', pri: true }]); return; }
+    if (!rows) { lp.selesai(); modal('Bukan template SKM', `<div class="note warn">${ic('warn', 's')}<span class="tx">Tidak ada tab <b>Kontrak</b> dengan kolom <b>No. Kontrak</b> di file <span class="mono">${esc(file.name)}</span>. Unduh template dari halaman ini, isi, lalu upload lagi.</span></div><div class="muted" style="font-size:12px">Sheet FF format lama (kolom NO WO/SPK/KL, STATUS AWAL, …) dibaca lewat <b>Import data lama</b>.</div>`, [{ l: 'Tutup' }, { l: 'Buka Import data lama', pri: true, fn: () => go('import') }]); return; }
     if (!rows.length) { lp.selesai(); toast('Tab Kontrak masih kosong.', true); return; }
     if (rows.length > 1000) { lp.selesai(); toast(`File berisi ${rows.length} baris. Maksimal 1.000 per upload; pecah jadi beberapa file.`, true); return; }
     const soSheet = sheets.find(x => /^so[_ ]?mi$/i.test(x.nama)), so = soSheet ? (KD.barisDariAoa(soSheet.aoa, KD.KOL_SO) || []) : [];
@@ -61,6 +61,7 @@ function viewUpload() {
       <div class="uic big">${ic('up2')}</div><h3>2. Upload file yang sudah diisi</h3><div class="muted">Tarik file .xlsx ke sini, atau <b style="color:var(--accent)">klik untuk memilih</b>.</div>
       <div class="dim" style="font-size:12px">Belum ada yang disimpan sampai Anda menekan <b>Simpan</b> di langkah berikutnya.</div></label>
    </div>
+   <div class="ucard" style="align-items:center"><div class="uic">${ic('dl')}</div><div style="flex:1"><h3>Punya sheet FF format lama?</h3><div class="muted">Untuk memindahkan data lama sekali jalan (kolom STATUS AWAL, KENDALA UMUM, dst.) tidak perlu menyalin ke template. Pakai <b>Import data lama</b>.</div></div><button class="btn ton" data-go2="import">Import sheet FF lama ${ic('chevR', 's')}</button></div>
    <div class="note info">${ic('shield', 's')}<span class="tx">Aturan: nomor yang sudah ada di SKM (termasuk <b>nomor lama</b> dan kontrak di arsip) dilewati atau diperbarui sesuai pilihan Anda; baris error tidak disimpan; setiap kontrak dapat BAST-1 otomatis; semua tercatat di Log atas nama <b>${esc(S.me.nama)}</b>. Maksimal 1.000 kontrak per file.</span></div>
   </div>`;
   if (U.step === 3) {

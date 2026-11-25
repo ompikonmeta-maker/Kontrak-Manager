@@ -58,7 +58,7 @@ test('UI F1: login pertama → ganti password → kelola user → role → log �
     assert.equal(await page.$eval('#gsave', b => b.disabled), false);
     await page.click('#gsave');
     await page.waitForSelector('.top h1');
-    assert.match(await teks(page, '.top h1'), /Selamat datang, Admin awal/);
+    assert.match(await teks(page, '.top h1'), /Selamat (pagi|siang|sore|malam), Admin awal/);
 
     // --- users: tambah user NIK dengan password acak
     await page.click('[data-go="users"]');
@@ -108,7 +108,7 @@ test('UI F1: login pertama → ganti password → kelola user → role → log �
     g.panggilan = [];
     await page.reload(); await page.waitForSelector('.top h1');
     assert.deepEqual(g.panggilan, ['boot'], 'membuka halaman cukup satu panggilan');
-    assert.match(await teks(page, '.top h1'), /Selamat datang/);
+    assert.match(await teks(page, '.top h1'), /Selamat (pagi|siang|sore|malam)/);
     await page.click('[data-go="role"]'); await page.waitForSelector('[data-perm="STAFF|pic.atur"]');
 
     // --- log & sistem

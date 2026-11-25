@@ -483,7 +483,7 @@ function ringkasUpdate_() {
       if (i < 0) return;
       var u = per[l.Username] = per[l.Username] || { username: l.Username, alias: alias[l.Username] || '', n: [0, 0, 0, 0, 0, 0, 0], bantu: 0, terakhir: null };
       u.n[i]++;
-      if (/bantu \(PIC/.test(l.Catatan || '')) u.bantu++;
+      if (/bantu \(PIC/.test(l.Catatan || '') && !/^BUAT_(KONTRAK|BAST)$/.test(l.Aksi)) u.bantu++;   // mendaftarkan kontrak untuk PIC lain bukan "bantu"
       if (!u.terakhir || String(l.Timestamp) > u.terakhir.waktu) u.terakhir = { waktu: String(l.Timestamp), aksi: l.Aksi, id: l.EntitasID };
     });
   });

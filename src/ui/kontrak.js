@@ -111,7 +111,7 @@ function viewKontrak() {
     <div class="search">${ic('search', 's')}<input id="kq" placeholder="Cari nomor kontrak, SO/MI, pelanggan, judul…" value="${esc(f.q)}" autocomplete="off"></div>
     <div class="seg" role="group" aria-label="Status">${[['OPEN', 'OPEN'], ['CLOSE', 'CLOSE'], ['', 'Semua']].concat(can('kontrak.arsip') ? [['ARSIP', 'Diarsipkan']] : []).map(([v, l]) => `<button data-kst="${v}" class="${f.st === v ? 'on' : ''}">${l}</button>`).join('')}</div>
     <span class="sp"></span>
-    ${can('kontrak.daftar') ? `<button class="btn pri" id="addK">${ic('add', 's')}Tambah kontrak</button><button class="btn ton" data-go2="upload">${ic('up2', 's')}Upload Excel</button>` : ''}
+    ${can('kontrak.daftar') ? `<button class="btn pri" id="addK">${ic('add', 's')}Tambah kontrak</button>` : ''}${can('kontrak.import') ? `<button class="btn ton" data-go2="upload">${ic('up2', 's')}Upload Excel</button>` : ''}
    </div>
    <div class="row">${QUICK.map(([k, l, fn]) => `<button class="chipf ${f.quick === k ? 'on' : ''}" data-kq="${k}">${l} <b>${base.filter(fn).length}</b></button>`).join('')}</div>
    <div class="filters">
@@ -132,7 +132,7 @@ function viewKontrak() {
      <td><div class="row" style="flex-wrap:nowrap;gap:6px">${avatarPic(k.PIC, 1)}<span>${k.PIC ? esc(k.PIC) : '<span style="color:var(--warn)">—</span>'}</span></div></td>
      <td>${ageChip(agingKontrak(b))}</td><td class="num">${rp(k.NilaiKontrak)}</td>
      <td><div class="row" style="flex-wrap:nowrap;gap:4px">${statusPill(b)}${KD.bool(k.PerluVerifikasi) ? '<span class="pill p-info" title="Hasil import, perlu diverifikasi">verif</span>' : ''}</div></td></tr>`; }).join('') ||
-     `<tr><td colspan="${bolehPilih ? 8 : 7}" class="muted" style="text-align:center;padding:32px">${semuaKontrak().length ? 'Tidak ada kontrak yang cocok. Coba hapus filter.' : 'Belum ada kontrak. ' + (can('kontrak.daftar') ? 'Klik <b>Tambah kontrak</b> atau <b>Upload Excel</b>.' : '')}</td></tr>`}
+     `<tr><td colspan="${bolehPilih ? 8 : 7}" class="muted" style="text-align:center;padding:32px">${semuaKontrak().length ? 'Tidak ada kontrak yang cocok. Coba hapus filter.' : 'Belum ada kontrak. ' + (can('kontrak.import') ? 'Klik <b>Tambah kontrak</b>, <b>Upload Excel</b>, atau Import data lama dari halaman Upload.' : can('kontrak.daftar') ? 'Klik <b>Tambah kontrak</b>.' : '')}</td></tr>`}
    </tbody></table></div>
    ${rows.length > tampil.length ? `<div class="row" style="justify-content:center"><button class="btn" id="kmore">Tampilkan ${Math.min(200, rows.length - tampil.length)} lagi <span class="muted">(${tampil.length} dari ${rows.length.toLocaleString('id-ID')})</span></button></div>` : ''}
   </div>
@@ -148,7 +148,12 @@ function rerenderKontrak() {
 }
 function segarkanTampilan() {
   if (S.page === 'kontrak') rerenderKontrak();
-  else if (S.page === 'beranda' && D.siap) { const c = document.getElementById('content'); if (c) { c.innerHTML = viewHome(); } }
+  else if ((S.page === 'beranda' || S.page === 'perhatian') && D.siap) {
+    const c = document.getElementById('content'), sc = window.scrollY;
+    const sibuk = document.activeElement && /SELECT|INPUT/.test(document.activeElement.tagName) && c && c.contains(document.activeElement);
+    if (c && !sibuk) { if (S.page === 'beranda') { c.innerHTML = viewDash(); bindDash(); const cr = document.querySelector('.top .crumb'); if (cr) cr.textContent = PAGES.beranda.crumb(); } else { c.innerHTML = viewPerhatian(); bindPerhatian(); } window.scrollTo(0, sc); }
+  }
+  perbaruiBadge();
   if (S.drawer) renderDrawer(false);
 }
 let cariT = null;

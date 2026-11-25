@@ -1,4 +1,4 @@
-/* ================= Status Kontrak Manager · UI (F1 fondasi + F2 kontrak) ================= */
+/* ================= Status Kontrak Manager · UI (F1 fondasi + F2 kontrak + F3 dashboard & import) ================= */
 'use strict';
 
 const S = {
@@ -59,7 +59,7 @@ function keluar() {
 function resetData() {
   clearTimeout(tarikT); closeDrawer(true); closeKForm();
   Object.assign(D, { siap: false, memuat: null, seq: 0, base: {}, view: {}, antre: [], kirim: false, flash: {} });
-  S.sel = new Set(); S.riw = {}; S.lama = null; S.arsQ = ''; S.arsHasil = null;
+  S.sel = new Set(); S.riw = {}; S.lama = null; S.arsQ = ''; S.arsHasil = null; S.dash7 = null; S.scopeUser = null;
 }
 /** Setelah masuk: muat data aktif sekali dengan layar progres (bila boleh melihat kontrak). */
 function mulaiData() { if (S.me && !S.me.wajibGanti && can('kontrak.lihat') && !D.siap && !D.memuat) muatData(true).then(() => segarkanTampilan()).catch(e => { if (e.kode !== 'SESI_HABIS') toast(e.pesan || String(e), true); }); }
@@ -73,6 +73,7 @@ async function boot() {
     S.me = b.user || null;
     if (!S.me && S.token) { S.token = null; store.set('skm-token', null); }
     if (b.data) muatData(false, b.data);
+    if (b.dash7) S.dash7 = b.dash7;
     go(S.me ? (S.me.wajibGanti ? 'ganti' : 'beranda') : 'login');
     mulaiData();
   } catch (e) { renderFatal(e.pesan || String(e)); }
@@ -93,22 +94,26 @@ function pakaiMe(me) {
 }
 
 const PAGES = {
-  beranda: { title: () => 'Selamat datang, ' + S.me.nama, crumb: () => 'Ringkasan hari ini · ' + new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) },
+  beranda: { title: () => salam() + ', ' + S.me.nama, crumb: () => new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + ' · ' + (S.dMine ? 'kontrak milik Anda' : 'ringkasan tim FF') },
+  perhatian: { title: () => 'Perlu Perhatian', crumb: 'Hal yang perlu ditindaklanjuti · dihitung dari data aktif', izin: 'kontrak.lihat' },
   kontrak: { title: () => 'Kontrak', crumb: () => D.siap ? semuaKontrak().filter(b => !KD.bool(b.k.Arsip)).length.toLocaleString('id-ID') + ' kontrak aktif · kontrak lama di arsip ikut dicari' : 'Memuat data aktif…', izin: 'kontrak.lihat' },
-  upload: { title: () => 'Upload Excel', crumb: 'Kontrak · tambah banyak kontrak sekaligus', izin: 'kontrak.daftar', nav: 'kontrak' },
+  upload: { title: () => 'Upload Excel', crumb: 'Kontrak · tambah banyak kontrak sekaligus', izin: 'kontrak.import', nav: 'kontrak' },
+  import: { title: () => 'Import data lama', crumb: 'Kontrak · sheet FF format lama → SKM', izin: 'kontrak.import', nav: 'kontrak' },
   pengaturan: { title: () => 'Pengaturan', crumb: 'Tahap, kendala, Nilai Push, referensi, config', izin: 'pengaturan.kelola' },
   users: { title: () => 'Users', crumb: 'Akun tim FF', izin: 'user.kelola' },
   role: { title: () => 'Role & izin', crumb: 'Hak akses berupa data, bisa diubah tanpa ubah kode', izin: 'user.kelola' },
   sistem: { title: () => 'Sistem', crumb: 'Database, skema, dan kesehatan aplikasi', izin: 'user.kelola' },
   log: { title: () => 'Log audit', crumb: 'Catatan teknis semua aksi (hanya ditambah). Riwayat per kontrak ada di tab Riwayat kontrak.', izin: 'log.semua', nav: 'sistem' }
 };
-const SOON = [['dashboard', 'Dashboard', 'dash', 'F3'], ['perhatian', 'Perlu Perhatian', 'warn', 'F3'], ['antrian', 'Antrian', 'inbox', 'F4b'], ['gsheet', 'Google Sheet', 'sync', 'F4a']];
+const SOON = [['antrian', 'Antrian', 'inbox', 'F4b'], ['gsheet', 'Google Sheet', 'sync', 'F4a']];
+function salam() { const h = new Date().getHours(); return h < 11 ? 'Selamat pagi' : h < 15 ? 'Selamat siang' : h < 19 ? 'Selamat sore' : 'Selamat malam'; }
 
 function render() {
   const root = document.getElementById('root');
   if (S.page === 'login' || !S.me) { root.innerHTML = viewLogin(); bindLogin(); return; }
   if (S.page === 'ganti' || S.me.wajibGanti) { S.page = 'ganti'; root.innerHTML = viewGanti(); bindGanti(); return; }
   const P = PAGES[S.page] || PAGES.beranda;
+  if (S.page === 'beranda' || S.page === 'perhatian') siapkanLingkup();
   root.innerHTML = shell(P.title(), typeof P.crumb === 'function' ? P.crumb() : P.crumb);
   bindShell();
   loadPage(S.page);
@@ -121,7 +126,12 @@ async function loadPage(page) {
     if (!REDUCED) { c.classList.add('enter'); setTimeout(() => c.classList.remove('enter'), 1400); }
   };
   try {
-    if (page === 'beranda') { show(viewHome()); return; }
+    // halaman yang dibangun dari data di browser: cek izin di sini (aksi simpannya tetap dicek server)
+    const P = PAGES[page] || {};
+    if (P.izin && !can(P.izin) && ['kontrak', 'perhatian', 'upload', 'import', 'pengaturan'].indexOf(page) >= 0) { show(viewDenied('Halaman ini butuh izin ' + P.izin + '.').replace(' Kejadian ini tercatat di Log.', '')); return; }
+    if (page === 'beranda') { show(viewDash()); bindDash(); return; }
+    if (page === 'perhatian') { show(viewPerhatian()); bindPerhatian(); return; }
+    if (page === 'import') { if (S.imp.step === 4) resetImport(); show(viewImport()); bindImport(); return; }
     if (page === 'kontrak') { show(viewKontrak()); bindKontrak(); if (S.kf.q) cariArsip(); return; }
     if (page === 'upload') { show(viewUpload()); bindUpload(); return; }
     if (page === 'pengaturan') { show(viewPengaturan()); bindPengaturan(); return; }
@@ -161,12 +171,12 @@ function renderFatal(msg) {
 const avatarOf = u => `<span class="av">${esc(String(u.nama || u.username || '?')[0].toUpperCase())}</span>`;
 function shell(title, crumb) {
   const navOn = (PAGES[S.page] || {}).nav || S.page;
-  const a = (h, l, i) => `<a href="#" data-go="${h}" class="${navOn === h ? 'on' : ''}">${ic(i)}<span>${l}</span></a>`;
+  const a = (h, l, i, cnt) => `<a href="#" data-go="${h}" class="${navOn === h ? 'on' : ''}">${ic(i)}<span>${l}</span>${cnt ? `<span class="cnt" data-cnt="${h}" hidden></span>` : ''}</a>`;
   const soon = ([h, l, i, f]) => `<a class="soon" aria-disabled="true" title="Dibangun di ${f}">${ic(i)}<span>${l}</span><span class="cnt">${f}</span></a>`;
   return `<div class="app">
    <aside class="side" id="side">
     <div class="brand">${LOGO}<div><b>Status Kontrak<br>Manager</b><span>Unit Fulfillment</span></div></div>
-    <nav class="nav">${a('beranda', 'Beranda', 'home')}${can('kontrak.lihat') ? a('kontrak', 'Kontrak', 'doc') : ''}
+    <nav class="nav">${a('beranda', 'Dashboard', 'dash')}${can('kontrak.lihat') ? a('kontrak', 'Kontrak', 'doc') + a('perhatian', 'Perlu Perhatian', 'warn', 1) : ''}
      ${can('user.kelola') || can('pengaturan.kelola') ? `<div class="eyebrow" style="padding:16px 12px 6px;font-size:10.5px">Pengaturan</div>${can('pengaturan.kelola') ? a('pengaturan', 'Tahap & aturan', 'gear') : ''}${can('user.kelola') ? a('users', 'Users', 'users') + a('role', 'Role & izin', 'shield') + a('sistem', 'Sistem', 'db') : ''}` : ''}
      <div class="eyebrow" style="padding:16px 12px 6px;font-size:10.5px">Fase berikutnya</div>${SOON.map(soon).join('')}</nav>
     <div class="side-foot"><span class="live"><span class="pulse"></span>Versi ${esc(S.app.versi)} · ${esc(S.app.fase)}</span><span>Skema database v${S.app.skema}</span><span class="dim">Menu redup dibangun di fase berikutnya</span></div>
@@ -176,6 +186,7 @@ function shell(title, crumb) {
      <button class="iconbtn burger" id="burger" aria-label="Menu">${ic('menu')}</button>
      <div style="min-width:0"><h1>${esc(title)}</h1><div class="crumb">${esc(crumb)}</div></div>
      <div class="sp"></div>
+     ${can('kontrak.lihat') ? `<button class="cmdk" id="palBtn" aria-label="Cari (Ctrl+K)">${ic('search', 's')}<span>Cari kontrak, perintah…</span><kbd>Ctrl K</kbd></button>` : ''}
      <button class="syncchip" id="syncChip" hidden aria-live="polite" title="Cara data tersimpan"></button>
      <button class="iconbtn" id="themeBtn" aria-label="Ganti tema" title="Ganti tema">${ic({ system: 'auto', light: 'sun', dark: 'moon' }[S.theme])}</button>
      <button class="me" id="meBtn">${avatarOf(S.me)}<span class="nm">${esc(S.me.nama)} · ${esc(S.me.role)}</span></button>
@@ -187,6 +198,8 @@ function bindShell() {
   $('#burger').onclick = e => { e.stopPropagation(); $('#side').classList.toggle('open'); };
   $('#themeBtn').onclick = e => cycleTheme(e);
   $('#syncChip').onclick = infoSync; syncChip();
+  if ($('#palBtn')) $('#palBtn').onclick = e => { e.stopPropagation(); openPalette(); };
+  perbaruiBadge();
   $$('[data-go]').forEach(a => a.onclick = e => { e.preventDefault(); go(a.dataset.go); });
   $('#meBtn').onclick = () => modal(esc(S.me.nama) + ' · ' + esc(S.me.role),
     `<dl class="kv"><dt>Username</dt><dd class="mono">${esc(S.me.username)}</dd><dt>Alias PIC</dt><dd>${esc(S.me.alias) || '—'}</dd><dt>Sesi</dt><dd>berakhir setelah ${S.app.sesiJam} jam tanpa aktivitas</dd></dl>`,
@@ -285,25 +298,6 @@ function bindGanti() {
   };
 }
 
-/* ---------------- beranda ---------------- */
-function viewHome() {
-  const next = [['F3', 'Import data lama, Dashboard, Perlu Perhatian, Ctrl+K'], ['F4a', 'Script penerima & update ke sheet unit'], ['F4b', 'Jejak sel, notifikasi, Antrian, sinkron otomatis'], ['F5', 'Export & backup']];
-  if (!can('kontrak.lihat')) return `<div class="card"><h2>Belum ada menu untuk role Anda</h2><p class="muted">Hubungi admin bila Anda perlu melihat kontrak.</p></div>`;
-  if (!D.siap) return '<div class="loading"><div class="spinner"></div>Memuat data aktif…</div>';
-  const all = semuaKontrak().filter(b => !KD.bool(b.k.Arsip)), open = all.filter(b => b.k.StatusKontrak === 'OPEN'), saya = S.me.alias ? open.filter(b => b.k.PIC === S.me.alias) : [];
-  const q = id => QUICK.find(x => x[0] === id)[2], kpi = [['OPEN', open.length, 'kontrak OPEN', '', ''], ['kend', open.filter(q('kend')).length, 'ada kendala aktif', 'crit', 'kend'], ['lewat', open.filter(q('lewat')).length, 'lewat batas aging', 'warn', 'lewat'],
-    ['nopic', open.filter(q('nopic')).length, 'tanpa PIC', 'warn', 'nopic'], ['kurang', open.filter(q('kurang')).length, 'data belum lengkap', 'warn', 'kurang']];
-  const nilai = open.reduce((a, b) => a + (Number(b.k.NilaiKontrak) || 0), 0);
-  return `<div class="card hero" style="padding:24px"><div class="row" style="position:relative;align-items:flex-start"><div style="flex:1 1 320px"><div class="eyebrow">Versi ${esc(S.app.versi)} · fase ${esc(S.app.fase)}</div><h2 style="font-size:22px;margin:6px 0">${saya.length ? `Anda PIC untuk ${saya.length} kontrak OPEN` : 'Kontrak siap diproses'}</h2>
-    <p class="muted" style="margin:0;max-width:60ch">Nilai kontrak OPEN ${rp(nilai)}. Dashboard lengkap dan daftar Perlu Perhatian hadir di F3.</p></div>
-    <div class="row">${saya.length ? `<button class="btn" id="hSaya">${ic('person', 's')}Kontrak saya</button>` : ''}<button class="btn pri" data-go2="kontrak">${ic('doc', 's')}Buka kontrak</button></div></div></div>
-   <div class="utiles">${kpi.map(([id, n, l, cls, quick]) => `<button class="utile ${cls}" data-hq="${quick}"><b class="tnum">${n.toLocaleString('id-ID')}</b><span>${l}</span></button>`).join('')}</div>
-   <div class="card"><h2>Berikutnya</h2>${next.map(([f, t]) => `<div class="check"><span class="d n">${f}</span><span>${t}</span></div>`).join('')}</div>`;
-}
-document.addEventListener('click', e => {
-  const h = e.target.closest('[data-hq]'); if (h && S.page === 'beranda') { Object.assign(S.kf, { st: 'OPEN', quick: h.dataset.hq, q: '', pic: '' }); go('kontrak'); return; }
-  if (e.target.closest('#hSaya')) { Object.assign(S.kf, { st: 'OPEN', quick: '', q: '', pic: S.me.alias }); go('kontrak'); }
-});
 document.addEventListener('click', e => { const b = e.target.closest('[data-go2]'); if (b) go(b.dataset.go2); });
 
 /* ---------------- users ---------------- */
@@ -325,7 +319,7 @@ function viewUsers() {
    <div class="row">${UF.map(([k, l, t]) => `<button class="chipf ${S.uf === k ? 'on' : ''}" data-uf="${k}">${l} <b>${list.filter(t).length}</b></button>`).join('')}</div>
    <div class="tbl-wrap"><table class="t"><thead><tr><th>User</th><th>Alias PIC</th><th>Role</th><th>Status</th><th>Login terakhir</th><th style="width:48px"></th></tr></thead><tbody>
    ${rows.map(u => `<tr class="click" data-row="${esc(u.username)}"><td><div class="row" style="flex-wrap:nowrap;gap:12px">${ava(u)}<div style="min-width:0"><b>${esc(u.nama)}</b>${u.username === S.me.username ? ' <span class="pill p-acc" style="font-size:10.5px;padding:0 7px">Anda</span>' : ''}<div class="mono dim" style="font-size:11.5px">${esc(u.username)}</div></div></div></td>
-    <td>${u.alias ? `<span class="pill p-dim">${esc(u.alias)}</span>` : '<span class="dim">—</span>'}</td><td>${rbadge(u.role)}</td><td>${stPill(u)}</td>
+    <td>${u.alias ? `<span class="pill p-dim">${esc(u.alias)}</span>` : '<span class="dim">—</span>'}</td><td>${rbadge(u.role)}${(u.izinTambahan || []).length ? `<div style="margin-top:4px">${u.izinTambahan.map(i => `<span class="pill p-info" style="font-size:10.5px;padding:0 7px" title="Izin tambahan di luar role">+ ${esc(labelIzin(i))}</span>`).join(' ')}</div>` : ''}</td><td>${stPill(u)}</td>
     <td class="tnum muted">${esc(u.loginTerakhir ? u.loginTerakhir.slice(0, 16) : '—')}</td><td><button class="iconbtn" data-kebab="${esc(u.username)}" aria-label="Aksi untuk ${esc(u.nama)}">${ic('more')}</button></td></tr>`).join('') || '<tr><td colspan="6" class="muted" style="text-align:center;padding:28px">Tidak ada user yang cocok.</td></tr>'}
    </tbody></table></div>
    <div class="muted" style="font-size:12px">Username bebas (NIK, nama, atau apa pun) dan menjadi ID tetap. Cincin avatar: hijau aktif, kuning wajib ganti password, merah terkunci, abu-abu nonaktif.</div></div>`;
@@ -385,8 +379,8 @@ function confirmDelete(u) {
 /* panel tambah/ubah user */
 function openUserSheet(u, opt) {
   opt = opt || {};
-  S.form = u ? { username: u.username, nama: u.nama, alias: u.alias, role: u.role, aktif: u.aktif, pwOn: !!opt.reset, pwMode: 'acak', pwTyped: '', pwShow: false, version: u.version }
-             : { username: '', nama: '', alias: '', role: 'STAFF', aktif: true, pwOn: true, pwMode: 'acak', pwTyped: '', pwShow: false };
+  S.form = u ? { username: u.username, nama: u.nama, alias: u.alias, role: u.role, aktif: u.aktif, pwOn: !!opt.reset, pwMode: 'acak', pwTyped: '', pwShow: false, version: u.version, ekstra: (u.izinTambahan || []).slice() }
+             : { username: '', nama: '', alias: '', role: 'STAFF', aktif: true, pwOn: true, pwMode: 'acak', pwTyped: '', pwShow: false, ekstra: [] };
   S.formOrig = u || null; S.formErr = ''; renderSheet(true);
   setTimeout(() => { const el = document.querySelector(opt.reset ? '#sheet-root [data-pwmode="acak"]' : u ? '#fn' : '#fu'); if (el) el.focus(); }, 80);
 }
@@ -401,7 +395,15 @@ function idcardHtml() {
    <div class="row" style="margin-top:8px;gap:6px">${rbadge(F.role)}${F.alias ? `<span class="pill p-dim">PIC: ${esc(F.alias)}</span>` : ''}${stPill(fake)}</div></div>`;
 }
 function rolePeta() { const m = {}; (S.users.roles || []).forEach(r => { m[r.role] = r.izin; }); return m; }
-function permsHtml() { const R = rolePeta()[S.form.role] || []; return (S.users.katalog || []).map(([p, d], i) => `<span class="${R.indexOf(p) >= 0 ? '' : 'no'}" style="--i:${i}" title="${p}">${esc(d)}</span>`).join(''); }
+function permsHtml() { const R = (rolePeta()[S.form.role] || []).concat(S.form.ekstra || []); return (S.users.katalog || []).map(([p, d], i) => `<span class="${R.indexOf(p) >= 0 ? '' : 'no'}" style="--i:${i}" title="${p}">${esc(d)}</span>`).join(''); }
+const labelIzin = p => ((S.users && S.users.katalog) || S.katalog || []).reduce((a, x) => x[0] === p ? x[1] : a, p);
+/** Izin tambahan per user (di luar role), saat ini kontrak.import (§6, D19). */
+function ekstraHtml() {
+  const R = rolePeta()[S.form.role] || [], daftar = (S.users && S.users.izinTambahan) || [];
+  if (!daftar.length) return '';
+  return `<div><div class="muted" style="font-size:12px;margin:4px 0 8px">Izin tambahan <b>di luar role</b>:</div><div style="display:flex;flex-direction:column;gap:8px">${daftar.map(p => { const dariRole = R.indexOf(p) >= 0, on = dariRole || (S.form.ekstra || []).indexOf(p) >= 0;
+    return `<label class="swrow" style="cursor:${dariRole ? 'default' : 'pointer'}"><input type="checkbox" class="chk" data-ekstra="${esc(p)}" ${on ? 'checked' : ''} ${dariRole ? 'disabled' : ''}><div style="flex:1"><b>${esc(labelIzin(p))}</b> <span class="mono dim" style="font-size:11px">${esc(p)}</span><small>${dariRole ? 'Sudah termasuk role ' + esc(S.form.role) + '.' : p === 'kontrak.import' ? 'Menambah banyak kontrak sekaligus dari file (Upload Excel & Import data lama). Bawaan hanya ADMIN.' : 'Diberikan khusus ke user ini.'}</small></div></label>`; }).join('')}</div></div>`;
+}
 const pwScore = p => { let s = 0; if (p.length >= 8) s++; if (p.length >= 12) s++; if (/[a-z]/.test(p) && /[A-Z]/.test(p)) s++; if (/\d/.test(p)) s++; if (/[^A-Za-z0-9]/.test(p)) s++; return Math.min(4, s); };
 const SCOL = ['var(--crit)', 'var(--crit)', 'var(--warn)', 'var(--ok)', 'var(--ok)'], SLBL = ['lemah', 'lemah', 'cukup', 'kuat', 'sangat kuat'];
 function renderSheet(opening) {
@@ -418,7 +420,7 @@ function renderSheet(opening) {
       <label class="of"><span>Alias PIC</span><input class="inp" id="fa" value="${esc(F.alias)}" autocomplete="off" maxlength="40" placeholder="mis. Dina"><small>Nama di kolom PIC sheet lama. Kosongkan bila bukan PIC.</small></label></div></div>
     <div class="sect"><div class="eyebrow">Role & akses</div>
      <div class="rcards" role="radiogroup" aria-label="Role">${Object.keys(peta).map(r => { const m = roleMeta(r); return `<button type="button" class="rcard ${F.role === r ? 'on' : ''}" data-role="${esc(r)}" role="radio" aria-checked="${F.role === r}">${ic(m[0])}<b>${esc(r)}</b><small>${m[1]} · ${peta[r].length} izin</small></button>`; }).join('')}</div>
-     <div><div class="muted" style="font-size:12px;margin-bottom:8px">User ini bisa:</div><div class="perms ${S.permAnim ? 'anim' : ''}" id="perms">${permsHtml()}</div></div></div>
+     <div><div class="muted" style="font-size:12px;margin-bottom:8px">User ini bisa:</div><div class="perms ${S.permAnim ? 'anim' : ''}" id="perms">${permsHtml()}</div></div>${ekstraHtml()}</div>
     <div class="sect"><div class="eyebrow">Password</div>
      ${isNew ? '' : `<div class="swrow"><div style="flex:1"><b>Reset password</b><small>Biarkan mati bila password tidak diganti</small></div><button type="button" class="toggle ${F.pwOn ? 'on' : ''}" id="pwOn" aria-label="Reset password" aria-pressed="${F.pwOn}"></button></div>`}
      ${F.pwOn ? `<div class="seg" role="group" aria-label="Cara membuat password"><button type="button" data-pwmode="acak" class="${F.pwMode === 'acak' ? 'on' : ''}">Buat acak</button><button type="button" data-pwmode="ketik" class="${F.pwMode === 'ketik' ? 'on' : ''}">Ketik sendiri</button></div>
@@ -445,6 +447,7 @@ function bindSheet() {
   q('#fn').oninput = e => { F.nama = e.target.value; refresh(); };
   q('#fa').oninput = e => { F.alias = e.target.value.trim(); refresh(); };
   document.querySelectorAll('#sheet-root [data-role]').forEach(b => b.onclick = () => { F.role = b.dataset.role; S.permAnim = true; renderSheet(false); S.permAnim = false; });
+  document.querySelectorAll('#sheet-root [data-ekstra]').forEach(c => c.onchange = () => { const p = c.dataset.ekstra; F.ekstra = (F.ekstra || []).filter(x => x !== p); if (c.checked) F.ekstra.push(p); q('#perms').innerHTML = permsHtml(); });
   if (q('#pwOn')) q('#pwOn').onclick = () => { F.pwOn = !F.pwOn; renderSheet(false); };
   if (q('#stOn')) q('#stOn').onclick = () => { F.aktif = !F.aktif; renderSheet(false); };
   document.querySelectorAll('#sheet-root [data-pwmode]').forEach(b => b.onclick = () => { F.pwMode = b.dataset.pwmode; renderSheet(false); if (F.pwMode === 'ketik') setTimeout(() => q('#fpw') && q('#fpw').focus(), 30); });
@@ -461,7 +464,8 @@ async function saveUser() {
   const F = S.form, O = S.formOrig, btn = document.querySelector('#sheet-root #ssave');
   const err = m => { S.formErr = m; renderSheet(false); const b = document.querySelector('#sheet-root .dbody'); b.scrollTop = 1e5; };
   if (!F.nama.trim()) return err('Nama lengkap wajib diisi.');
-  const payload = { baru: !O, username: F.username, nama: F.nama.trim(), alias: F.alias, role: F.role, aktif: F.aktif, version: F.version,
+  const R = rolePeta()[F.role] || [];
+  const payload = { baru: !O, username: F.username, nama: F.nama.trim(), alias: F.alias, role: F.role, aktif: F.aktif, version: F.version, izinTambahan: (F.ekstra || []).filter(p => R.indexOf(p) < 0),
                     password: F.pwOn ? { mode: F.pwMode, nilai: F.pwMode === 'ketik' ? F.pwTyped : '' } : null };
   busy(btn, true);
   try {

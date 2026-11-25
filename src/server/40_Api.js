@@ -101,7 +101,12 @@ var AKSI = {
     if (!hasil.siap || !ctx.token) return hasil;
     try { hasil.user = Auth.profil(userSesi_(ctx.token), petaKini_()); } catch (e) { if (e.kode !== 'SESI_HABIS') throw e; }
     // sekalian data aktif (F2), supaya membuka halaman cukup satu panggilan
-    if (hasil.user && ctx.payload && ctx.payload.data && !hasil.user.wajibGanti && hasil.user.izin.indexOf('kontrak.lihat') >= 0) hasil.data = muatDataKlien_();
+    if (hasil.user && ctx.payload && ctx.payload.data && !hasil.user.wajibGanti && hasil.user.izin.indexOf('kontrak.lihat') >= 0) {
+      hasil.data = muatDataKlien_();
+      // ringkasan "update 7 hari" (F3) hanya bila sudah ada di cache; bila belum, browser memintanya di latar
+      var d7 = hasil.user.izin.indexOf('dashboard.lihat') >= 0 && CacheService.getScriptCache().get('dash7');
+      if (d7) hasil.dash7 = JSON.parse(d7);
+    }
     return hasil;
   } },
 

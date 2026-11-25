@@ -41,8 +41,8 @@ test('UI F2: muat data → daftar → detail → simpan optimis → form → fee
     await page.fill('#lu', 'admin'); await page.fill('#lp', 'Rahasia2026'); await page.click('#lbtn');
     await page.waitForSelector('.loadov');
     await page.waitForSelector('.loadov', { state: 'detached', timeout: 15000 });
-    await page.waitForSelector('.utiles');
-    assert.equal(await page.$eval('.utile b', e => e.textContent), '6', 'beranda menghitung kontrak OPEN');
+    await page.waitForSelector('.kpis');
+    assert.equal(await page.$eval('.kpi .v', e => e.textContent), '6', 'dashboard menghitung kontrak OPEN');
 
     // daftar kontrak dari data di browser
     await page.click('[data-go="kontrak"]'); await page.waitForSelector('tr[data-k]');
@@ -148,7 +148,8 @@ test('UI F2: muat data → daftar → detail → simpan optimis → form → fee
     // muat ulang halaman: satu panggilan saja (boot membawa data aktif)
     g.panggilan = [];
     await page.reload(); await page.waitForSelector('.utiles');
-    assert.deepEqual(g.panggilan, ['boot']);
+    // satu panggilan yang ditunggu (boot); ringkasan "update 7 hari" boleh menyusul di latar bila cache 1 jam sudah habis
+    assert.deepEqual(g.panggilan.filter(x => x !== 'dashboard.ringkas'), ['boot']);
     assert.deepEqual(errors, []);
   } finally { await browser.close(); }
 });
