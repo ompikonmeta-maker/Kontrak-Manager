@@ -54,7 +54,7 @@ var Auth = (function () {
   function profil(u, peta) {
     var now = Date.now(), kunci = Domain.terkunci(u, now);
     return {
-      username: u.Username, nama: u.Nama, alias: u.AliasPIC, role: u.Role,
+      username: u.Username, nama: u.Nama, alias: u.AliasPIC, role: u.Role, izinTambahan: Domain.parseIzin(u.IzinTambahan),
       aktif: Domain.bool(u.Aktif), wajibGanti: Domain.bool(u.WajibGantiPassword),
       status: Domain.statusUser(u, now),
       terkunciSampai: kunci ? Utilities.formatDate(new Date(kunci), APP.TZ, 'HH:mm') : '',

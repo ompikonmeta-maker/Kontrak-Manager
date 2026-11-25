@@ -20,8 +20,8 @@ test('boot: satu panggilan berisi status, profil dan katalog; token rusak → us
   assert.equal(b.data.siap, true);
   assert.equal(b.data.user.username, 'admin');
   assert.ok(b.data.user.izin.includes('user.kelola'));
-  assert.equal(b.data.katalog.length, 12);
-  assert.equal(b.data.app.versi, '2.0.2');
+  assert.equal(b.data.katalog.length, 13);
+  assert.equal(b.data.app.versi, '3.0.0');
   const x = g.api('token-palsu', 'boot');
   assert.equal(x.ok, true);
   assert.equal(x.data.user, null);
@@ -39,7 +39,7 @@ test('login membawa katalog izin (layar tidak perlu memanggil "me" lagi)', () =>
   const g = createGas(); g.ctx.setup();
   const pw = g.logs.join('\n').match(/password sementara: (\S+)/)[1];
   const r = g.api(null, 'login', { username: 'admin', password: pw });
-  assert.equal(r.data.katalog.length, 12);
+  assert.equal(r.data.katalog.length, 13);
 });
 
 test('roles.simpan & users.* mengembalikan daftar terbaru + profil sendiri', () => {

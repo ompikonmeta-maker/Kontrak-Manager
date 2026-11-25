@@ -287,7 +287,7 @@ test('log per bulan & migrasi Log F1 ke file Log', () => {
   g.props.SKEMA_TERPASANG = '1';
   g.ctx.Repo.ubah('_Meta', 'SKEMA_VERSI', { Nilai: '1' });
   g.baru(); g.ctx.doGet();
-  assert.equal(g.props.SKEMA_TERPASANG, '2');
+  assert.equal(g.props.SKEMA_TERPASANG, '3');
   const f = g.fileBernama('SKM_LOG_2026');
   assert.ok(f.getSheetByName('Log-2026-10').data.some(r => r[2] === 'LOGIN'));
   assert.ok(db.getSheetByName('Log'), 'tab Log lama dibiarkan sebagai cadangan');

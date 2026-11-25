@@ -80,7 +80,7 @@ function daftarRole_(peta) {
   });
 }
 function daftarUser_(peta) {
-  return { users: Repo.semua('Users').map(function (u) { return Auth.profil(u); }), roles: daftarRole_(peta), katalog: IZIN };
+  return { users: Repo.semua('Users').map(function (u) { return Auth.profil(u); }), roles: daftarRole_(peta), katalog: IZIN, izinTambahan: IZIN_TAMBAHAN };
 }
 function profilKini_(ctx, peta) { var u = Repo.cari('Users', ctx.user.Username); return u ? Auth.profil(u, peta) : null; }
 function setelahUbahUser_(ctx, hasil) {
@@ -159,6 +159,11 @@ var AKSI = {
     var p = ctx.payload, oleh = ctx.user.Username, peta = ctx.peta;
     wajib_(peta[p.role], 'Role "' + p.role + '" tidak dikenal.');
     var nama = String(p.nama || '').trim(), alias = String(p.alias || '').trim();
+    var ekstra = p.izinTambahan === undefined ? null : [].concat(p.izinTambahan || []).map(String);
+    if (ekstra) {
+      ekstra.forEach(function (i) { wajib_(IZIN_TAMBAHAN.indexOf(i) >= 0, 'Izin "' + i + '" tidak bisa diberikan per user.'); });
+      ekstra = ekstra.filter(function (i, n) { return ekstra.indexOf(i) === n && (peta[p.role] || []).indexOf(i) < 0; });   // yang sudah ada di role tidak disimpan
+    }
     wajib_(nama, 'Nama lengkap wajib diisi.');
     wajib_(nama.length <= 80 && alias.length <= 40, 'Nama maksimal 80 karakter dan alias maksimal 40 karakter.');
 
@@ -181,8 +186,8 @@ var AKSI = {
       salt = Auth.saltBaru();
       Repo.tambah('Users', { Username: uname, Nama: nama, AliasPIC: alias, Role: p.role, PasswordHash: Auth.hash(pw, salt), Salt: salt,
         Aktif: 'TRUE', WajibGantiPassword: 'TRUE', GagalLogin: '0', TerkunciSampai: '', LoginTerakhir: '', PunyaAktivitas: 'FALSE',
-        SesiVersi: '0', CreatedBy: oleh, UpdatedBy: oleh });
-      catat_(ctx, 'BUAT_USER', 'Users', uname, 'role ' + p.role + (alias ? ', alias ' + alias : '') + ' · ' + catatPw);
+        SesiVersi: '0', IzinTambahan: (ekstra || []).join(','), CreatedBy: oleh, UpdatedBy: oleh });
+      catat_(ctx, 'BUAT_USER', 'Users', uname, 'role ' + p.role + (alias ? ', alias ' + alias : '') + ((ekstra || []).length ? ', izin tambahan ' + ekstra.join(',') : '') + ' · ' + catatPw);
       return setelahUbahUser_(ctx, { username: uname, passwordAcak: mode === 'acak' ? pw : '' });
     }
 
@@ -198,6 +203,10 @@ var AKSI = {
     if (aktif !== Domain.bool(u.Aktif)) ubah.push(aktif ? 'diaktifkan' : 'dinonaktifkan');
     if (nama !== u.Nama) ubah.push('nama ' + u.Nama + ' → ' + nama);
     if (alias !== u.AliasPIC) ubah.push('alias ' + (u.AliasPIC || '—') + ' → ' + (alias || '—'));
+    if (ekstra) {
+      var ekLama = Domain.parseIzin(u.IzinTambahan).join(','), ekBaru = ekstra.join(',');
+      if (ekLama !== ekBaru) { patch.IzinTambahan = ekBaru; ubah.push('izin tambahan ' + (ekLama || '—') + ' → ' + (ekBaru || '—')); }
+    }
     if (pw) { salt = Auth.saltBaru(); patch.PasswordHash = Auth.hash(pw, salt); patch.Salt = salt; patch.WajibGantiPassword = 'TRUE'; patch.GagalLogin = '0'; patch.TerkunciSampai = ''; }
     if (pw || !aktif || p.role !== u.Role) patch.SesiVersi = String(Domain.num(u.SesiVersi, 0) + 1);   // akhiri sesi aktif
     Repo.ubah('Users', u.Username, patch, oleh, p.version);

@@ -28,7 +28,7 @@ var Repo = (function () {
   var SKEMA_TAB = {
     _Meta: ['Key', 'Nilai'],
     Users: ['Username', 'Nama', 'AliasPIC', 'Role', 'PasswordHash', 'Salt', 'Aktif', 'WajibGantiPassword', 'GagalLogin',
-            'TerkunciSampai', 'LoginTerakhir', 'PunyaAktivitas', 'SesiVersi', 'CreatedAt', 'CreatedBy', 'UpdatedAt', 'UpdatedBy', 'Version'],
+            'TerkunciSampai', 'LoginTerakhir', 'PunyaAktivitas', 'SesiVersi', 'CreatedAt', 'CreatedBy', 'UpdatedAt', 'UpdatedBy', 'Version', 'IzinTambahan'],
     Ref_Role: ['Role', 'Izin', 'UpdatedAt', 'UpdatedBy'],
     Config: ['Key', 'Nilai', 'Keterangan', 'UpdatedAt', 'UpdatedBy'],
     Kontrak: KOL_DATA.Kontrak, OrderInternal: KOL_DATA.OrderInternal, BAST: KOL_DATA.BAST, RiwayatTahap: KOL_DATA.RiwayatTahap, Kendala: KOL_DATA.Kendala,
@@ -510,7 +510,14 @@ var Repo = (function () {
     if (!semua('Ref_Role').length) {
       Object.keys(ROLE_AWAL).forEach(function (r) { tambah('Ref_Role', { Role: r, Izin: ROLE_AWAL[r].join(','), UpdatedBy: oleh }); });
       catatan.push('Isi awal Ref_Role: ' + Object.keys(ROLE_AWAL).map(function (r) { return r + ' (' + ROLE_AWAL[r].length + ' izin)'; }).join(', '));
+    } else if (!meta('IZIN_IMPORT_F3')) {
+      // F3: Upload Excel & import pindah ke izin kontrak.import, diberikan ke role admin (yang punya user.kelola) saja.
+      semua('Ref_Role').forEach(function (r) {
+        var iz = Domain.parseIzin(r.Izin);
+        if (iz.indexOf('user.kelola') >= 0 && iz.indexOf('kontrak.import') < 0) { iz.push('kontrak.import'); ubah('Ref_Role', r.Role, { Izin: iz.join(',') }, oleh); catatan.push('Role ' + r.Role + ': izin kontrak.import ditambahkan'); }
+      });
     }
+    if (!meta('IZIN_IMPORT_F3')) setMeta('IZIN_IMPORT_F3', sekarang());
     Object.keys(REF_AWAL).forEach(function (tab) {
       if (semua(tab).length) return;
       gantiSemua(tab, REF_AWAL[tab].map(function (o) { var x = {}; for (var k in o) x[k] = o[k]; x.UpdatedBy = oleh; return x; }));

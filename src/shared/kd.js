@@ -262,14 +262,14 @@ var KD = (function () {
           CakupanOrder: b.order.map(function (o) { return o.NoOrder; }).join(', ') });
         b.bast.push(nb); out.riwayat.push(riwayat(nb, nb.KodeTahap, ctx, 'BAST dibuat'));
         lg('BUAT_BAST', 'BAST', nb.BASTID, 'DokTagih', '', nb.DokTagih, 'dibuat bersama kontrak');
-        if (data.kendala) {
-          var kj = ctx.ref.KD[data.kendala.Jenis];
+        (data.kendala ? [].concat(data.kendala) : []).forEach(function (kd0, i) {
+          var kj = ctx.ref.KD[kd0.Jenis], kid2 = nb.BASTID + '-K' + (i + 1);
           wajib(kj && kj.Aktif, 'Jenis kendala tidak dikenal.');
-          if (kj.WajibKeterangan) wajib(t(data.kendala.Keterangan), 'Keterangan kendala wajib diisi.');
-          b.kend.push({ KendalaID: nb.BASTID + '-K1', BASTID: nb.BASTID, KontrakID: kid, Jenis: kj.Kode, Keterangan: t(data.kendala.Keterangan), Status: 'AKTIF',
+          if (kj.WajibKeterangan) wajib(t(kd0.Keterangan), 'Keterangan kendala wajib diisi.');
+          b.kend.push({ KendalaID: kid2, BASTID: nb.BASTID, KontrakID: kid, Jenis: kj.Kode, Keterangan: t(kd0.Keterangan), Status: 'AKTIF',
                         Mulai: data.tglTahap || ctx.now, DibuatOleh: ctx.user, Selesai: '', DiselesaikanOleh: '', CatatanSelesai: '', Version: '1' });
-          lg('BUKA_KENDALA', 'Kendala', nb.BASTID + '-K1', 'Jenis', '', kj.Kode, t(data.kendala.Keterangan));
-        }
+          lg('BUKA_KENDALA', 'Kendala', kid2, 'Jenis', '', kj.Kode, t(kd0.Keterangan));
+        });
       }
     } else if (op === 'kontrak.ubah') {
       cekIzin(ctx, 'kontrak.update');
@@ -528,7 +528,115 @@ var KD = (function () {
     });
   }
 
+  // ------------------------------------------------------------------ import sheet FF format lama (§11.1, F3)
+  var KOL_IMPORT = [['no', 'No. kontrak', ['no wo/spk/kl', 'no kontrak', 'nomor kontrak', 'no wo spk kl']], ['judul', 'Judul kontrak', ['judul kontrak', 'judul']],
+    ['tahun', 'Tahun project', ['tahun project', 'tahun']], ['pop', 'Populasi', ['populasi', 'pop']], ['end', 'End customer', ['nama pelanggan', 'end customer', 'pelanggan']],
+    ['pel', 'Customer (direct)', ['customer', 'nama customer', 'direct customer']], ['seg', 'Segment', ['segment tsat', 'segment', 'seg']], ['nilai', 'Nilai kontrak', ['nilai kontrak', 'nilai']],
+    ['pic', 'PIC', ['pic']], ['status', 'Status awal', ['status awal', 'status']], ['ku', 'Kendala umum (lama)', ['kendala umum']], ['detil', 'Kendala detil', ['kendala detil', 'kendala detail']]];
+  /** Header file → { field: indeks kolom } (dikenali dari judul; -1 = tidak ada). */
+  function petaImport(header) {
+    var hs = (header || []).map(hNorm), m = {};
+    KOL_IMPORT.forEach(function (x) { var al = x[2].map(hNorm); m[x[0]] = hs.findIndex(function (h) { return al.indexOf(h) >= 0; }); });
+    return m;
+  }
+  /** Usulan arti nilai STATUS AWAL / KENDALA UMUM lama (tabel §11.1). tebak = di luar tabel, perlu dicek. */
+  function tebakNilaiLama(v, ref) {
+    var u = t(v).toUpperCase().replace(/\s+/g, ' '), ada = function (k) { return ref && ref.T && ref.T[k] && ref.T[k].Aktif; };
+    var th = function (k, tebak) { return ada(k) ? { jenis: 'tahap', kode: k, tebak: !!tebak } : { jenis: 'lain' }; };
+    if (!u) return { jenis: 'abaikan' };
+    if (/PARSIAL/.test(u)) return { jenis: 'parsial' };
+    if (/REVISI/.test(u)) return ref && ref.KD && ref.KD.REV_DOKUMEN ? { jenis: 'kendala', kode: 'REV_DOKUMEN' } : { jenis: 'lain' };
+    if (/TAKEOUT|SERTIM/.test(u)) { var pt = penutup(ref || { tahap: [] }); return pt ? { jenis: 'tahap', kode: pt.Kode } : { jenis: 'lain' }; }
+    if (/BAST DONE/.test(u)) return th('BAST_DONE');
+    if (/ON REVIEW/.test(u)) return th('REVIEW_CUST');
+    if (/KOMPULIR/.test(u)) return th('KOMPULIR');
+    if (/SIRKULIR/.test(u)) return th('SIRKULIR', true);
+    if (/REVIEW/.test(u)) return th('REVIEW_CUST', true);
+    if (/DRAFT/.test(u)) return th('DRAFTING', true);
+    return { jenis: 'lain' };
+  }
+  /** Nilai unik STATUS AWAL & KENDALA UMUM + PIC + referensi baru, untuk layar pemetaan. */
+  function ringkasImport(rows, map, ref) {
+    var nilai = {}, pic = {}, refBaru = {};
+    var v = function (r, f) { return map[f] >= 0 ? t(r[map[f]]) : ''; };
+    rows.forEach(function (r) {
+      [v(r, 'status'), v(r, 'ku')].forEach(function (x) { if (!x) return; var k = x.toUpperCase().replace(/\s+/g, ' '); nilai[k] = (nilai[k] || 0) + 1; });
+      var p = v(r, 'pic'); if (p) pic[p] = (pic[p] || 0) + 1;
+      [['pop', 'populasi', 'Populasi'], ['seg', 'segment', 'Segment']].forEach(function (x) { var val = v(r, x[0]); if (val && !cariRef(ref[x[1]], val)) refBaru[x[2] + ':' + val] = (refBaru[x[2] + ':' + val] || 0) + 1; });
+    });
+    return { nilai: nilai, pic: pic, refBaru: refBaru };
+  }
+  /**
+   * Periksa baris import. rows: [{baris, r:[sel...]}]. o: {map, nilai{NILAI: {jenis,kode}}, pic{nama: alias}, refBaru{'Populasi:X': true}, ref, cfg,
+   *   cariNomor(normKey)}. Hasil per baris: st baru | peringatan | ada | error.
+   */
+  function periksaImport(rows, o) {
+    var seen = {}, ref = o.ref, map = o.map || {};
+    return rows.map(function (row) {
+      var r = row.r || [], v = function (f) { return map[f] >= 0 ? t(r[map[f]]) : ''; };
+      var x = { baris: row.baris, err: [], warn: [], info: [], asal: [], kend: [], parsial: false, st: 'baru' };
+      x.no = v('no').replace(/\.+$/, ''); x.judul = v('judul'); x.end = v('end'); x.pel = v('pel'); x.detil = v('detil');
+      if (!x.no) { x.err.push('No. kontrak kosong'); x.st = 'error'; return x; }
+      var nk = normKey(x.no);
+      if (seen[nk]) { x.err.push('Nomor sama dengan baris ' + seen[nk] + ' di file ini'); x.st = 'error'; return x; }
+      seen[nk] = row.baris;
+      var ada = o.cariNomor ? o.cariNomor(nk) : null;
+      if (ada) {
+        x.ada = ada; x.st = 'ada';
+        x.info.push('Sudah terdaftar sebagai ' + ada.KontrakID + (ada.viaAlias ? ' (lewat nomor lama)' : '') + (ada.lokasi && ada.lokasi !== 'AKTIF' ? ' di arsip ' + ada.lokasi.replace('ARSIP_', '') : '') + ' · dilewati');
+        return x;
+      }
+      if (!x.judul) { x.judul = x.end ? 'Kontrak ' + x.end : x.no; x.warn.push('Judul kosong → diisi "' + x.judul + '", lengkapi saat verifikasi'); }
+      x.jenis = tebakJenisDok(x.no);
+      x.tahun = v('tahun').replace(/\.0+$/, '');
+      if (x.tahun && !/^(19|20)\d\d$/.test(x.tahun)) { x.warn.push('Tahun "' + x.tahun + '" tidak valid, dikosongkan'); x.tahun = ''; }
+      var n = bacaRupiah(map.nilai >= 0 ? r[map.nilai] : '');
+      if (n.e) { x.warn.push('Nilai "' + v('nilai') + '" tidak terbaca, dikosongkan'); x.nilai = ''; } else x.nilai = n.v;
+      [['pop', 'populasi', 'Populasi'], ['seg', 'segment', 'Segment']].forEach(function (q) {
+        var val = v(q[0]); x[q[0]] = '';
+        if (!val) return;
+        var rf = cariRef(ref[q[1]], val);
+        if (rf) x[q[0]] = rf.Kode;
+        else if ((o.refBaru || {})[q[2] + ':' + val]) { x[q[0]] = val; x.info.push(q[2] + ' baru "' + val + '" ditambahkan ke Referensi'); }
+        else x.warn.push(q[2] + ' "' + val + '" belum ada di Referensi, dikosongkan');
+      });
+      var p = v('pic'); x.pic = p ? t((o.pic || {})[p]) : '';
+      if (o.bolehPic === false) { if (p && x.pic !== t(o.alias)) x.warn.push('Kolom PIC diabaikan (butuh izin pic.atur); PIC = Anda'); x.pic = t(o.alias); }
+      else if (p && !x.pic) x.warn.push('PIC "' + p + '" tidak dipetakan → tanpa PIC');
+      var tahap = null;
+      [v('status'), v('ku')].forEach(function (val) {
+        if (!val) return;
+        var key = val.toUpperCase().replace(/\s+/g, ' '), m = (o.nilai || {})[key] || tebakNilaiLama(key, ref);
+        if (m.jenis === 'tahap' && ref.T[m.kode]) { if (!tahap || ref.T[m.kode].Urutan > ref.T[tahap].Urutan) tahap = m.kode; x.asal.push(val + ' → tahap ' + ref.T[m.kode].Label); }
+        else if (m.jenis === 'kendala' && ref.KD[m.kode]) { x.kend.push({ Jenis: m.kode, Keterangan: x.detil || val }); x.asal.push(val + ' → kendala ' + ref.KD[m.kode].Label); }
+        else if (m.jenis === 'parsial') { x.parsial = true; x.asal.push(val + ' → ditandai BAST parsial'); }
+        else if (m.jenis === 'abaikan') x.asal.push(val + ' → diabaikan');
+        else { var kl = ref.KD.LAINNYA ? 'LAINNYA' : (ref.kendala.filter(function (k) { return k.Aktif; })[0] || {}).Kode; if (kl) { x.kend.push({ Jenis: kl, Keterangan: val }); x.asal.push(val + ' → kendala ' + ref.KD[kl].Label); } }
+      });
+      x.tahap = tahap || tahapPertama(ref);
+      var dk = {}; x.kend = x.kend.filter(function (k) { if (dk[k.Jenis]) return false; dk[k.Jenis] = 1; return true; });
+      if (ref.T[x.tahap] && ref.T[x.tahap].Penutup) {
+        x.info.push('Langsung CLOSE saat diimport · tanggal close = tanggal import');
+        if (x.kend.length) { x.warn.push('Kendala tidak dibuka karena kontrak langsung CLOSE: ' + x.kend.map(function (k) { return ref.KD[k.Jenis].Label; }).join(', ')); x.kend = []; }
+      }
+      x.ketBast = x.parsial ? 'BAST parsial (dari data lama): lengkapi cakupan lokasi & BAST berikutnya saat verifikasi' + (x.kend.length || !x.detil ? '' : ' · ' + x.detil) : (x.kend.length ? '' : x.detil);
+      x.jc = jenisCustomer(x.pel, x.end);
+      if (!x.pel) x.info.push('Customer kosong → jenis customer BELUM TERDEFINISI');
+      x.doc = dokDefault(x.jc, o.cfg);
+      x.st = x.err.length ? 'error' : x.warn.length ? 'peringatan' : 'baru';
+      return x;
+    });
+  }
+  /** Data operasi kontrak.buat untuk satu baris hasil periksaImport. */
+  function dataImport(x, file) {
+    return { f: { NoKontrak: x.no, JudulKontrak: x.judul, JenisDok: x.jenis, TahunProject: x.tahun, Populasi: x.pop, NamaPelanggan: x.pel, EndCustomer: x.end,
+                  Segment: x.seg, NilaiKontrak: x.nilai, PIC: x.pic },
+             orders: [], dokTagih: x.doc, tahapAwal: x.tahap, ketBast: x.ketBast, kendala: x.kend, verifikasi: true, sumber: 'IMPORT',
+             catatan: 'import data lama ' + file + ' baris ' + x.baris + (x.asal.length ? ' (' + x.asal.join('; ') + ')' : '') };
+  }
+
   return {
+    KOL_IMPORT: KOL_IMPORT, petaImport: petaImport, tebakNilaiLama: tebakNilaiLama, ringkasImport: ringkasImport, periksaImport: periksaImport, dataImport: dataImport,
     s: s, t: t, bool: bool, num: num, salin: salin, galat: galat, normKey: normKey, normCust: normCust, jenisCustomer: jenisCustomer, LABEL_JC: LABEL_JC,
     dokDefault: dokDefault, siapkanRef: siapkanRef, tahapPertama: tahapPertama, penutup: penutup, bastClose: bastClose, hidup: hidup, cakupan: cakupan,
     statusKontrak: statusKontrak, tahapKontrak: tahapKontrak, bastOpen: bastOpen, hariSejak: hariSejak, bucket: bucket, kendalaAktif: kendalaAktif,

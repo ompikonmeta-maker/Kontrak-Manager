@@ -340,10 +340,10 @@ AKSI['arsip.pemicu'] = { izin: 'pengaturan.kelola', ubah: true, fn: function (ct
   return { dipasang: baru, aktif: pemicuArsip_().length > 0 };
 } };
 
-AKSI['upload.template'] = { izin: 'kontrak.daftar', fn: function () {
+AKSI['upload.template'] = { izin: 'kontrak.import', fn: function () {
   return { nama: 'Template_Upload_Kontrak_SKM.xlsx', base64: xlsxDari_('template', isiTemplate_) };
 } };
-AKSI['upload.laporan'] = { izin: 'kontrak.daftar', fn: function (ctx) {
+AKSI['upload.laporan'] = { izin: 'kontrak.import', fn: function (ctx) {
   var tabs = ctx.payload.tabs || [];
   return { nama: 'Laporan_error_upload.xlsx', base64: xlsxDari_('laporan', function (f) {
     tabs.forEach(function (t, i) {
@@ -354,14 +354,17 @@ AKSI['upload.laporan'] = { izin: 'kontrak.daftar', fn: function (ctx) {
     });
   }) };
 } };
-AKSI['upload.cekNomor'] = { izin: 'kontrak.daftar', fn: function (ctx) {
+AKSI['upload.cekNomor'] = { izin: 'kontrak.import', fn: function (ctx) {
   var m = petaNomor_(), out = {};
   (ctx.payload.nomor || []).forEach(function (nk) { if (m[nk]) out[nk] = m[nk]; });
   return { ada: out };
 } };
 
-AKSI['upload.simpan'] = { izin: 'kontrak.daftar', ubah: true, fn: function (ctx) {
-  var p = ctx.payload, mode = p.mode === 'perbarui' ? 'perbarui' : 'lewati', file = String(p.file || 'file'), c = ctxKD_(ctx);
+/** Upload & import: izin kontrak.import sudah mencakup membuat kontrak. */
+function ctxImport_(ctx) { var c = ctxKD_(ctx); if (c.izin.indexOf('kontrak.daftar') < 0) c.izin = c.izin.concat(['kontrak.daftar']); return c; }
+
+AKSI['upload.simpan'] = { izin: 'kontrak.import', ubah: true, fn: function (ctx) {
+  var p = ctx.payload, mode = p.mode === 'perbarui' ? 'perbarui' : 'lewati', file = String(p.file || 'file'), c = ctxImport_(ctx);
   if ((p.rows || []).length > 300) throw Repo.galat('VALIDASI', 'Maksimal 300 baris per bagian.');
   var peta = petaNomor_(), picAktif = daftarUserPic_().filter(function (u) { return u.aktif && u.alias; }).map(function (u) { return u.alias; });
   var hasil = KD.periksaUpload(p.rows || [], { ref: c.ref, cfg: c.cfg, pic: picAktif, bolehPic: ctx.izin.indexOf('pic.atur') >= 0, alias: c.alias, hariIni: hariIni_(),
@@ -418,6 +421,80 @@ AKSI['upload.simpan'] = { izin: 'kontrak.daftar', ubah: true, fn: function (ctx)
   out.seq = bundles.length ? Repo.feedTambah({ bundles: bundles }) : Repo.seq();
   out.bundles = bundles;
   return out;
+} };
+
+// ---------------- import sheet FF format lama (§11.1, F3)
+AKSI['import.simpan'] = { izin: 'kontrak.import', ubah: true, fn: function (ctx) {
+  var p = ctx.payload, file = String(p.file || 'file'), rows = p.rows || [];
+  if (rows.length > 300) throw Repo.galat('VALIDASI', 'Maksimal 300 baris per bagian.');
+  wajib_(p.map && p.map.no >= 0, 'Kolom No. kontrak belum dipetakan.');
+  // referensi baru yang dicentang: tambahkan sekali (bagian berikutnya melihatnya sudah ada)
+  var refBaru = p.refBaru || {}, ditambah = [], TAB = { Populasi: 'Ref_Populasi', Segment: 'Ref_Segment' };
+  Object.keys(refBaru).forEach(function (k) {
+    if (!refBaru[k]) return;
+    var tab = TAB[k.split(':')[0]], val = String(k.slice(k.indexOf(':') + 1)).trim();
+    if (!tab || !val || val.length > 40) return;
+    var ada = Repo.semua(tab), sama = ada.some(function (r) { return String(r.Kode).toLowerCase() === val.toLowerCase() || String(r.Label).toLowerCase() === val.toLowerCase(); });
+    if (sama) return;
+    var urut = ada.reduce(function (m, r) { return Math.max(m, Domain.num(r.Urutan, 0)); }, 0) + 1;
+    Repo.tambah(tab, { Kode: val, Label: val, Aktif: 'TRUE', Urutan: String(urut), UpdatedBy: ctx.user.Username });
+    ditambah.push(k);
+  });
+  if (ditambah.length) catat_(ctx, 'UBAH_PENGATURAN', 'Referensi', '—', 'tambah dari import data lama: ' + ditambah.join(', '));
+  var c = ctxImport_(ctx), peta = petaNomor_();
+  var aliasAktif = {}; daftarUserPic_().forEach(function (u) { if (u.aktif && u.alias) aliasAktif[u.alias] = 1; });
+  var petaPic = {}; Object.keys(p.pic || {}).forEach(function (k) { if (aliasAktif[p.pic[k]]) petaPic[k] = p.pic[k]; });
+  var hasil = KD.periksaImport(rows, { map: p.map, nilai: p.nilai || {}, pic: petaPic, refBaru: refBaru, ref: c.ref, cfg: c.cfg,
+    bolehPic: ctx.izin.indexOf('pic.atur') >= 0, alias: ctx.user.AliasPIC || '', cariNomor: function (nk) { return peta[nk] || null; } });
+  var out = { dibuat: [], dilewati: 0, gagal: [], refBaru: ditambah }, tambah = { Kontrak: [], BAST: [], OrderInternal: [], Kendala: [], RiwayatTahap: [], Indeks: [] }, bundles = [];
+  hasil.forEach(function (x) {
+    if (x.st === 'error') { out.gagal.push({ baris: x.baris, no: x.no, err: x.err }); return; }
+    if (x.st === 'ada') { out.dilewati++; return; }
+    try {
+      var r = KD.jalankan('kontrak.buat', null, KD.dataImport(x, file), c), b = r.bundle;
+      tambah.Kontrak.push(b.k); tambah.BAST = tambah.BAST.concat(b.bast); tambah.Kendala = tambah.Kendala.concat(b.kend);
+      tambah.RiwayatTahap = tambah.RiwayatTahap.concat(r.riwayat); tambah.Indeks.push(barisIndeks_(b.k));
+      peta[b.k.NoKontrakNorm] = { KontrakID: b.k.KontrakID, NoKontrak: b.k.NoKontrak, lokasi: 'AKTIF' };
+      r.log.forEach(function (l) { Repo.tulisLog({ user: ctx.user.Username, aksi: l.aksi, entitas: l.entitas, id: l.id, field: l.field, lama: l.lama, baru: l.baru, catatan: l.catatan }); });
+      bundles.push(b); out.dibuat.push({ baris: x.baris, KontrakID: b.k.KontrakID, no: b.k.NoKontrak, status: b.k.StatusKontrak });
+    } catch (e) { out.gagal.push({ baris: x.baris, no: x.no, err: [e.message] }); }
+  });
+  Object.keys(tambah).forEach(function (tab) { if (tambah[tab].length) Repo.besarTambah(tab, tambah[tab]); });
+  catat_(ctx, 'IMPORT_DATA_LAMA', 'Kontrak', file, out.dibuat.length + ' diimport (perlu verifikasi), ' + out.dilewati + ' dilewati, ' + out.gagal.length + ' error' + (p.bagian ? ' (bagian ' + p.bagian + ')' : ''));
+  if (ditambah.length) Repo.feedTambah({ muatRef: true });
+  out.seq = bundles.length ? Repo.feedTambah({ bundles: bundles }) : Repo.seq();
+  out.bundles = bundles;
+  if (ditambah.length) out.ref = refRaw_();
+  return out;
+} };
+
+// ---------------- dashboard: jumlah update 7 hari per user dari Log, diringkas sekali per jam (§10)
+var AKSI_UPDATE_ = { Kontrak: 1, BAST: 1, Kendala: 1, OrderInternal: 1 };
+function ringkasUpdate_() {
+  var hari = [], now = new Date();
+  for (var i = 6; i >= 0; i--) hari.push(Utilities.formatDate(new Date(now.getTime() - i * 864e5), APP.TZ, 'yyyy-MM-dd'));
+  var bulan = {}; hari.forEach(function (h) { bulan[h.slice(0, 7)] = 1; });
+  var alias = {}; Repo.semua('Users').forEach(function (u) { alias[u.Username] = u.AliasPIC || ''; });
+  var per = {};
+  Object.keys(bulan).forEach(function (ym) {
+    Repo.logBulan(ym).forEach(function (l) {
+      if (!AKSI_UPDATE_[l.Entitas] || l.Hasil === 'GAGAL' || l.Hasil === 'DITOLAK') return;
+      var h = String(l.Timestamp).slice(0, 10), i = hari.indexOf(h);
+      if (i < 0) return;
+      var u = per[l.Username] = per[l.Username] || { username: l.Username, alias: alias[l.Username] || '', n: [0, 0, 0, 0, 0, 0, 0], bantu: 0, terakhir: null };
+      u.n[i]++;
+      if (/bantu \(PIC/.test(l.Catatan || '')) u.bantu++;
+      if (!u.terakhir || String(l.Timestamp) > u.terakhir.waktu) u.terakhir = { waktu: String(l.Timestamp), aksi: l.Aksi, id: l.EntitasID };
+    });
+  });
+  return { dibuat: Repo.sekarang(), hari: hari, user: Object.keys(per).map(function (k) { return per[k]; }) };
+}
+AKSI['dashboard.ringkas'] = { izin: 'dashboard.lihat', fn: function (ctx) {
+  var c = CacheService.getScriptCache(), x = !ctx.payload.segarkan && c.get('dash7');
+  if (x) return JSON.parse(x);
+  var r = ringkasUpdate_();
+  c.put('dash7', JSON.stringify(r), 3600);
+  return r;
 } };
 
 // ---------------- pengaturan referensi (§5.1, §5.2, §5.5)

@@ -51,7 +51,12 @@ var Domain = (function () {
     (rows || []).forEach(function (r) { if (r.Role) m[r.Role] = parseIzin(r.Izin); });
     return m;
   }
-  function izinUser(user, peta) { return (peta && user && peta[user.Role]) ? peta[user.Role].slice() : []; }
+  /** Izin efektif = izin role + izin tambahan milik user (Users.IzinTambahan). */
+  function izinUser(user, peta) {
+    var a = (peta && user && peta[user.Role]) ? peta[user.Role].slice() : [];
+    parseIzin(user && user.IzinTambahan).forEach(function (i) { if (a.indexOf(i) < 0) a.push(i); });
+    return a;
+  }
 
   function jumlahAdminAktif(users, peta) {
     return (users || []).filter(function (u) {

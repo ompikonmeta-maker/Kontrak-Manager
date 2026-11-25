@@ -7,9 +7,9 @@
 // Konstanta kode (bukan nilai bisnis). Nilai bisnis disimpan di database (§3).
 var APP = {
   NAMA: 'Status Kontrak Manager',
-  VERSI: '2.0.2',
-  FASE: 'F2',
-  SKEMA: 2,                 // versi skema database yang dibutuhkan kode ini
+  VERSI: '3.0.0',
+  FASE: 'F3',
+  SKEMA: 3,                 // versi skema database yang dibutuhkan kode ini
   TZ: 'Asia/Jakarta',
   NAMA_DB: 'SKM_DB'
 };
@@ -20,7 +20,8 @@ var IZIN = [
   ['kontrak.lihat', 'Lihat kontrak'],
   ['export', 'Export data'],
   ['kontrak.update', 'Update kontrak, BAST, kendala'],
-  ['kontrak.daftar', 'Daftarkan kontrak, proses antrian, import'],
+  ['kontrak.daftar', 'Daftarkan kontrak satu per satu, proses antrian'],
+  ['kontrak.import', 'Upload Excel & import data lama'],
   ['kontrak.arsip', 'Arsipkan kontrak'],
   ['pic.atur', 'Atur PIC'],
   ['sinkron.jalankan', 'Jalankan Cek saja / Update ke GSheet'],
@@ -29,6 +30,9 @@ var IZIN = [
   ['user.kelola', 'Kelola user, role, dan izin'],
   ['log.semua', 'Lihat log semua user']
 ];
+
+// Izin yang boleh diberikan per user di luar role-nya (Users.IzinTambahan, §6).
+var IZIN_TAMBAHAN = ['kontrak.import'];
 
 // Isi awal (hanya dipakai saat tab masih kosong; setelah itu diatur dari aplikasi).
 var ROLE_AWAL = {
