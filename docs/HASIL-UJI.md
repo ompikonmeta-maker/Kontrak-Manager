@@ -109,7 +109,7 @@ bagian simpan yang dikunci dipersingkat.
 - Contoh file: mockup/Contoh_Data_FF_Lama.xlsx (tools/mockup/make_ff_lama.py).
 - Panduan uji: install/uji-f3.html (21 langkah). Halaman pasang: install/install-f3.html.
 
-### F3 v3.0.1 (27 Nov 2026) — perbaikan dari uji
+### F3 v3.0.1 (27 Nov 2026) — perbaikan dari uji · diuji ulang di akun FF: D16, menu samping, versi OK → F3 LULUS
 - D16: kontrak yang **diarsipkan manual** (Arsip = ya, tetap di data aktif) tidak muncul di Ctrl+K. Sekarang ikut dicari di Ctrl+K
   (label "diarsipkan") dan di pencarian halaman Kontrak (kartu "Kontrak diarsipkan" dengan alasannya). Kontrak lama di arsip tahunan
   (CLOSE > 90 hari) tetap dicari lewat Indeks seperti sebelumnya.
