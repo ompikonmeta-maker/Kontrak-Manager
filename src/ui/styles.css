@@ -98,7 +98,17 @@ kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line2);border-
 .av{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:800;color:var(--on-accent);background:linear-gradient(135deg,var(--accent),var(--violet));flex:none}
 .av.sm{width:26px;height:26px;font-size:11px}
 .av.none{background:var(--warn-bg);color:var(--warn)}
-.burger{display:none}
+.burger{display:grid}
+/* menu samping ringkas (F3): hanya ikon, ruang konten lebih lebar */
+.app{transition:grid-template-columns .35s var(--ease)}
+@media (min-width:901px){
+  .app.mini{grid-template-columns:76px minmax(0,1fr)}
+  .app.mini .side{padding-left:10px;padding-right:10px}
+  .app.mini .brand{justify-content:center;padding:2px 0 22px}
+  .app.mini .brand>div,.app.mini .nav a>span:not(.cnt),.app.mini .nav .eyebrow,.app.mini .side-foot,.app.mini .nav a.soon{display:none}
+  .app.mini .nav a{justify-content:center;padding:0}
+  .app.mini .nav .cnt{position:absolute;top:3px;right:2px;min-width:0;font-size:9.5px;padding:0 5px;line-height:15px}
+}
 .content{padding-block:24px 64px;padding-left:max(24px,env(safe-area-inset-left,0px));padding-right:max(24px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:20px;min-width:0;max-width:1480px;width:100%}
 .content.enter>*{animation:rise .55s var(--ease) both;animation-delay:calc(var(--i,0)*55ms)}
 @keyframes rise{from{opacity:0;transform:translateY(12px)}}

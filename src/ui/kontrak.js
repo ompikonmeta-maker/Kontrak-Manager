@@ -137,6 +137,7 @@ function viewKontrak() {
    ${rows.length > tampil.length ? `<div class="row" style="justify-content:center"><button class="btn" id="kmore">Tampilkan ${Math.min(200, rows.length - tampil.length)} lagi <span class="muted">(${tampil.length} dari ${rows.length.toLocaleString('id-ID')})</span></button></div>` : ''}
   </div>
   ${S.sel.size ? `<div class="bulk"><b class="tnum">${S.sel.size} kontrak dipilih</b><span class="sp"></span><select class="inp" id="bulkPic" aria-label="PIC baru">${opsi(picList(), '', 'Pilih PIC…')}</select><button class="btn pri sm" id="bulkGo">Atur PIC</button><button class="btn sm" id="bulkClr">Batal</button></div>` : ''}
+  ${diarsipCocok(S.kf.q.trim())}
   <div id="arsipSlot">${arsipSection()}</div>`;
 }
 function rerenderKontrak() {
@@ -182,6 +183,14 @@ function bindKontrak() {
 }
 
 /* ---------- kontrak lama di arsip (cari lewat Indeks di server) ---------- */
+function diarsipCocok(q) {
+  if (q.length < 3 || S.kf.st === 'ARSIP') return '';
+  const xs = semuaKontrak().filter(b => KD.bool(b.k.Arsip) && cocokCari(b, q));
+  if (!xs.length) return '';
+  return `<div class="card arsres"><h2>${ic('log', 's')} Kontrak diarsipkan <small>${xs.length} cocok · diarsipkan manual (mis. dobel/batal), tidak ikut daftar &amp; sinkron${can('kontrak.arsip') ? ' · bisa dikembalikan dari panel detail' : ''}</small></h2>
+   <div class="tbl-wrap"><table class="t"><thead><tr><th>Kontrak</th><th>Status</th><th>Alasan arsip</th><th>PIC</th></tr></thead><tbody>
+   ${xs.slice(0, 30).map(b => `<tr class="click" data-k="${esc(b.k.KontrakID)}"><td><span class="no">${esc(b.k.NoKontrak)}</span><span class="sub"><b style="color:var(--fg);font-weight:600">${esc(custName(b.k))}</b> · ${esc(b.k.JudulKontrak)}</span>${aliasHit(b)}</td><td>${statusPill(b)}</td><td class="muted">${esc(b.k.AlasanArsip || '—')}</td><td>${esc(b.k.PIC || '—')}</td></tr>`).join('')}</tbody></table></div></div>`;
+}
 function arsipSection() {
   const q = S.kf.q.trim();
   if (q.length < 3 || S.kf.st === 'ARSIP') return '';

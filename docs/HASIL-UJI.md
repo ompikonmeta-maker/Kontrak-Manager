@@ -97,7 +97,7 @@ bagian simpan yang dikunci dipersingkat.
 - Pindah tahap ≤ 14 operasi Sheet; membuka/memuat ulang halaman = 1 panggilan server (`boot` membawa data aktif).
 - Panduan uji: install/uji-f2.html (27 langkah). Halaman pasang: install/install-f2.html.
 
-## F3 v3.0.0 — dibangun 25 Nov 2026 (menunggu uji di akun FF)
+## F3 v3.0.0 — dibangun 25 Nov 2026, diuji di akun FF 27 Nov 2026 (D1–D21 OK kecuali D16)
 
 - Fitur: Dashboard (angka utama, alur per tahap, tim per PIC + update 7 hari, Kendala Umum, kualitas data), Perlu Perhatian
   (5 kelompok + aksi cepat), Tim FF / Milik saya (STAFF dibuka Milik saya), Ctrl+K (kontrak aktif, kontrak lama di arsip, perintah),
@@ -108,3 +108,9 @@ bagian simpan yang dikunci dipersingkat.
   bila belum diminta di latar.
 - Contoh file: mockup/Contoh_Data_FF_Lama.xlsx (tools/mockup/make_ff_lama.py).
 - Panduan uji: install/uji-f3.html (21 langkah). Halaman pasang: install/install-f3.html.
+
+### F3 v3.0.1 (27 Nov 2026) — perbaikan dari uji
+- D16: kontrak yang **diarsipkan manual** (Arsip = ya, tetap di data aktif) tidak muncul di Ctrl+K. Sekarang ikut dicari di Ctrl+K
+  (label "diarsipkan") dan di pencarian halaman Kontrak (kartu "Kontrak diarsipkan" dengan alasannya). Kontrak lama di arsip tahunan
+  (CLOSE > 90 hari) tetap dicari lewat Indeks seperti sebelumnya.
+- Menu samping bisa diringkas jadi ikon saja (tombol ☰ di kiri atas), diingat per browser; bawaan ringkas bila layar < 1200 px.

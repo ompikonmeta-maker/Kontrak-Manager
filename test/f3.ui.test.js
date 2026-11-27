@@ -157,13 +157,31 @@ test('UI F3: dashboard → perlu perhatian → Ctrl+K → import data lama → i
   } finally { await browser.close(); }
 });
 
-test('UI F3: STAFF tanpa izin tambahan tidak melihat Upload/Import; Ctrl+K tanpa perintah import', { skip: !chromium, timeout: 120000 }, async () => {
-  const { g } = siapkan();
-  const { browser, page, errors } = await buka(g);
+test('UI F3: STAFF tanpa izin tambahan tidak melihat Upload/Import; Ctrl+K tanpa perintah import; kontrak diarsipkan tetap bisa dicari', { skip: !chromium, timeout: 120000 }, async () => {
+  const { g, t } = siapkan();
+  // admin mengarsipkan K-000004 secara manual
+  const k4 = g.tab('Kontrak').find(k => k.KontrakID === 'K-000004');
+  assert.equal(g.api(t, 'kontrak.op', { op: 'kontrak.arsip', kid: 'K-000004', versi: k4.Version, bundle: { bast: g.tab('BAST').filter(b => b.KontrakID === 'K-000004'), order: g.tab('OrderInternal').filter(o => o.KontrakID === 'K-000004'), kend: [], alias: [] }, data: { alasan: 'Kontrak dobel' } }).ok, true);
+  const { browser, page, errors } = await buka(g, { width: 1400, height: 900 });
   try {
     await masuk(page, 'baim', 'Staf2026x');
+    // menu samping bisa diringkas (hanya ikon) dan diingat
+    assert.equal(await page.evaluate(() => document.querySelector('.app').classList.contains('mini')), false);
+    await page.click('#burger'); await page.waitForTimeout(450);
+    assert.ok(await page.evaluate(() => document.querySelector('.app').classList.contains('mini') && document.querySelector('#side').getBoundingClientRect().width < 100));
+    assert.equal(await page.evaluate(() => localStorage.getItem('skm-side-mini')), '1');
+    await page.click('#burger');
+    // kontrak diarsipkan manual: muncul di Ctrl+K dan di pencarian Kontrak
+    await page.keyboard.press('Control+k'); await page.waitForSelector('#palq');
+    await page.fill('#palq', 'KL.0004'); await tunggu(page, () => /diarsipkan/.test(document.querySelector('#palr').textContent));
+    await page.keyboard.press('Enter'); await page.waitForSelector('.drawer');
+    assert.equal(await page.evaluate(() => S.drawer), 'K-000004');
+    await page.keyboard.press('Escape'); await tunggu(page, () => !S.drawer);
     assert.equal(await page.$eval('[data-dmine].on', b => b.dataset.dmine), 'true');
     await page.click('[data-go="kontrak"]'); await page.waitForSelector('tr[data-k]');
+    await page.fill('#kq', 'KL.0004'); await tunggu(page, () => /Kontrak diarsipkan/.test(document.querySelector('#content').textContent));
+    assert.match(await page.textContent('#content'), /Kontrak dobel/);
+    await page.fill('#kq', ''); await page.waitForTimeout(300);
     assert.ok(await page.$('#addK'), 'tambah kontrak satu per satu tetap boleh');
     assert.ok(!(await page.$('[data-go2="upload"]')));
     await page.keyboard.press('Control+k'); await page.waitForSelector('#palq');

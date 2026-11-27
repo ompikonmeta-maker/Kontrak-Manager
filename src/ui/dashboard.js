@@ -178,7 +178,7 @@ let palT = null;
 function openPalette() {
   if (!S.me || S.page === 'login' || S.page === 'ganti' || document.querySelector('.pal')) return;
   const d = document.createElement('div'); d.className = 'scrim pal'; let idx = 0, items = [], lama = { q: '', hasil: [], memuat: false };
-  d.innerHTML = `<div class="modal" role="dialog" aria-label="Cari"><div class="ps">${ic('search')}<input id="palq" placeholder="Nomor kontrak, nomor lama, SO/MI, pelanggan, atau perintah…" autocomplete="off" aria-label="Cari"><kbd>Esc</kbd></div><div class="pr" id="palr"></div><div class="pf"><span><kbd>↑</kbd><kbd>↓</kbd> pilih</span><span><kbd>Enter</kbd> buka</span><span>kontrak lama di arsip ikut dicari</span></div></div>`;
+  d.innerHTML = `<div class="modal" role="dialog" aria-label="Cari"><div class="ps">${ic('search')}<input id="palq" placeholder="Nomor kontrak, nomor lama, SO/MI, pelanggan, atau perintah…" autocomplete="off" aria-label="Cari"><kbd>Esc</kbd></div><div class="pr" id="palr"></div><div class="pf"><span><kbd>↑</kbd><kbd>↓</kbd> pilih</span><span><kbd>Enter</kbd> buka</span><span>kontrak diarsipkan &amp; kontrak lama ikut dicari</span></div></div>`;
   document.getElementById('overlay-root').appendChild(d);
   const q = d.querySelector('#palq'), r = d.querySelector('#palr');
   const close = () => { clearTimeout(palT); d.classList.add('closing'); setTimeout(() => d.remove(), 200); }; d._close = close;
@@ -200,11 +200,13 @@ function openPalette() {
     const s = q.value.trim(), sl = s.toLowerCase();
     if (!keep) cariLama(s);
     const ks = D.siap && can('kontrak.lihat') ? (s ? kontrakAktif().filter(b => cocokCari(b, s)) : kontrakAktif().slice().sort((a, b) => (a.k.UpdatedAt < b.k.UpdatedAt ? 1 : -1))).slice(0, 6).map(b => ({ type: 'k', id: b.k.KontrakID, b })) : [];
-    const aktifId = {}; kontrakAktif().forEach(b => { aktifId[b.k.KontrakID] = 1; });
+    // kontrak yang diarsipkan manual (Arsip = ya) tetap di data aktif: ikut dicari, diberi label (D16)
+    const ds = D.siap && can('kontrak.lihat') && s.length >= 2 ? semuaKontrak().filter(b => KD.bool(b.k.Arsip) && cocokCari(b, s)).slice(0, 3).map(b => ({ type: 'k', id: b.k.KontrakID, b, diarsip: true })) : [];
+    const aktifId = {}; semuaKontrak().forEach(b => { aktifId[b.k.KontrakID] = 1; });
     const ls = (lama.hasil || []).filter(h => !aktifId[h.KontrakID]).slice(0, 4).map(h => ({ type: 'lama', id: h.KontrakID, h }));
     const cs = CMD.filter(c => !s || c[1].toLowerCase().indexOf(sl) >= 0).slice(0, 4).map(c => ({ type: 'cmd', id: c[0], t: c[1], ic: c[2], fn: c[3] }));
-    items = ks.concat(ls, cs); idx = Math.max(0, Math.min(idx, items.length - 1));
-    r.innerHTML = items.map((it, i) => it.type === 'k' ? `<div class="pi ${i === idx ? 'on' : ''}" data-i="${i}">${avatarPic(it.b.k.PIC, 1)}<div style="min-width:0;flex:1"><div style="font-weight:700">${esc(custName(it.b.k))}</div><div class="mono" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(it.b.k.NoKontrak)}${s && aliasCocok(it.b, s) ? ' · nomor lama ' + esc(aliasCocok(it.b, s).NoAsli) : ''}</div></div>${tahapPill(it.b.k.TahapKontrak)}</div>`
+    items = ks.concat(ds, ls, cs); idx = Math.max(0, Math.min(idx, items.length - 1));
+    r.innerHTML = items.map((it, i) => it.type === 'k' ? `<div class="pi ${i === idx ? 'on' : ''}" data-i="${i}">${avatarPic(it.b.k.PIC, 1)}<div style="min-width:0;flex:1"><div style="font-weight:700">${esc(custName(it.b.k))}${it.diarsip ? ` <span class="pill p-warn" style="font-size:10.5px" title="${esc(it.b.k.AlasanArsip || '')}">diarsipkan</span>` : ''}</div><div class="mono" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(it.b.k.NoKontrak)}${s && aliasCocok(it.b, s) ? ' · nomor lama ' + esc(aliasCocok(it.b, s).NoAsli) : ''}</div></div>${tahapPill(it.b.k.TahapKontrak)}</div>`
       : it.type === 'lama' ? `<div class="pi ${i === idx ? 'on' : ''}" data-i="${i}">${avatarPic(it.h.PIC, 1)}<div style="min-width:0;flex:1"><div style="font-weight:700">${esc(it.h.EndCustomer || it.h.NamaPelanggan || '')} <span class="pill p-dim" style="font-size:10.5px">arsip ${esc(String(it.h.Lokasi).replace('ARSIP_', ''))}</span></div><div class="mono" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(it.h.NoKontrak)}${it.h.aliasCocok ? ' · nomor lama ' + esc(it.h.aliasCocok.NoAsli) : ''}</div></div><span class="pill p-dim">${esc(it.h.StatusKontrak || 'CLOSE')}</span></div>`
       : `<div class="pi ${i === idx ? 'on' : ''}" data-i="${i}">${ic(it.ic)}<div style="flex:1;font-weight:600">${esc(it.t)}</div><span class="muted" style="font-size:11.5px">${it.fn || ['upload', 'import'].indexOf(it.id) >= 0 ? 'perintah' : 'halaman'}</span></div>`).join('')
       + (lama.memuat ? '<div class="pi muted" style="cursor:default"><span class="bspin" style="color:var(--accent)"></span>Mencari juga di kontrak lama…</div>' : '')

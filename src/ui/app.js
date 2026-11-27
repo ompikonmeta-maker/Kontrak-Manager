@@ -12,6 +12,8 @@ const store = {
 };
 S.token = store.get('skm-token');
 S.theme = store.get('skm-theme') || 'system';
+// menu samping ringkas (hanya ikon): disimpan per browser; bawaan ringkas bila layar < 1200px
+S.mini = store.get('skm-side-mini') === null ? window.innerWidth < 1200 : store.get('skm-side-mini') === '1';
 function applyTheme() { const r = document.documentElement; S.theme === 'system' ? r.removeAttribute('data-theme') : r.setAttribute('data-theme', S.theme); }
 applyTheme();
 
@@ -171,9 +173,9 @@ function renderFatal(msg) {
 const avatarOf = u => `<span class="av">${esc(String(u.nama || u.username || '?')[0].toUpperCase())}</span>`;
 function shell(title, crumb) {
   const navOn = (PAGES[S.page] || {}).nav || S.page;
-  const a = (h, l, i, cnt) => `<a href="#" data-go="${h}" class="${navOn === h ? 'on' : ''}">${ic(i)}<span>${l}</span>${cnt ? `<span class="cnt" data-cnt="${h}" hidden></span>` : ''}</a>`;
+  const a = (h, l, i, cnt) => `<a href="#" data-go="${h}" title="${l}" class="${navOn === h ? 'on' : ''}">${ic(i)}<span>${l}</span>${cnt ? `<span class="cnt" data-cnt="${h}" hidden></span>` : ''}</a>`;
   const soon = ([h, l, i, f]) => `<a class="soon" aria-disabled="true" title="Dibangun di ${f}">${ic(i)}<span>${l}</span><span class="cnt">${f}</span></a>`;
-  return `<div class="app">
+  return `<div class="app ${S.mini ? 'mini' : ''}">
    <aside class="side" id="side">
     <div class="brand">${LOGO}<div><b>Status Kontrak<br>Manager</b><span>Unit Fulfillment</span></div></div>
     <nav class="nav">${a('beranda', 'Dashboard', 'dash')}${can('kontrak.lihat') ? a('kontrak', 'Kontrak', 'doc') + a('perhatian', 'Perlu Perhatian', 'warn', 1) : ''}
@@ -183,7 +185,7 @@ function shell(title, crumb) {
    </aside>
    <div class="main">
     <header class="top">
-     <button class="iconbtn burger" id="burger" aria-label="Menu">${ic('menu')}</button>
+     <button class="iconbtn burger" id="burger" aria-label="Buka/ringkas menu samping" title="Buka/ringkas menu samping">${ic('menu')}</button>
      <div style="min-width:0"><h1>${esc(title)}</h1><div class="crumb">${esc(crumb)}</div></div>
      <div class="sp"></div>
      ${can('kontrak.lihat') ? `<button class="cmdk" id="palBtn" aria-label="Cari (Ctrl+K)">${ic('search', 's')}<span>Cari kontrak, perintah…</span><kbd>Ctrl K</kbd></button>` : ''}
@@ -195,7 +197,12 @@ function shell(title, crumb) {
    </div></div>`;
 }
 function bindShell() {
-  $('#burger').onclick = e => { e.stopPropagation(); $('#side').classList.toggle('open'); };
+  $('#burger').onclick = e => {
+    e.stopPropagation();
+    if (window.innerWidth <= 900) { $('#side').classList.toggle('open'); return; }
+    S.mini = !S.mini; store.set('skm-side-mini', S.mini ? '1' : '0');
+    const app = document.querySelector('.app'); if (app) app.classList.toggle('mini', S.mini);
+  };
   $('#themeBtn').onclick = e => cycleTheme(e);
   $('#syncChip').onclick = infoSync; syncChip();
   if ($('#palBtn')) $('#palBtn').onclick = e => { e.stopPropagation(); openPalette(); };
