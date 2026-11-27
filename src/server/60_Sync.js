@@ -155,10 +155,10 @@ AKSI['target.rahasia'] = { izin: 'target.kelola', fn: function (ctx) {
 } };
 /** Tes koneksi: info dari script penerima (tab, versi, pencatat). */
 AKSI['target.tes'] = { izin: 'sinkron.jalankan', fn: function (ctx) {
-  var p = ctx.payload, c = p.id ? targetLengkap_(p.id) : { t: { WebAppUrl: cekUrl_(p.url) }, secret: String(p.rahasia || '') };
+  var p = ctx.payload, c = p.id && !p.url ? targetLengkap_(p.id) : { t: { WebAppUrl: cekUrl_(p.url) }, secret: String(p.rahasia || (p.id ? rahasia_(p.id) : '')) };
   wajib_(c.secret, 'Kode rahasia belum diisi.');
   var i = panggilPenerima_(c.t.WebAppUrl, c.secret, 'info', {});
-  if (p.id) Repo.kunci(function () { Repo.ubah('Target', p.id, { VersiScript: String(i.versi), SpreadsheetID: i.id, NamaFile: i.nama }, ctx.user.Username); });
+  if (p.id && !p.url) Repo.kunci(function () { Repo.ubah('Target', p.id, { VersiScript: String(i.versi), SpreadsheetID: i.id, NamaFile: i.nama }, ctx.user.Username); });
   return { nama: i.nama, id: i.id, versi: i.versi, versiTerbaru: RECEIVER_VERSI, pencatat: i.pencatat, tabs: i.tabs, zona: i.zona };
 } };
 /** 15 baris teratas sebuah tab (wizard langkah pemetaan). */

@@ -320,7 +320,7 @@ function dProses(b, ro) {
       <div class="pushrow"><span class="k">PARSIAL</span><span class="v">${basts.length > 1 || lok !== '' ? esc(basts.filter(x => KD.bastClose(x, D.ref)).length + '/' + basts.length + ' BAST' + (lok !== '' ? ' · ' + cak + '/' + lok + ' lokasi' : '')) : '—'}</span></div>
       <div class="pushrow"><span class="k">PIC</span><span class="v">${esc(k.PIC) || '—'}</span></div>
      </div>
-     <div class="note info" style="margin-top:10px;font-size:12px">${ic('sync', 's')}<span class="tx">Belum dikirim: sinkron ke sheet unit mulai <b>F4a</b>. Nilai di atas sudah dihitung sekarang supaya bisa dicek.</span></div>
+     ${posisiSheetHtml(k.KontrakID)}
      <div class="muted" style="font-size:12px;margin-top:10px">${p.cocok ? `Cocok dengan aturan Nilai Push <b>#${p.urutan}</b> <span class="mono">${esc(p.kondisi)}</span>.` : 'Tidak ada aturan Nilai Push yang cocok. Periksa Pengaturan › Nilai Push.'}</div></div>
    </div></div>`;
 }
@@ -359,6 +359,7 @@ async function muatRiwayat(kid, lokasi) {
 function bindDrawer(b, ro, lama) {
   const root = document.getElementById('sheet-root'), $d = s => root.querySelector(s), $$d = s => root.querySelectorAll(s), k = b.k, kid = k.KontrakID;
   $d('#dclose').onclick = $d('#dscrim').onclick = () => closeDrawer();
+  if (!lama) muatPosisi(kid);
   if ($d('#dprev')) $d('#dprev').onclick = () => stepDrawer(-1);
   if ($d('#dnext')) { $d('#dnext').onclick = () => stepDrawer(1); $d('#dnext').style.transform = 'scaleX(-1)'; }
   $d('#dcopy').onclick = () => copyText(k.NoKontrak, 'Nomor kontrak disalin.');

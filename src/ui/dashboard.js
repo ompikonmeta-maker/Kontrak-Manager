@@ -116,7 +116,7 @@ function viewDash() {
   <div class="grid g2">
    <div class="card"><h2>Kualitas data <small>klik untuk membuka daftar terfilter</small><span class="sp"></span><button class="btn sm" data-go2="perhatian">Perlu Perhatian ${ic('chevR', 's')}</button></h2>
     <div class="utiles">${kual.map(([qk, l, n, c]) => `<button class="utile" data-dq="${qk}"><b class="tnum" style="color:${n ? c : 'var(--ok)'}">${n.toLocaleString('id-ID')}</b><span>${l}</span></button>`).join('')}</div></div>
-   <div class="card" style="opacity:.65"><h2>Status sinkron ke sheet unit<span class="sp"></span><span class="pill p-dim">F4a</span></h2><div class="muted" style="font-size:13px">Setelah sinkron dibangun di F4a, kartu ini menampilkan setiap target Google Sheet: cek &amp; update terakhir, dan error.</div></div>
+   ${syncKartu()}
   </div>`;
 }
 function bindDash() {
@@ -143,7 +143,7 @@ function perhatianItems(milikSaya) {
   });
   return it;
 }
-function jumlahPerhatian() { if (!D.siap || !S.me) return 0; siapkanLingkup(); return perhatianItems(S.pMine).length; }
+function jumlahPerhatian() { if (!D.siap || !S.me) return 0; siapkanLingkup(); return perhatianItems(S.pMine).length + (S.pMine ? 0 : syncPerhatianItems().length); }
 function viewPerhatian() {
   if (!D.siap) return '<div class="loading"><div class="spinner"></div>Memuat data aktif…</div>';
   siapkanLingkup();
@@ -160,7 +160,7 @@ function viewPerhatian() {
    <div style="display:flex;flex-direction:column;gap:8px">${xs.slice(0, MAKS).map(x => `<div class="attn" data-pk="${esc(x.b.k.KontrakID)}" tabindex="0" role="button"><span class="bar" style="background:${c}"></span><div style="min-width:0;flex:1"><span class="mono" style="font-size:11.5px;overflow-wrap:anywhere">${esc(x.b.k.NoKontrak)}</span><div style="font-weight:600">${esc(custName(x.b.k))} <span class="muted" style="font-weight:400">· PIC ${esc(x.b.k.PIC || '—')}</span></div><div class="muted" style="font-size:12.5px">${x.txt}</div></div>${tombol(x)}</div>`).join('') || '<div class="muted" style="font-size:13px">Tidak ada.</div>'}
    ${xs.length > MAKS ? `<button class="btn sm ghost" data-pall="${g}">Lihat semua ${xs.length} di daftar kontrak</button>` : ''}</div></div>`; }).join('')}
    <div class="card" style="opacity:.6"><h2><span style="width:10px;height:10px;border-radius:50%;background:var(--dim)"></span>Beda data dengan sheet unit<span class="sp"></span><span class="pill p-dim">F4b</span></h2><div class="muted" style="font-size:13px">Muncul setelah koneksi ke sheet unit dibangun.</div></div>
-   <div class="card" style="opacity:.6"><h2><span style="width:10px;height:10px;border-radius:50%;background:var(--dim)"></span>Target error / sel diubah di luar SKM<span class="sp"></span><span class="pill p-dim">F4a</span></h2><div class="muted" style="font-size:13px">Muncul setelah sinkron ke sheet unit dibangun.</div></div></div>`;
+   ${syncPerhatian()}</div>`;
 }
 function bindPerhatian() {
   const $$c = s => document.querySelectorAll('#content ' + s), ids = () => [...new Set([...$$c('[data-pk]')].map(e => e.dataset.pk))];
@@ -169,6 +169,7 @@ function bindPerhatian() {
   $$c('[data-ppic]').forEach(s => { s.onclick = e => e.stopPropagation(); s.onchange = () => { if (!s.value) return; jalankanOp('kontrak.pic', s.dataset.ppic, { PIC: s.value }); toast(`${s.dataset.ppic} → PIC ${s.value}.`); segarkanTampilan(); perbaruiBadge(); }; });
   $$c('[data-pverif]').forEach(b => b.onclick = e => { e.stopPropagation(); openDrawer(b.dataset.pverif, ids()); S.dtab = 'data'; renderDrawer(false); toast('Periksa datanya, lengkapi bila perlu, lalu klik "Tandai terverifikasi".'); });
   $$c('[data-plengkap]').forEach(b => b.onclick = e => { e.stopPropagation(); const k = kontrak(b.dataset.plengkap); if (k) openKontrakForm(k); });
+  $$c('[data-gs]').forEach(el => el.onclick = () => go(can('sinkron.jalankan') ? 'gsheet' : 'beranda'));
   $$c('[data-pall]').forEach(b => b.onclick = () => goKontrak({ quick: { aging: 'lewat', kend: 'kend', pic: 'nopic', verif: 'verif', lengkap: 'kurang' }[b.dataset.pall], st: b.dataset.pall === 'verif' ? '' : 'OPEN', pic: S.pMine ? S.me.alias || '' : '' }));
 }
 function perbaruiBadge() { const c = document.querySelector('[data-cnt="perhatian"]'); if (!c) return; const n = jumlahPerhatian(); c.hidden = !n; c.textContent = n > 999 ? '999+' : n; }
@@ -184,7 +185,7 @@ function openPalette() {
   const close = () => { clearTimeout(palT); d.classList.add('closing'); setTimeout(() => d.remove(), 200); }; d._close = close;
   const CMD = [['tambah', 'Tambah kontrak', 'add', () => { go('kontrak'); openKontrakForm(null); }, 'kontrak.daftar'], ['upload', 'Upload Excel (template SKM)', 'up2', null, 'kontrak.import'],
     ['import', 'Import data lama (sheet FF)', 'dl', null, 'kontrak.import'], ['beranda', 'Dashboard', 'dash'], ['kontrak', 'Kontrak', 'doc', null, 'kontrak.lihat'], ['perhatian', 'Perlu Perhatian', 'warn', null, 'kontrak.lihat'],
-    ['pengaturan', 'Tahap & aturan', 'gear', null, 'pengaturan.kelola'], ['users', 'Users', 'users', null, 'user.kelola'], ['sistem', 'Sistem', 'db', null, 'user.kelola']].filter(c => !c[4] || can(c[4]));
+    ['gsheet', 'Google Sheet (sinkron)', 'sync', null, 'sinkron.jalankan'], ['pengaturan', 'Tahap & aturan', 'gear', null, 'pengaturan.kelola'], ['users', 'Users', 'users', null, 'user.kelola'], ['sistem', 'Sistem', 'db', null, 'user.kelola']].filter(c => !c[4] || can(c[4]));
   const pick = () => { const it = items[idx]; if (!it) return; close(); if (it.type === 'k') { if (S.page !== 'kontrak' && S.page !== 'perhatian' && S.page !== 'beranda') go('kontrak'); openDrawer(it.id); } else if (it.type === 'lama') bukaLama(it.id); else if (it.fn) it.fn(); else go(it.id); };
   const cariLama = s => {
     clearTimeout(palT);

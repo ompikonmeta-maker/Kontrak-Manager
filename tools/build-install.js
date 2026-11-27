@@ -161,6 +161,38 @@ PHASES.f3 = {
       <div><i></i><span>Kolom <b>Update 7 hari</b> di Dashboard masih berputar lama → server sedang meringkas Log sekali per jam; tunggu sebentar atau klik <b>Segarkan</b>.</span></div>
       <div><i></i><span>Ada error merah saat <b>Run</b> atau halaman tidak tampil → kirim screenshot-nya di chat.</span></div></div></div>`
 };
+PHASES.f4a = {
+  dir: 'dist', judul: 'Instalasi SKM F4a', h1: 'Pasang F4a: sinkron ke sheet unit',
+  versi: code => (code.match(/VERSI: '([^']+)'/) || [])[1],
+  intro: 'F4a menambahkan menu Google Sheet: script penerima untuk sheet unit, wizard target, Cek saja, dan Update ke GSheet dengan pengaman kolom. Data F3 tetap dipakai. Butuh sekitar 10 menit (belum termasuk memasang script di sheet unit).',
+  pre: `<div class="card warn"><h2>Sebelum mulai</h2><p class="muted" style="margin-top:8px">Pakai <b>akun Gmail khusus FF</b> dan project <b>Status Kontrak Manager</b> yang sudah berjalan (F3). Pilih <b>Update project yang sudah ada</b>. Migrasi skema <b>v3 → v4</b> berjalan otomatis dan <b>hanya menambah</b>: tab <span class="mono">Target</span>, <span class="mono">TargetKolom</span>, <span class="mono">JejakSel</span>, dan config <span class="mono">KONFIRMASI_TAB_BARU</span>. Tidak perlu izin Google baru.</p></div>
+    <div class="card warn"><h2>Uji di salinan dulu</h2><p class="muted" style="margin-top:8px">Untuk F4a, hubungkan SKM ke <b>salinan</b> sheet unit (File → Make a copy), bukan sheet aslinya. Setelah semua langkah uji lulus, baru pasang script penerima di sheet asli bersama pemiliknya.</p></div>
+    <div class="card"><h2>Yang baru di F4a</h2><div class="checks">
+      <div><i></i><span>Menu Google Sheet (ADMIN; bisa dibuka per user lewat izin tambahan "Jalankan Cek saja / Update")</span></div>
+      <div><i></i><span>Script penerima untuk sheet unit: kode rahasia, baca kolom yang diminta saja, tulis kolom FF saja, pencatat edit manual</span></div>
+      <div><i></i><span>Wizard 5 langkah: koneksi, tab (tetap / bulanan), pemetaan kolom lewat judul, Cek saja, simpan</span></div>
+      <div><i></i><span>Cek saja & Update ke GSheet; edit manual tidak ditimpa; kontrak CLOSE tidak ditulis lagi</span></div>
+      <div><i></i><span>Pengaman: kolom disisipkan tetap benar; judul berubah / urutan bergeser → dibatalkan; tab bulan baru perlu konfirmasi</span></div>
+      <div><i></i><span>Status sinkron di Dashboard, Perlu Perhatian, dan detail kontrak</span></div></div></div>`,
+  steps: {
+    'Update project yang sudah ada': [
+      ['Buka project yang sama', 'Login dengan <b>akun Gmail khusus FF</b>, buka <b>script.google.com</b> → project <b>Status Kontrak Manager</b>.'],
+      ['Ganti isi 2 file terpisah', 'Klik <span class="mono">appsscript.json</span> → <kbd>Ctrl</kbd>+<kbd>A</kbd> → hapus → tempel hasil <b>Salin appsscript.json</b>. Lalu klik <span class="mono">Code.gs</span> → <kbd>Ctrl</kbd>+<kbd>A</kbd> → hapus → tempel hasil <b>Salin Code.gs</b>. Simpan dengan <kbd>Ctrl</kbd>+<kbd>S</kbd>. <b>Jangan digabung dalam satu file.</b>'],
+      ['Jalankan setup()', 'Pilih fungsi <span class="mono">setup</span> → <b>Run</b>. Log menulis migrasi skema <span class="mono">v3 → v4</span>: <span class="mono">Tab Target dibuat</span>, <span class="mono">Tab TargetKolom dibuat</span>, <span class="mono">Tab JejakSel dibuat</span>, dan config <span class="mono">KONFIRMASI_TAB_BARU=TRUE</span>. Bila aplikasi sudah dibuka duluan, migrasi sudah berjalan otomatis. Tidak ada error merah.'],
+      ['Perbarui deployment', '<b>Deploy › Manage deployments</b> → deployment yang ada → ikon pensil (<b>Edit</b>) → Version: <b>New version</b> → Description <span class="mono">F4a</span> → <b>Deploy</b>. URL web app tetap sama.'],
+      ['Buka aplikasi', 'Buka Web app URL dan login sebagai admin. Di menu kiri ada <b>Google Sheet</b>. Kiri bawah tertulis <b>Versi {{VERSI}} · F4a</b>. Bila masih versi lama: deployment belum diperbarui, lalu muat ulang dengan <kbd>Ctrl</kbd>+<kbd>F5</kbd>.']],
+    'Akun ini belum punya project SKM': [S_BARU, S_MANIFEST, S_TEMPEL, S_IZIN_F2, S_SETUP, S_CATAT,
+      ['Deploy sebagai Web app', '<b>Deploy › New deployment</b> → ikon roda gigi → <b>Web app</b>. Execute as: <b>Me</b> · Who has access: <b>Anyone with Google account</b> → <b>Deploy</b> → salin <b>Web app URL</b>.'],
+      ['Login pertama', 'Buka Web app URL → masuk dengan <span class="mono">admin</span> + password sementara → buat password baru.']]
+  },
+  fileDesc: ['Pengaturan project: zona Asia/Jakarta dan mode Web app. Izin dideteksi otomatis oleh Google.', 'Seluruh aplikasi (server + tampilan + teks script penerima) dalam satu file.'],
+  post: `<div class="card"><h2>Kalau ada masalah</h2><div class="checks one">
+      <div><i></i><span><b>Tes koneksi</b> menulis "Kode rahasia tidak cocok" → isi baris <span class="mono">SECRET</span> di script penerima persis sama dengan kode di wizard, simpan, lalu <b>Deploy › Manage deployments › Edit › New version</b> di sheet unit.</span></div>
+      <div><i></i><span>"Jawaban bukan dari script penerima" atau "menolak akses" → di sheet unit, deployment harus <b>Web app</b> dengan <b>Execute as: Me</b> dan <b>Who has access: Anyone</b>; URL yang dipakai berakhiran <span class="mono">/exec</span>.</span></div>
+      <div><i></i><span>Script penerima diubah di sheet unit tapi tidak berpengaruh → setiap perubahan script perlu <b>New version</b> pada deployment-nya.</span></div>
+      <div><i></i><span>Halaman menulis <b>"Izin Google untuk aplikasi belum lengkap"</b> → jalankan <span class="mono">mintaIzin</span> → <b>Select all</b> → <b>Allow</b>, lalu muat ulang.</span></div>
+      <div><i></i><span>Ada error merah saat <b>Run</b> atau halaman tidak tampil → kirim screenshot-nya di chat.</span></div></div></div>`
+};
 const P = PHASES[phase];
 if (!P) { console.error('Fase tidak dikenal: ' + phase); process.exit(1); }
 const src = path.join(root, P.dir);

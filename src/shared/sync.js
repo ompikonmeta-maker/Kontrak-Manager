@@ -192,10 +192,10 @@ var SKD = (function () {
       var k = hit.bundle.k, close = s(k.StatusKontrak) === 'CLOSE', nkK = s(k.NoKontrakNorm) || nk;
       fields.forEach(function (f) {
         var cur = (b.sel || {})[f] || {}, now = t(cur.v), next = nilaiField(hit.bundle, f, o.ref, o), jj = (o.jejak || {})[nkK + '|' + f], c = { field: f, now: now, next: next };
-        if (next === null) { c.act = 'TANPA_ATURAN'; out.alarm.push({ j: 'TANPA_ATURAN', r: b.r, kid: row.kid, txt: k.NoKontrak + ': tidak ada aturan Nilai Push yang cocok; ' + f + ' tidak ditulis.' }); }
-        else if (cur.formula) { c.act = 'FORMULA'; out.n.formula++; out.alarm.push({ j: 'FORMULA', r: b.r, kid: row.kid, txt: 'Sel ' + f + ' baris ' + b.r + ' berisi rumus. Tidak ditimpa.' }); }
+        if (next === null) { c.act = 'TANPA_ATURAN'; out.alarm.push({ j: 'TANPA_ATURAN', r: b.r, kid: row.kid, txt: k.NoKontrak + ': tidak ada aturan Nilai Push yang cocok; ' + infoField(f)[1] + ' tidak ditulis.' }); }
+        else if (cur.formula) { c.act = 'FORMULA'; out.n.formula++; out.alarm.push({ j: 'FORMULA', r: b.r, kid: row.kid, txt: 'Sel ' + infoField(f)[1] + ' baris ' + b.r + ' berisi rumus. Tidak ditimpa.' }); }
         else if (close && jj !== undefined && jj === now && jj === next) c.act = 'SELESAI';
-        else if (jj !== undefined && now !== jj && next === jj) { c.act = 'LUAR'; out.n.luar++; out.alarm.push({ j: 'DIUBAH_LUAR', r: b.r, kid: row.kid, txt: f + ' ' + k.NoKontrak + ' diubah di luar SKM: "' + jj + '" → "' + now + '". Tidak ditimpa sampai status di SKM berubah.' }); }
+        else if (jj !== undefined && now !== jj && next === jj) { c.act = 'LUAR'; out.n.luar++; out.alarm.push({ j: 'DIUBAH_LUAR', r: b.r, kid: row.kid, txt: infoField(f)[1] + ' ' + k.NoKontrak + ' diubah di luar SKM: "' + jj + '" → "' + now + '". Tidak ditimpa sampai status di SKM berubah.' }); }
         else if (now === next) c.act = 'SAMA';
         else { c.act = 'TULIS'; if (jj !== undefined && now !== jj) c.why = 'status di SKM berubah · update FF menang'; }
         row.sel.push(c);

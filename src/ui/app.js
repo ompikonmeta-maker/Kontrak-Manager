@@ -105,9 +105,11 @@ const PAGES = {
   users: { title: () => 'Users', crumb: 'Akun tim FF', izin: 'user.kelola' },
   role: { title: () => 'Role & izin', crumb: 'Hak akses berupa data, bisa diubah tanpa ubah kode', izin: 'user.kelola' },
   sistem: { title: () => 'Sistem', crumb: 'Database, skema, dan kesehatan aplikasi', izin: 'user.kelola' },
+  gsheet: { title: () => 'Google Sheet', crumb: 'Sinkron ke sheet unit · Cek saja & Update', izin: 'sinkron.jalankan' },
+  wizard: { title: () => S.wz && S.wz.edit ? 'Ubah target' : 'Tambah target', crumb: 'Google Sheet · wizard', izin: 'target.kelola', nav: 'gsheet' },
   log: { title: () => 'Log audit', crumb: 'Catatan teknis semua aksi (hanya ditambah). Riwayat per kontrak ada di tab Riwayat kontrak.', izin: 'log.semua', nav: 'sistem' }
 };
-const SOON = [['antrian', 'Antrian', 'inbox', 'F4b'], ['gsheet', 'Google Sheet', 'sync', 'F4a']];
+const SOON = [['antrian', 'Antrian', 'inbox', 'F4b']];
 function salam() { const h = new Date().getHours(); return h < 11 ? 'Selamat pagi' : h < 15 ? 'Selamat siang' : h < 19 ? 'Selamat sore' : 'Selamat malam'; }
 
 function render() {
@@ -130,9 +132,11 @@ async function loadPage(page) {
   try {
     // halaman yang dibangun dari data di browser: cek izin di sini (aksi simpannya tetap dicek server)
     const P = PAGES[page] || {};
-    if (P.izin && !can(P.izin) && ['kontrak', 'perhatian', 'upload', 'import', 'pengaturan'].indexOf(page) >= 0) { show(viewDenied('Halaman ini butuh izin ' + P.izin + '.').replace(' Kejadian ini tercatat di Log.', '')); return; }
+    if (P.izin && !can(P.izin) && ['kontrak', 'perhatian', 'upload', 'import', 'pengaturan', 'wizard'].indexOf(page) >= 0) { show(viewDenied('Halaman ini butuh izin ' + P.izin + '.').replace(' Kejadian ini tercatat di Log.', '')); return; }
     if (page === 'beranda') { show(viewDash()); bindDash(); return; }
     if (page === 'perhatian') { show(viewPerhatian()); bindPerhatian(); return; }
+    if (page === 'wizard') { if (!S.wz) { go('gsheet'); return; } show(viewWizard()); bindWizard(); return; }
+    if (page === 'gsheet') { if (S.gs) { show(viewGsheet()); bindGsheet(); } else c.innerHTML = '<div class="loading"><div class="spinner"></div>Memuat target…</div>'; await muatGs(); if (S.page === 'gsheet') { show(viewGsheet()); bindGsheet(); } return; }
     if (page === 'import') { if (S.imp.step === 4) resetImport(); show(viewImport()); bindImport(); return; }
     if (page === 'kontrak') { show(viewKontrak()); bindKontrak(); if (S.kf.q) cariArsip(); return; }
     if (page === 'upload') { show(viewUpload()); bindUpload(); return; }
@@ -178,7 +182,7 @@ function shell(title, crumb) {
   return `<div class="app ${S.mini ? 'mini' : ''}">
    <aside class="side" id="side">
     <div class="brand">${LOGO}<div><b>Status Kontrak<br>Manager</b><span>Unit Fulfillment</span></div></div>
-    <nav class="nav">${a('beranda', 'Dashboard', 'dash')}${can('kontrak.lihat') ? a('kontrak', 'Kontrak', 'doc') + a('perhatian', 'Perlu Perhatian', 'warn', 1) : ''}
+    <nav class="nav">${a('beranda', 'Dashboard', 'dash')}${can('kontrak.lihat') ? a('kontrak', 'Kontrak', 'doc') + a('perhatian', 'Perlu Perhatian', 'warn', 1) : ''}${can('sinkron.jalankan') ? a('gsheet', 'Google Sheet', 'sync') : ''}
      ${can('user.kelola') || can('pengaturan.kelola') ? `<div class="eyebrow" style="padding:16px 12px 6px;font-size:10.5px">Pengaturan</div>${can('pengaturan.kelola') ? a('pengaturan', 'Tahap & aturan', 'gear') : ''}${can('user.kelola') ? a('users', 'Users', 'users') + a('role', 'Role & izin', 'shield') + a('sistem', 'Sistem', 'db') : ''}` : ''}
      <div class="eyebrow" style="padding:16px 12px 6px;font-size:10.5px">Fase berikutnya</div>${SOON.map(soon).join('')}</nav>
     <div class="side-foot"><span class="live"><span class="pulse"></span>Versi ${esc(S.app.versi)} · ${esc(S.app.fase)}</span><span>Skema database v${S.app.skema}</span><span class="dim">Menu redup dibangun di fase berikutnya</span></div>
@@ -243,7 +247,7 @@ function viewLogin() {
   </form></div></div>`;
 }
 function bindLogin() {
-  setTimeout(() => (($('#lu').value ? $('#lp') : $('#lu')) || {}).focus && ($('#lu').value ? $('#lp') : $('#lu')).focus(), 50);
+  setTimeout(() => { const u = $('#lu'), el = u && (u.value ? $('#lp') : u); if (el) el.focus(); }, 50);
   $('#lgTheme').onclick = e => { cycleTheme(e); setTimeout(() => { const b = $('#lgTheme'); if (b) b.innerHTML = ic({ system: 'auto', light: 'sun', dark: 'moon' }[S.theme]); }, 30); };
   $('#lform').onsubmit = async ev => {
     ev.preventDefault();
@@ -290,7 +294,7 @@ function bindGanti() {
     $('#rules').innerHTML = rulesHtml(); $('#gsave').disabled = !pwRules().every(x => x[0]);
   };
   ['pw0', 'pw1', 'pw2'].forEach(id => { const el = document.getElementById(id); if (el) el.oninput = upd; });
-  setTimeout(() => ($('#pw0') || $('#pw1')).focus(), 50);
+  setTimeout(() => { const el = $('#pw0') || $('#pw1'); if (el) el.focus(); }, 50);
   if ($('#gback')) $('#gback').onclick = () => go('beranda');
   if ($('#gout')) $('#gout').onclick = () => keluar();
   $('#gform').onsubmit = async ev => {

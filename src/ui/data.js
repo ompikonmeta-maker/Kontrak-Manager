@@ -7,10 +7,11 @@ function sekarangStr() { const d = new Date(); return d.getFullYear() + '-' + pa
 function hariIniStr() { return sekarangStr().slice(0, 10); }
 function agingBatas() { const a = String(D.cfg.AGING_BATAS || '7,14,30').split(',').map(Number); return a.length === 3 && a.every(isFinite) ? a : [7, 14, 30]; }
 
-function terimaRef(refRaw, cfg, users) {
+function terimaRef(refRaw, cfg, users, targets) {
   if (refRaw) { D.refRaw = refRaw; D.ref = KD.siapkanRef(refRaw); }
   if (cfg) D.cfg = cfg;
   if (users) D.users = users;
+  if (targets) D.targets = targets;
 }
 function dariKompak(t) { return (t.r || []).map(r => { const o = {}; t.c.forEach((c, i) => { o[c] = r[i]; }); return o; }); }
 function bundleDariSnapshot(tabs) {
@@ -55,7 +56,7 @@ function terapkanFeed(entri) {
 }
 /** Pasang hasil data.muat (atau data yang ikut di boot). */
 function pasangData(r) {
-  terimaRef(r.ref, r.cfg, r.users);
+  terimaRef(r.ref, r.cfg, r.users, r.targets);
   D.base = bundleDariSnapshot(r.snap.tabs); D.seq = r.snap.seq; D.hariIni = r.hariIni || hariIniStr();
   if (r.feed && !r.feed.muatUlang) { terapkanFeed(r.feed.entri); D.seq = r.feed.seq; }
   hitungSemuaView(); D.siap = true; D.terakhirTarik = Date.now();
@@ -95,7 +96,7 @@ async function tarik(diam) {
   const hasil = terapkanFeed(r.entri), diubahOrangLain = hasil.orangLain, perluRef = hasil.muatRef, perluMuat = hasil.muatUlang;
   D.seq = r.seq;
   if (perluMuat) { await muatUlangDiam(); return; }
-  if (perluRef) { try { const x = await call('data.ref'); terimaRef(x.ref, x.cfg, x.users); } catch (e) { /* coba lagi nanti */ } }
+  if (perluRef) { try { const x = await call('data.ref'); terimaRef(x.ref, x.cfg, x.users, x.targets); if (S.page === 'beranda' || S.page === 'perhatian') segarkanTampilan(); } catch (e) { /* coba lagi nanti */ } }
   if ((r.entri || []).length) {
     hitungSemuaView();
     segarkanTampilan();

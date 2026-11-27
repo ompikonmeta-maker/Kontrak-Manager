@@ -1,7 +1,15 @@
 # SPEC — Status Kontrak Manager
 
-Versi 1.15 · 23 Nov 2026 · Pemilik: omPik (Unit Fulfillment)
+Versi 1.16 · 27 Nov 2026 · Pemilik: omPik (Unit Fulfillment)
 Referensi konsep: BAA.flow (BAA Generator). Mockup UI yang disetujui: `mockup/mockup.html` (desain "Orbit").
+
+**Perubahan v1.16** (build F4a, `mockup/f4a.html`)
+- Script penerima v1 langsung lengkap, termasuk pencatat edit manual (`pasang()`), supaya pemilik sheet cukup memasang sekali; catatan editnya dipakai SKM mulai F4b (§8.0).
+- Sejak F4a, sel kolom FF yang diubah di luar SKM **tidak ditimpa** (dibandingkan dengan `JejakSel`) dan kontrak CLOSE yang nilai penutupnya sudah tertulis tidak ditulis lagi; temuan tampil di halaman Google Sheet dan Perlu Perhatian. Notifikasi lonceng ke PIC menyusul di F4b (§8.5).
+- `TGL_UPDATE` hanya diisi tanggal hari ini bila ada kolom TULIS lain di baris itu yang ikut berubah; tidak dijejak. Format tanggal per target (`dd/MM/yyyy` bawaan).
+- Izin `sinkron.jalankan` bisa diberikan per user (izin tambahan); `target.kelola` tetap lewat role.
+- `JejakSel` menyimpan semua baris tempat kontrak muncul di tab itu (kolom `Baris`, dipisah koma) dan `KontrakID`; jejak tab lama dibuang saat tab bulan baru dipakai. `RiwayatPush` (tab `Push-yyyy-mm`) dan `SyncLog` (tab `Sinkron-yyyy-mm`) di file `SKM_LOG_<tahun>`. `Target` menambah `TabBaru`, `BarisHeader`, `NamaFile`, `AlarmTerakhir`. `DataUnit` dibuat di F4b.
+- Config baru `KONFIRMASI_TAB_BARU` (TRUE).
 
 **Perubahan v1.15** (review mockup F3, `mockup/f3.html`)
 - Izin baru **`kontrak.import`**: Upload Excel (§11.0) dan Import data lama (§11.1). Bawaan hanya ADMIN. Admin bisa memberikannya ke user tertentu lewat **izin tambahan per user** (`Users.IzinTambahan`, centang di panel user) tanpa membuat role baru (§6, D19).

@@ -114,3 +114,14 @@ bagian simpan yang dikunci dipersingkat.
   (label "diarsipkan") dan di pencarian halaman Kontrak (kartu "Kontrak diarsipkan" dengan alasannya). Kontrak lama di arsip tahunan
   (CLOSE > 90 hari) tetap dicari lewat Indeks seperti sebelumnya.
 - Menu samping bisa diringkas jadi ikon saja (tombol ☰ di kiri atas), diingat per browser; bawaan ringkas bila layar < 1200 px.
+
+## F4a v4.0.0 — dibangun 27 Nov 2026 (menunggu uji di salinan sheet unit)
+
+- Script penerima `src/receiver/Penerima.gs` (info, baca, tulis, edit; `pasang()` pencatat edit) dijalankan APA ADANYA di sheet tiruan
+  (`test/helpers/fakeunit.js`), SKM memanggilnya lewat UrlFetch tiruan.
+- Tes: `f4a.receiver` (kode rahasia, baca kolom yang diminta saja, tulis hanya sel diminta, judul/urutan berubah → batal, rumus tidak ditimpa,
+  pencatat edit; aturan SKD: judul, pemetaan, validasi wizard, pola tab bulanan, rencana tulis), `f4a.server` (wizard, Cek saja tidak menulis,
+  Update + titik awal + jejak + riwayat push, edit manual tidak ditimpa, update FF menang, CLOSE berhenti ditulis, reopen ditulis lagi,
+  kolom disisipkan, judul diganti, urutan berubah saat menulis, web app tanpa akses, tab bulan baru, izin), `f4a.ui` (wizard → simpan + Update,
+  status di Dashboard/Perlu Perhatian/detail, STAFF). Semua 105 tes lulus.
+- Panduan uji: install/uji-f4a.html (22 langkah, di salinan sheet). Halaman pasang: install/install-f4a.html.
