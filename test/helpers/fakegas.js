@@ -101,7 +101,7 @@ function createGas(opts = {}) {
   const cache = {};
   const logs = [];
   const lockState = { held: false };
-  const triggers = [], drive = {}, fetches = [];
+  const triggers = [], drive = {}, fetches = [], units = opts.units || [];
   const driveObj = id => ({ getId: () => id, setTrashed(b) { drive[id].trashed = b; return this; }, moveTo(f) { drive[id].folder = f.getId(); return this; } });
   const fmt2 = n => String(n).padStart(2, '0');
   const gas = {
@@ -140,7 +140,13 @@ function createGas(opts = {}) {
     ScriptApp: { AuthMode: { FULL: 'FULL' }, getOAuthToken: () => 'token-uji', requireAllScopes(m) { logs.push('requireAllScopes ' + m); },
       newTrigger(fn) { const b = { timeBased: () => b, after: ms => { b.ms = ms; return b; }, onMonthDay: d => { b.hari = d; return b; }, atHour: h => { b.jam = h; return b; }, create: () => { const t = { fn, ms: b.ms, hari: b.hari, getHandlerFunction: () => fn }; triggers.push(t); return t; } }; return b; },
       getProjectTriggers: () => triggers.slice(), deleteTrigger(t) { const i = triggers.indexOf(t); if (i >= 0) triggers.splice(i, 1); } },
-    UrlFetchApp: { fetch(url, opt) { fetches.push([url, opt]); const isi = 'XLSX:' + url; return { getResponseCode: () => (opts.fetchGagal ? 500 : 200), getBlob: () => ({ getBytes: () => [...Buffer.from(isi)] }) }; } },
+    UrlFetchApp: { fetch(url, opt) {
+      fetches.push([url, opt]);
+      // sheet unit tiruan (F4a): POST ke /exec diteruskan ke doPost script penerima
+      const unit = (units || []).find(u => u.url === url);
+      if (unit) { if (unit.mati) return { getResponseCode: () => unit.mati, getContentText: () => '<html>error</html>' }; const isi = JSON.stringify(unit.post(opt.payload)); return { getResponseCode: () => 200, getContentText: () => isi }; }
+      if (/^https:\/\/script\.google\.com\/macros\//.test(url)) return { getResponseCode: () => 200, getContentText: () => '<!doctype html><title>Google Drive</title>' };
+      const isi = 'XLSX:' + url; return { getResponseCode: () => (opts.fetchGagal ? 500 : 200), getBlob: () => ({ getBytes: () => [...Buffer.from(isi)] }) }; } },
     DriveApp: {
       createFolder(name) { const id = 'fd_' + crypto.randomUUID().slice(0, 8); drive[id] = { name, trashed: false, isFolder: true }; return driveObj(id); },
       getFolderById: id => { if (!drive[id]) throw new Error('Folder tidak ada'); return driveObj(id); },
@@ -153,7 +159,8 @@ function createGas(opts = {}) {
   const ctx = vm.createContext(gas);
   vm.runInContext(fs.readFileSync(opts.file || path.join(__dirname, '..', '..', 'dist', 'Code.gs'), 'utf8'), ctx, { filename: 'Code.gs' });
   return {
-    ctx, clock, logs, props, cache, ops: OPS, triggers, drive, files, fetches,
+    ctx, clock, logs, props, cache, ops: OPS, triggers, drive, files, fetches, units,
+    logTab: (prefix) => Object.values(files).filter(f => /^SKM_LOG_/.test(f.name)).flatMap(f => f.sheets.filter(sh => sh.name.indexOf(prefix + '-') === 0).flatMap(sh => { const [h, ...rows] = sh.data; return rows.filter(r => r && r.some(v => v !== '')).map(r => Object.fromEntries(h.map((k, i) => [k, r[i] === undefined ? '' : r[i]]))); })),
     db: () => files[props.DB_ID],
     tab: name => {
       const rowsOf = sh => { const [h, ...rows] = sh.data; return rows.filter(r => r && r.some(v => v !== '')).map(r => Object.fromEntries(h.map((k, i) => [k, r[i] === undefined ? '' : r[i]]))); };

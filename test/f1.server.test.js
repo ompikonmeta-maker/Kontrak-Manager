@@ -32,22 +32,22 @@ function loginBaru(g, username, pwSementara, pwBaru = 'Staff2026x') {
 test('setup: membuat database, tab skema v2, isi awal, admin awal; Sheet1 bawaan dibuang', () => {
   const { g, pwAdmin } = siapkan();
   const names = g.db().getSheets().map(s => s.getName()).sort();
-  assert.deepEqual(names, ['BAST', 'Config', 'Indeks', 'Kendala', 'Kontrak', 'KontrakAlias', 'OrderInternal', 'Ref_DokTagih', 'Ref_JenisDok', 'Ref_Kendala',
-    'Ref_NilaiPush', 'Ref_Populasi', 'Ref_Role', 'Ref_Segment', 'Ref_Tahap', 'RiwayatTahap', 'Users', '_Meta']);
+  assert.deepEqual(names, ['BAST', 'Config', 'Indeks', 'JejakSel', 'Kendala', 'Kontrak', 'KontrakAlias', 'OrderInternal', 'Ref_DokTagih', 'Ref_JenisDok', 'Ref_Kendala',
+    'Ref_NilaiPush', 'Ref_Populasi', 'Ref_Role', 'Ref_Segment', 'Ref_Tahap', 'RiwayatTahap', 'Target', 'TargetKolom', 'Users', '_Meta']);
   assert.equal(g.tab('Ref_Tahap').length, 6);
   assert.equal(g.tab('Ref_NilaiPush').length, 13);
   assert.ok(g.fileBernama('SKM_LOG_' + new Date().getFullYear()), 'Log ditulis ke file Log per tahun');
   assert.equal(g.triggers.filter(t => t.fn === 'pindahArsipTerjadwal' && t.hari === 1).length, 1, 'pemicu arsip bulanan terpasang');
   assert.match(pwAdmin, /^[A-Za-z0-9]{3}-[A-Za-z0-9]{3}-[A-Za-z0-9]{3}$/);
   assert.deepEqual(g.tab('Ref_Role').map(r => [r.Role, r.Izin.split(',').length]), [['ADMIN', 13], ['STAFF', 5], ['VIEWER', 3]]);
-  assert.equal(g.tab('Config').length, 14);
+  assert.equal(g.tab('Config').length, 15);
   const admin = g.tab('Users')[0];
   assert.equal(admin.Username, 'admin');
   assert.equal(admin.WajibGantiPassword, 'TRUE');
   assert.match(admin.PasswordHash, /^sha256\$500\$[0-9a-f]{64}$/);
   assert.ok(!JSON.stringify(g.tab('Users')).includes(pwAdmin), 'password tersimpan polos');
   assert.deepEqual(g.tab('Log').map(l => l.Aksi), ['MIGRASI_SKEMA', 'SETUP']);
-  assert.equal(g.tab('_Meta').find(m => m.Key === 'SKEMA_VERSI').Nilai, '3');
+  assert.equal(g.tab('_Meta').find(m => m.Key === 'SKEMA_VERSI').Nilai, '4');
   assert.ok(g.db().getSheetByName('Users').frozen === 1);
 });
 
@@ -66,7 +66,7 @@ test('setup: aman diulang — tidak membuat admin/tab baru dan tidak menyentuh d
   g.logs.length = 0;
   g.ctx.setup();
   assert.equal(JSON.stringify(g.tab('Users')), sebelum);
-  assert.equal(g.db().getSheets().length, 18);
+  assert.equal(g.db().getSheets().length, 21);
   assert.equal(g.triggers.filter(t => t.fn === 'pindahArsipTerjadwal').length, 1, 'pemicu tidak dobel');
   assert.match(g.logs.join('\n'), /User sudah ada; admin awal tidak dibuat ulang/);
 });
@@ -81,7 +81,7 @@ test('migrasi: kolom baru ditambahkan di akhir tanpa menghapus data lama; berjal
   g.baru(); g.ctx.doGet();
   assert.equal(users.data[0][users.data[0].length - 1], 'SesiVersi');
   assert.deepEqual(users.data[1].slice(0, sebelum.length), sebelum);
-  assert.equal(g.props.SKEMA_TERPASANG, '3');
+  assert.equal(g.props.SKEMA_TERPASANG, '4');
   assert.match(g.tab('Log').at(-1).Catatan, /kolom ditambah SesiVersi/);
 });
 
@@ -326,7 +326,7 @@ test('sistem: info & pemeriksaan kesehatan; file database dibagikan ke banyak or
   const { g, pwAdmin } = siapkan();
   const t = adminLogin(g, pwAdmin);
   const info = g.api(t, 'sistem.info').data;
-  assert.equal(info.skemaDb, '3');
+  assert.equal(info.skemaDb, '4');
   assert.equal(info.riwayat.length, 1);
   assert.equal(info.akunFF, 'ff.unit@gmail.com');
   assert.ok(g.api(t, 'sistem.cek').data.hasil.every(h => h.ok));

@@ -60,7 +60,7 @@ test('izin tambahan per user: diberikan, dipakai di server, tercatat di Log; izi
   assert.equal(g.api(ts, 'upload.cekNomor', { nomor: [] }).kode, 'IZIN_DITOLAK');
   const r = ok(g.api(t, 'users.simpan', { username: 'edo', nama: 'Edo', alias: 'Edo', role: 'STAFF', izinTambahan: ['kontrak.import'] }));
   assert.deepEqual(r.daftar.users.find(u => u.username === 'edo').izinTambahan, ['kontrak.import']);
-  assert.deepEqual(r.daftar.izinTambahan, ['kontrak.import']);
+  assert.deepEqual(r.daftar.izinTambahan, ['kontrak.import', 'sinkron.jalankan']);
   assert.equal(g.tab('Users').find(u => u.Username === 'edo').IzinTambahan, 'kontrak.import');
   assert.ok(g.tab('Log').some(l => l.Aksi === 'UBAH_USER' && /izin tambahan — → kontrak.import/.test(l.Catatan)));
   // sesi tidak diakhiri, izin langsung berlaku di permintaan berikutnya
@@ -88,7 +88,7 @@ test('migrasi v2 → v3: kolom IzinTambahan ditambah, kontrak.import diberikan k
   g.ctx.Repo.ubah('_Meta', 'IZIN_IMPORT_F3', { Nilai: '' });
   g.props.SKEMA_TERPASANG = '2';
   g.baru(); g.ctx.doGet();
-  assert.equal(g.props.SKEMA_TERPASANG, '3');
+  assert.equal(g.props.SKEMA_TERPASANG, '4');
   assert.ok(g.db().getSheetByName('Users').data[0].includes('IzinTambahan'));
   const izin = r => g.tab('Ref_Role').find(x => x.Role === r).Izin.split(',');
   assert.ok(izin('ADMIN').includes('kontrak.import'));

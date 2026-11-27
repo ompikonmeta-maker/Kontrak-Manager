@@ -31,6 +31,9 @@ const files = fs.readdirSync(srv).filter(f => f.endsWith('.js')).sort();
 const versi = (fs.readFileSync(path.join(srv, '00_Config.js'), 'utf8').match(/VERSI:\s*'([^']+)'/) || [])[1] || '?';
 let code = files.map(f => `// ===== ${f} =====\n` + fs.readFileSync(path.join(srv, f), 'utf8').trim() + '\n' +
   (f === '00_Config.js' ? `\n// ===== src/shared (dipakai server dan browser) =====\n${sharedCode}\n` : '')).join('\n');
+// script penerima untuk sheet unit (F4a): disalin dari wizard
+const penerima = fs.readFileSync(path.join(root, 'src', 'receiver', 'Penerima.gs'), 'utf8');
+code += `\n// ===== src/receiver/Penerima.gs (teks untuk disalin pemilik sheet unit) =====\nvar RECEIVER_CODE = ${JSON.stringify(penerima)};\nvar RECEIVER_VERSI = ${(penerima.match(/var VERSI = (\d+);/) || [])[1] || 1};\n`;
 code += `\n// ===== UI (src/ui, disematkan saat build) =====\nvar UI_HTML = ${JSON.stringify(buildUi())};\n`;
 fs.writeFileSync(path.join(dist, 'Code.gs'), code);
 

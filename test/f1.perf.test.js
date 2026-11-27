@@ -21,7 +21,7 @@ test('boot: satu panggilan berisi status, profil dan katalog; token rusak → us
   assert.equal(b.data.user.username, 'admin');
   assert.ok(b.data.user.izin.includes('user.kelola'));
   assert.equal(b.data.katalog.length, 13);
-  assert.equal(b.data.app.versi, '3.0.1');
+  assert.equal(b.data.app.versi, '4.0.0');
   const x = g.api('token-palsu', 'boot');
   assert.equal(x.ok, true);
   assert.equal(x.data.user, null);

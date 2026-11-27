@@ -37,10 +37,17 @@ var Repo = (function () {
     Ref_Tahap: ['Kode', 'Urutan', 'Label', 'Penutup', 'BatasAgingHari', 'Aktif', 'UpdatedAt', 'UpdatedBy'],
     Ref_Kendala: ['Kode', 'Label', 'WajibKeterangan', 'MemicuReopen', 'Aktif', 'Urutan', 'UpdatedAt', 'UpdatedBy'],
     Ref_NilaiPush: ['Urutan', 'Kondisi', 'Nilai', 'Aktif', 'UpdatedAt', 'UpdatedBy'],
-    Ref_JenisDok: REF, Ref_Populasi: REF, Ref_Segment: REF, Ref_DokTagih: REF
+    Ref_JenisDok: REF, Ref_Populasi: REF, Ref_Segment: REF, Ref_DokTagih: REF,
+    // F4a · sinkron ke sheet unit (§7, §8). Kode rahasia per target di Script Properties, bukan di sini.
+    Target: ['TargetID', 'Nama', 'ModeKoneksi', 'WebAppUrl', 'VersiScript', 'SpreadsheetID', 'NamaFile', 'ModeTab', 'TabNama', 'CaraTerbaru', 'TabTerakhirDipakai', 'TabBaru',
+             'BarisHeader', 'AliasHeaderKunci', 'FormatTanggal', 'Aktif', 'TerakhirCek', 'TerakhirUpdate', 'StatusTerakhir', 'PesanTerakhir', 'AlarmTerakhir',
+             'CreatedAt', 'CreatedBy', 'UpdatedAt', 'UpdatedBy', 'Version'],
+    TargetKolom: ['TargetID', 'Field', 'Arah', 'JudulHeader', 'AliasHeader', 'KolomTerakhir'],
+    JejakSel: ['TargetID', 'Tab', 'NoKontrakNorm', 'Field', 'NilaiDitulis', 'WaktuTulis', 'Baris', 'KontrakID']
   };
+  var LANGSUNG = { JejakSel: 1 };   // tab kecil yang bisa besar: dibaca langsung, tidak di-cache
   var KUNCI = { _Meta: 'Key', Users: 'Username', Ref_Role: 'Role', Config: 'Key', Ref_Tahap: 'Kode', Ref_Kendala: 'Kode', Ref_NilaiPush: 'Kondisi',
-                Ref_JenisDok: 'Kode', Ref_Populasi: 'Kode', Ref_Segment: 'Kode', Ref_DokTagih: 'Kode' };
+                Ref_JenisDok: 'Kode', Ref_Populasi: 'Kode', Ref_Segment: 'Kode', Ref_DokTagih: 'Kode', Target: 'TargetID' };
   // tab besar: kunci (null = hanya ditambah) dan kolom KontrakID (untuk arsip)
   var BESAR = { Kontrak: { key: 'KontrakID', kid: 'KontrakID' }, BAST: { key: 'BASTID', kid: 'KontrakID' }, OrderInternal: { key: 'OrderID', kid: 'KontrakID' },
                 Kendala: { key: 'KendalaID', kid: 'KontrakID' }, Indeks: { key: 'KontrakID', kid: 'KontrakID' }, RiwayatTahap: { key: null, kid: 'KontrakID' },
@@ -113,6 +120,7 @@ var Repo = (function () {
   }
   function semua(tab) {
     if (BESAR[tab]) return bacaSemua(sheet(tab)).rows;      // tab besar: tidak di-cache (dipakai snapshot & pekerjaan latar)
+    if (LANGSUNG[tab]) { if (!_memo[tab]) { var xl = bacaSemua(sheet(tab)); _hdr[tab] = xl.h; _memo[tab] = xl.rows; } return _memo[tab]; }
     if (_memo[tab]) return _memo[tab];
     var c = cache().get('tab:' + tab);
     if (c) { _memo[tab] = JSON.parse(c); return _memo[tab]; }
@@ -593,6 +601,7 @@ var Repo = (function () {
     SKEMA_TAB: SKEMA_TAB, KOL_DATA: KOL_DATA, KOL_LOG: KOL_LOG, BESAR: BESAR, galat: galat, sekarang: sekarang, siap: siap,
     semua: semua, cari: cari, tambah: tambah, ubah: ubah, hapus: hapus, gantiSemua: gantiSemua, header: header,
     besarBaca: besarBaca, besarSheet: besarSheet, besarBarisKe: besarBarisKe, besarCari: besarCari, besarTulis: besarTulis, besarTambah: besarTambah, besarGantiSemua: besarGantiSemua, besarTulisKolom: besarTulisKolom, lupakan: lupakan,
+    bukaFile: bukaFile, tambahKeFile: tambahKeFile,
     tulisLog: tulisLog, flushLog: flushLog, logBulan: logBulan, logEntitas: logEntitas, daftarBulanLog: daftarBulanLog,
     arsipPindah: arsipPindah, aturLokasi: aturLokasi, arsipAmbil: arsipAmbil, arsipKeluarkan: arsipKeluarkan, idFile: idFile,
     seq: seq, feedTambah: feedTambah, feedAmbil: feedAmbil, snapshot: snapshot, cacheGet: cacheGet, cachePut: cachePut,

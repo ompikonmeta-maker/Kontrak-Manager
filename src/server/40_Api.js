@@ -381,6 +381,8 @@ var AKSI = {
     } else if (BATAS[key]) {
       var n = Number(nilai);
       wajib_(/^\d+$/.test(nilai) && n >= BATAS[key][0] && n <= BATAS[key][1], key + ' harus angka ' + BATAS[key][0] + '–' + BATAS[key][1] + '.');
+    } else if (key === 'KONFIRMASI_TAB_BARU') {
+      nilai = nilai.toUpperCase(); wajib_(nilai === 'TRUE' || nilai === 'FALSE', 'KONFIRMASI_TAB_BARU harus TRUE atau FALSE.');
     } else wajib_(nilai && nilai.length <= 60, key + ' wajib diisi (maks. 60 karakter).');
     var lama = Repo.cari('Config', key);
     if (lama.Nilai === nilai) return { berubah: false, app: infoApp_() };

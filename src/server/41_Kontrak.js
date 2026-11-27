@@ -247,10 +247,10 @@ function isiTemplate_(f) {
 /** Data aktif untuk browser + perubahan sejak snapshot (supaya browser tidak perlu panggilan kedua). */
 function muatDataKlien_() {
   var snap = Repo.snapshot();
-  return { snap: snap, feed: Repo.feedAmbil(snap.seq), ref: refRaw_(), cfg: cfgKlien_(), users: daftarUserPic_(), hariIni: hariIni_(), sekarang: Repo.sekarang() };
+  return { snap: snap, feed: Repo.feedAmbil(snap.seq), ref: refRaw_(), cfg: cfgKlien_(), users: daftarUserPic_(), targets: daftarTargetKlien_(false), hariIni: hariIni_(), sekarang: Repo.sekarang() };
 }
 AKSI['data.muat'] = { izin: 'kontrak.lihat', fn: function () { return muatDataKlien_(); } };
-AKSI['data.ref'] = { izin: 'kontrak.lihat', fn: function () { return { ref: refRaw_(), cfg: cfgKlien_(), users: daftarUserPic_() }; } };
+AKSI['data.ref'] = { izin: 'kontrak.lihat', fn: function () { return { ref: refRaw_(), cfg: cfgKlien_(), users: daftarUserPic_(), targets: daftarTargetKlien_(false) }; } };
 AKSI['data.perubahan'] = { izin: 'kontrak.lihat', fn: function (ctx) { var r = Repo.feedAmbil(ctx.payload.sejak); r.hariIni = hariIni_(); return r; } };
 
 AKSI['kontrak.op'] = { izin: 'kontrak.lihat', ubah: true, fn: function (ctx) {

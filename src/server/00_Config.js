@@ -7,9 +7,9 @@
 // Konstanta kode (bukan nilai bisnis). Nilai bisnis disimpan di database (§3).
 var APP = {
   NAMA: 'Status Kontrak Manager',
-  VERSI: '3.0.1',
-  FASE: 'F3',
-  SKEMA: 3,                 // versi skema database yang dibutuhkan kode ini
+  VERSI: '4.0.0',
+  FASE: 'F4a',
+  SKEMA: 4,                 // versi skema database yang dibutuhkan kode ini
   TZ: 'Asia/Jakarta',
   NAMA_DB: 'SKM_DB'
 };
@@ -32,7 +32,7 @@ var IZIN = [
 ];
 
 // Izin yang boleh diberikan per user di luar role-nya (Users.IzinTambahan, §6).
-var IZIN_TAMBAHAN = ['kontrak.import'];
+var IZIN_TAMBAHAN = ['kontrak.import', 'sinkron.jalankan'];
 
 // Isi awal (hanya dipakai saat tab masih kosong; setelah itu diatur dari aplikasi).
 var ROLE_AWAL = {
@@ -55,7 +55,8 @@ var CONFIG_AWAL = [
   ['DOKTAGIH_DEFAULT_INDIRECT', 'BAST', 'Dokumen tagih usulan untuk customer INDIRECT'],
   ['DOKTAGIH_DEFAULT_BELUM', 'BAST', 'Dokumen tagih usulan bila jenis customer belum terdefinisi'],
   ['ARSIP_SETELAH_HARI', '90', 'Kontrak CLOSE lebih lama dari ini dipindah ke arsip tahunan'],
-  ['SINKRON_KLIEN_DETIK', '30', 'Browser menarik perubahan dari anggota tim lain setiap … detik']
+  ['SINKRON_KLIEN_DETIK', '30', 'Browser menarik perubahan dari anggota tim lain setiap … detik'],
+  ['KONFIRMASI_TAB_BARU', 'TRUE', 'Tab bulan baru pada sheet unit (mode TERBARU) harus dikonfirmasi admin sebelum di-update']
 ];
 
 // Isi awal referensi F2 (§5.1, §5.2, §5.5). Setelah terisi, diatur dari halaman Pengaturan.
